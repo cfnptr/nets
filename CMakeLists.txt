@@ -18,7 +18,7 @@ configure_file(
 add_subdirectory(libraries/mpmt)
 
 add_library(mpnw STATIC
-	source/mpnw/client_socket.c
+		source/mpnw/stream_client.c
 	source/mpnw/socket.c
 	source/mpnw/stream_server.c)
 target_link_libraries(mpnw PRIVATE
