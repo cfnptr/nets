@@ -1,23 +1,24 @@
 #pragma once
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 struct Socket;
 struct SocketAddress;
 
-enum AddressFamily : int
+enum AddressFamily
 {
 	INTERNET_PROTOCOL_V4 = 2,
 	INTERNET_PROTOCOL_V6 = 30,
 };
 
-enum SocketType : int
+enum SocketType
 {
 	STREAM_SOCKET = 1,
 	DATAGRAM_SOCKET = 2,
 };
 
-enum SocketShutdown : int
+enum SocketShutdown
 {
 	SHUTDOWN_RECEIVE_ONLY = 0,
 	SHUTDOWN_SEND_ONLY = 1,
