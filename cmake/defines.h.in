@@ -1,0 +1,7 @@
+#pragma once
+
+#define __MPNW__
+
+#define MPNW_VERSION_MAJOR @mpnw_VERSION_MAJOR@
+#define MPNW_VERSION_MINOR @mpnw_VERSION_MINOR@
+#define MPNW_VERSION_PATCH @mpnw_VERSION_PATCH@
