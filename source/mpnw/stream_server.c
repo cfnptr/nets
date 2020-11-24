@@ -26,7 +26,7 @@ struct StreamServer
 	struct Thread* acceptThread;
 };
 
-void *mpnwStreamSessionReceive(
+void mpnwStreamSessionReceive(
 	void* argument)
 {
 	struct StreamSession* session =
@@ -53,7 +53,7 @@ void *mpnwStreamSessionReceive(
 				socket,
 				SHUTDOWN_RECEIVE_SEND);
 			session->running = false;
-			return NULL;
+			return;
 		}
 
 		result = receiveHandler(
@@ -67,7 +67,7 @@ void *mpnwStreamSessionReceive(
 				socket,
 				SHUTDOWN_RECEIVE_SEND);
 			session->running = false;
-			return NULL;
+			return;
 		}
 	}
 }
@@ -110,8 +110,7 @@ void mpnwDestroyStreamSession(
 	mpnwDestroySocket(
 		session->socket);
 	mpmtJoinThread(
-		session->receiveThread,
-		NULL);
+		session->receiveThread);
 	mpmtDestroyThread(
 		session->receiveThread);
 	mpnwDestroySocketAddress(
@@ -155,7 +154,7 @@ bool mpnwAddStreamSession(
 
 	return created;
 }
-void *mpnwStreamServerAccept(
+void mpnwStreamServerAccept(
 	void* argument)
 {
 	struct StreamServer* server =
@@ -181,7 +180,7 @@ void *mpnwStreamServerAccept(
 		if(!result)
 		{
 			server->running = false;
-			return NULL;
+			return;
 		}
 
 		result = acceptHandler(
@@ -301,8 +300,7 @@ void mpnwDestroyStreamServer(
 		mpnwDestroySocket(
 			server->socket);
 		mpmtJoinThread(
-			server->acceptThread,
-			NULL);
+			server->acceptThread);
 		mpmtDestroyThread(
 			server->acceptThread);
 
