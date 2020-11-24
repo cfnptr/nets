@@ -25,102 +25,103 @@ enum SocketShutdown
 	SHUTDOWN_RECEIVE_SEND = 2,
 };
 
-struct Socket* mpnwCreateSocket(
+struct Socket* createSocket(
 	enum SocketType type,
 	enum AddressFamily family);
-void mpnwDestroySocket(
+void destroySocket(
 	struct Socket* socket);
 
-bool mpnwGetSocketListening(
+bool getSocketListening(
 	const struct Socket* socket,
 	bool* listening);
-struct SocketAddress* mpnwGetSocketLocalAddress(
+
+struct SocketAddress* getSocketLocalAddress(
 	const struct Socket* socket);
-struct SocketAddress* mpnwGetSocketRemoteAddress(
+struct SocketAddress* getSocketRemoteAddress(
 	const struct Socket* socket);
 
-bool mpnwSetSocketBlocking(
+bool setSocketBlocking(
 	struct Socket* socket,
 	bool blocking);
 
-bool mpnwGetSocketReceiveTimeout(
+bool getSocketReceiveTimeout(
 	const struct Socket* socket,
 	uint32_t* timeout);
-bool mpnwSetSocketReceiveTimeout(
+bool setSocketReceiveTimeout(
 	struct Socket* socket,
 	uint32_t timeout);
 
-bool mpnwGetSocketSendTimeout(
+bool getSocketSendTimeout(
 	const struct Socket* socket,
 	uint32_t* timeout);
-bool mpnwSetSocketSendTimeout(
+bool setSocketSendTimeout(
 	struct Socket* socket,
 	uint32_t timeout);
 
-bool mpnwBindSocket(
+bool bindSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address);
-bool mpnwListenSocket(
+bool listenSocket(
 	struct Socket* socket);
 
-bool mpnwAcceptSocket(
+bool acceptSocket(
 	struct Socket* socket,
 	struct Socket** acceptedSocket,
 	struct SocketAddress** acceptedAddress);
-bool mpnwConnectSocket(
+bool connectSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address);
 
-bool mpnwShutdownSocket(
+bool shutdownSocket(
 	struct Socket* socket,
 	enum SocketShutdown type);
 
-bool mpnwSocketReceive(
+bool socketReceive(
 	struct Socket* socket,
 	void* buffer,
 	size_t size,
 	size_t* count);
-bool mpnwSocketSend(
+bool socketSend(
 	struct Socket* socket,
 	const void* buffer,
 	size_t size);
 
-bool mpnwSocketReceiveFrom(
+bool socketReceiveFrom(
 	struct Socket* socket,
 	void* buffer,
 	size_t size,
 	struct SocketAddress** address,
 	size_t* count);
-bool mpnwSocketSendTo(
+bool socketSendTo(
 	struct Socket* socket,
 	const void* buffer,
 	size_t size,
 	const struct SocketAddress* address);
 
-struct SocketAddress* mpnwCreateSocketAddress(
+struct SocketAddress* createSocketAddress(
 	const char* host,
 	const char* service);
-void mpnwDestroySocketAddress(
+void destroySocketAddress(
 	struct SocketAddress* address);
 
-bool mpnwGetSocketAddressFamily(
+bool getSocketAddressFamily(
 	const struct SocketAddress* address,
 	enum AddressFamily* family);
-bool mpnwGetSocketAddressIP(
+bool getSocketAddressIP(
 	const struct SocketAddress* address,
 	char** ip,
 	size_t* size);
-bool mpnwGetSocketAddressPort(
+bool getSocketAddressPort(
 	const struct SocketAddress* address,
 	uint16_t* port);
 
-bool mpnwGetSocketAddressHost(
+bool getSocketAddressHost(
 	const struct SocketAddress* address,
 	char** host);
-bool mpnwGetSocketAddressService(
+bool getSocketAddressService(
 	const struct SocketAddress* address,
 	char** service);
-bool mpnwGetSocketAddressHostService(
+bool getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char** host,
 	char** service);

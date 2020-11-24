@@ -27,7 +27,7 @@ struct SocketAddress
 	struct sockaddr_storage handle;
 };
 
-struct Socket* mpnwCreateSocket(
+struct Socket* createSocket(
 	enum SocketType type,
 	enum AddressFamily family)
 {
@@ -59,7 +59,7 @@ struct Socket* mpnwCreateSocket(
 	socket->handle = handle;
 	return socket;
 }
-void mpnwDestroySocket(
+void destroySocket(
 	struct Socket* socket)
 {
 	if (socket)
@@ -78,7 +78,7 @@ void mpnwDestroySocket(
 	free(socket);
 }
 
-bool mpnwGetSocketListening(
+bool getSocketListening(
 	const struct Socket* socket,
 	bool* _listening)
 {
@@ -103,7 +103,8 @@ bool mpnwGetSocketListening(
 	*_listening = listening;
 	return true;
 }
-struct SocketAddress* mpnwGetSocketLocalAddress(
+
+struct SocketAddress* getSocketLocalAddress(
 	const struct Socket* socket)
 {
 	if (!socket)
@@ -136,7 +137,7 @@ struct SocketAddress* mpnwGetSocketLocalAddress(
 	address->handle = handle;
 	return address;
 }
-struct SocketAddress* mpnwGetSocketRemoteAddress(
+struct SocketAddress* getSocketRemoteAddress(
 	const struct Socket* socket)
 {
 	if (!socket)
@@ -170,7 +171,7 @@ struct SocketAddress* mpnwGetSocketRemoteAddress(
 	return address;
 }
 
-bool mpnwSetSocketBlocking(
+bool setSocketBlocking(
 	struct Socket* socket,
 	bool blocking)
 {
@@ -204,7 +205,7 @@ bool mpnwSetSocketBlocking(
 #endif
 }
 
-bool mpnwGetSocketReceiveTimeout(
+bool getSocketReceiveTimeout(
 	const struct Socket* socket,
 	uint32_t* _timeout)
 {
@@ -251,7 +252,7 @@ bool mpnwGetSocketReceiveTimeout(
 	return true;
 #endif
 }
-bool mpnwSetSocketReceiveTimeout(
+bool setSocketReceiveTimeout(
 	struct Socket* socket,
 	uint32_t _timeout)
 {
@@ -279,7 +280,7 @@ bool mpnwSetSocketReceiveTimeout(
 #endif
 }
 
-bool mpnwGetSocketSendTimeout(
+bool getSocketSendTimeout(
 	const struct Socket* socket,
 	uint32_t* _timeout)
 {
@@ -323,7 +324,7 @@ bool mpnwGetSocketSendTimeout(
 	return true;
 #endif
 }
-bool mpnwSetSocketSendTimeout(
+bool setSocketSendTimeout(
 	struct Socket* socket,
 	uint32_t _timeout)
 {
@@ -351,7 +352,7 @@ bool mpnwSetSocketSendTimeout(
 #endif
 }
 
-bool mpnwBindSocket(
+bool bindSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address)
 {
@@ -374,7 +375,7 @@ bool mpnwBindSocket(
 		(const struct sockaddr*)&address->handle,
 		length) == 0;
 }
-bool mpnwListenSocket(
+bool listenSocket(
 	struct Socket* socket)
 {
 	if (!socket)
@@ -385,7 +386,7 @@ bool mpnwListenSocket(
 		SOMAXCONN) == 0;
 }
 
-bool mpnwAcceptSocket(
+bool acceptSocket(
 	struct Socket* socket,
 	struct Socket** _acceptedSocket,
 	struct SocketAddress** _acceptedAddress)
@@ -459,7 +460,7 @@ bool mpnwAcceptSocket(
 	*_acceptedAddress = acceptAddress;
 	return true;
 }
-bool mpnwConnectSocket(
+bool connectSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address)
 {
@@ -483,7 +484,7 @@ bool mpnwConnectSocket(
 		length) == 0;
 }
 
-bool mpnwShutdownSocket(
+bool shutdownSocket(
 	struct Socket* socket,
 	enum SocketShutdown type)
 {
@@ -495,7 +496,7 @@ bool mpnwShutdownSocket(
 		type) == 0;
 }
 
-bool mpnwSocketReceive(
+bool socketReceive(
 	struct Socket* socket,
 	void* buffer,
 	size_t size,
@@ -519,7 +520,7 @@ bool mpnwSocketReceive(
 	*_count = (size_t)count;
 	return true;
 }
-bool mpnwSocketSend(
+bool socketSend(
 	struct Socket* socket,
 	const void* buffer,
 	size_t size)
@@ -536,7 +537,7 @@ bool mpnwSocketSend(
 		0) == size;
 }
 
-bool mpnwSocketReceiveFrom(
+bool socketReceiveFrom(
 	struct Socket* socket,
 	void* buffer,
 	size_t size,
@@ -581,7 +582,7 @@ bool mpnwSocketReceiveFrom(
 	*_count = (size_t)count;
 	return true;
 }
-bool mpnwSocketSendTo(
+bool socketSendTo(
 	struct Socket* socket,
 	const void* buffer,
 	size_t size,
@@ -601,7 +602,7 @@ bool mpnwSocketSendTo(
 		sizeof(struct sockaddr_storage)) == size;
 }
 
-struct SocketAddress* mpnwCreateSocketAddress(
+struct SocketAddress* createSocketAddress(
 	const char* host,
 	const char* service)
 {
@@ -652,13 +653,13 @@ struct SocketAddress* mpnwCreateSocketAddress(
 	address->handle = handle;
 	return address;
 }
-void mpnwDestroySocketAddress(
+void destroySocketAddress(
 	struct SocketAddress* address)
 {
 	free(address);
 }
 
-bool mpnwGetSocketAddressFamily(
+bool getSocketAddressFamily(
 	const struct SocketAddress* address,
 	enum AddressFamily* _family)
 {
@@ -674,7 +675,7 @@ bool mpnwGetSocketAddressFamily(
 	*_family = family;
 	return true;
 }
-bool mpnwGetSocketAddressIP(
+bool getSocketAddressIP(
 	const struct SocketAddress* address,
 	char** _ip,
 	size_t* size)
@@ -726,7 +727,7 @@ bool mpnwGetSocketAddressIP(
 		return false;
 	}
 }
-bool mpnwGetSocketAddressPort(
+bool getSocketAddressPort(
 	const struct SocketAddress* address,
 	uint16_t* port)
 {
@@ -755,7 +756,7 @@ bool mpnwGetSocketAddressPort(
 	}
 }
 
-bool mpnwGetSocketAddressHost(
+bool getSocketAddressHost(
 	const struct SocketAddress* address,
 	char** _host)
 {
@@ -795,7 +796,7 @@ bool mpnwGetSocketAddressHost(
 	*_host = host;
 	return true;
 }
-bool mpnwGetSocketAddressService(
+bool getSocketAddressService(
 	const struct SocketAddress* address,
 	char** _service)
 {
@@ -835,7 +836,7 @@ bool mpnwGetSocketAddressService(
 	*_service = service;
 	return true;
 }
-bool mpnwGetSocketAddressHostService(
+bool getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char** _host,
 	char** _service)

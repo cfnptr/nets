@@ -6,4 +6,3 @@ struct ClientSocket
 	struct Socket* socket;
 };
 
-// TODO:

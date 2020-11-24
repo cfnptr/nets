@@ -11,17 +11,17 @@ typedef bool(*SessionReceiveHandler)(
 	struct Socket* socket,
 	const char* receiveBuffer);
 
-struct StreamServer* mpnwCreateStreamServer(
+struct StreamServer* createStreamServer(
 	const struct SocketAddress* address,
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
 	uint32_t sessionTimeoutTime,
 	SessionAcceptHandler acceptHandler,
 	SessionReceiveHandler receiveHandler);
-void mpnwDestroyStreamServer(
+void destroyStreamServer(
 	struct StreamServer* server);
 
-bool mpnwGetStreamServerRunning(
+bool getStreamServerRunning(
 	const struct StreamServer* server,
 	bool* running);
 
