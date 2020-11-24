@@ -13,7 +13,6 @@ configure_file(
 	cmake/defines.h.in
 	mpnw/defines.h)
 
-
 add_subdirectory(libraries/mpmt)
 
 add_library(mpnw STATIC
@@ -21,7 +20,6 @@ add_library(mpnw STATIC
 	source/mpnw/socket.c
 	source/mpnw/stream_server.c)
 target_link_libraries(mpnw PRIVATE
-	Threads::Threads
 	mpmt)
 target_include_directories(mpnw PUBLIC
 	${PROJECT_BINARY_DIR}
