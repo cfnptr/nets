@@ -26,7 +26,7 @@ struct StreamServer
 	struct Thread* acceptThread;
 };
 
-void mpnwStreamSessionReceive(
+void streamSessionReceive(
 	void* argument)
 {
 	struct StreamSession* session =
@@ -72,7 +72,7 @@ void mpnwStreamSessionReceive(
 	}
 }
 
-struct StreamSession* mpnwCreateStreamSession(
+struct StreamSession* createStreamSession(
 	size_t receiveBufferSize,
 	SessionReceiveHandler receiveHandler,
 	struct Socket* socket,
@@ -92,13 +92,20 @@ struct StreamSession* mpnwCreateStreamSession(
 
 	char* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(char));
+
+	if (!receiveBuffer)
+	{
+		free(session);
+		return NULL;
+	}
+
 	session->receiveBuffer = receiveBuffer;
 
 	struct Thread* receiveThread = mpmtCreateThread(
-		mpnwStreamSessionReceive,
+		streamSessionReceive,
 		session);
 
-	if(!receiveThread)
+	if (!receiveThread)
 	{
 		free(receiveBuffer);
 		free(session);
@@ -108,7 +115,7 @@ struct StreamSession* mpnwCreateStreamSession(
 	session->receiveThread = receiveThread;
 	return session;
 }
-void mpnwDestroyStreamSession(
+void destroyStreamSession(
 	struct StreamSession* session)
 {
 	mpnwDestroySocket(
@@ -119,7 +126,6 @@ void mpnwDestroyStreamSession(
 		session->receiveThread);
 	mpnwDestroySocketAddress(
 		session->socketAddress);
-
 	free(session->receiveBuffer);
 	free(session);
 }
@@ -141,14 +147,14 @@ bool mpnwAddStreamSession(
 
 		if (session && !session->running)
 		{
-			mpnwDestroyStreamSession(session);
+			destroyStreamSession(session);
 			sessionBuffer[i] = session = NULL;
 		}
 
 		if(!created && !session)
 			continue;
 
-		struct StreamSession* _session = mpnwCreateStreamSession(
+		struct StreamSession* _session = createStreamSession(
 			receiveBufferSize,
 			receiveHandler,
 			socket,
@@ -227,7 +233,7 @@ struct StreamServer* mpnwCreateStreamServer(
 	SessionAcceptHandler acceptHandler,
 	SessionReceiveHandler receiveHandler)
 {
-	if(!sessionBufferSize ||
+	if (!sessionBufferSize ||
 		!receiveBufferSize ||
 		!acceptHandler ||
 		!receiveHandler)
@@ -241,32 +247,32 @@ struct StreamServer* mpnwCreateStreamServer(
 		address,
 		&family);
 
-	if(!result)
+	if (!result)
 		return NULL;
 
 	struct Socket* socket = mpnwCreateSocket(
 		STREAM_SOCKET,
 		family);
 
-	if(!socket)
+	if (!socket)
 		return NULL;
 
-	if(!mpnwSetSocketReceiveTimeout(socket, sessionTimeoutTime))
+	if (!mpnwSetSocketReceiveTimeout(socket, sessionTimeoutTime))
 	{
 		mpnwDestroySocket(socket);
 		return NULL;
 	}
-	if(!mpnwSetSocketSendTimeout(socket, sessionTimeoutTime))
+	if (!mpnwSetSocketSendTimeout(socket, sessionTimeoutTime))
 	{
 		mpnwDestroySocket(socket);
 		return NULL;
 	}
-	if(!mpnwBindSocket(socket, address))
+	if (!mpnwBindSocket(socket, address))
 	{
 		mpnwDestroySocket(socket);
 		return NULL;
 	}
-	if(!mpnwListenSocket(socket))
+	if (!mpnwListenSocket(socket))
 	{
 		mpnwDestroySocket(socket);
 		return NULL;
@@ -297,7 +303,7 @@ struct StreamServer* mpnwCreateStreamServer(
 		mpnwStreamServerAccept,
 		server);
 
-	if(!acceptThread)
+	if (!acceptThread)
 	{
 		mpnwDestroySocket(socket);
 		free(sessionBuffer);
@@ -311,7 +317,7 @@ struct StreamServer* mpnwCreateStreamServer(
 void mpnwDestroyStreamServer(
 	struct StreamServer* server)
 {
-	if(server)
+	if (server)
 	{
 		mpnwDestroySocket(
 			server->socket);
@@ -327,8 +333,9 @@ void mpnwDestroyStreamServer(
 		{
 			struct StreamSession* session =
 				sessionBuffer[i];
+
 			if(session)
-				mpnwDestroyStreamSession(session);
+				destroyStreamSession(session);
 		}
 
 		free(sessionBuffer);
@@ -341,7 +348,7 @@ bool mpnwGetStreamServerRunning(
 	const struct StreamServer* server,
 	bool* running)
 {
-	if(!server)
+	if (!server)
 		return false;
 
 	*running = server->running;

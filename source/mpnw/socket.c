@@ -44,6 +44,10 @@ struct Socket* mpnwCreateSocket(
 
 	if (!socket)
 	{
+		shutdown(
+			handle,
+			SHUTDOWN_RECEIVE_SEND);
+
 #if __linux__ || __APPLE__
 		close(handle);
 #elif _WIN32
@@ -58,7 +62,7 @@ struct Socket* mpnwCreateSocket(
 void mpnwDestroySocket(
 	struct Socket* socket)
 {
-	if(socket)
+	if (socket)
 	{
 		shutdown(
 			socket->handle,
@@ -78,7 +82,7 @@ bool mpnwGetSocketListening(
 	const struct Socket* socket,
 	bool* _listening)
 {
-	if(!socket || !_listening)
+	if (!socket || !_listening)
 		return false;
 
 	socklen_t length =
@@ -93,7 +97,7 @@ bool mpnwGetSocketListening(
 		(char*)&listening,
 		&length);
 
-	if(result != 0)
+	if (result != 0)
 		return false;
 
 	*_listening = listening;
@@ -102,7 +106,7 @@ bool mpnwGetSocketListening(
 struct SocketAddress* mpnwGetSocketLocalAddress(
 	const struct Socket* socket)
 {
-	if(!socket)
+	if (!socket)
 		return NULL;
 
 	socklen_t length =
@@ -120,7 +124,7 @@ struct SocketAddress* mpnwGetSocketLocalAddress(
 		(struct sockaddr*)&handle,
 		&length);
 
-	if(result != 0)
+	if (result != 0)
 		return NULL;
 
 	struct SocketAddress* address =
@@ -135,7 +139,7 @@ struct SocketAddress* mpnwGetSocketLocalAddress(
 struct SocketAddress* mpnwGetSocketRemoteAddress(
 	const struct Socket* socket)
 {
-	if(!socket)
+	if (!socket)
 		return NULL;
 
 	socklen_t length =
@@ -170,7 +174,7 @@ bool mpnwSetSocketBlocking(
 	struct Socket* socket,
 	bool blocking)
 {
-	if(!socket)
+	if (!socket)
 		return false;
 
 #if __linux__ || __APPLE__
@@ -251,7 +255,7 @@ bool mpnwSetSocketReceiveTimeout(
 	struct Socket* socket,
 	uint32_t _timeout)
 {
-	if(!socket)
+	if (!socket)
 		return false;
 
 #if __linux__ || __APPLE__
@@ -279,7 +283,7 @@ bool mpnwGetSocketSendTimeout(
 	const struct Socket* socket,
 	uint32_t* _timeout)
 {
-	if(!socket || !_timeout)
+	if (!socket || !_timeout)
 		return false;
 
 #if __linux__ || __APPLE__
@@ -295,7 +299,7 @@ bool mpnwGetSocketSendTimeout(
 		&timeout,
 		&size);
 
-	if(result != 0)
+	if (result != 0)
 		return false;
 
 	*_timeout =
@@ -323,7 +327,7 @@ bool mpnwSetSocketSendTimeout(
 	struct Socket* socket,
 	uint32_t _timeout)
 {
-	if(!socket)
+	if (!socket)
 		return false;
 
 #if __linux__ || __APPLE__
@@ -351,7 +355,7 @@ bool mpnwBindSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address)
 {
-	if(!socket || !address)
+	if (!socket || !address)
 		return false;
 
 	int family = address->handle.ss_family;
@@ -373,7 +377,7 @@ bool mpnwBindSocket(
 bool mpnwListenSocket(
 	struct Socket* socket)
 {
-	if(!socket)
+	if (!socket)
 		return false;
 
 	return listen(
@@ -459,7 +463,7 @@ bool mpnwConnectSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address)
 {
-	if(!socket || !address)
+	if (!socket || !address)
 		return false;
 
 	int family = address->handle.ss_family;
@@ -483,7 +487,7 @@ bool mpnwShutdownSocket(
 	struct Socket* socket,
 	enum SocketShutdown type)
 {
-	if(!socket)
+	if (!socket)
 		return false;
 
 	return shutdown(
@@ -497,7 +501,10 @@ bool mpnwSocketReceive(
 	size_t size,
 	size_t* _count)
 {
-	if(!socket || !buffer || !_count || !size)
+	if (!socket ||
+		!buffer ||
+		!_count ||
+		!size)
 		return false;
 
 	int count = recv(
@@ -506,7 +513,7 @@ bool mpnwSocketReceive(
 		size,
 		0);
 
-	if(count < 0)
+	if (count < 0)
 		return false;
 
 	*_count = (size_t)count;
@@ -517,7 +524,9 @@ bool mpnwSocketSend(
 	const void* buffer,
 	size_t size)
 {
-	if(!socket || !buffer || !size)
+	if (!socket ||
+		!buffer ||
+		!size)
 		return false;
 
 	return send(
@@ -534,7 +543,7 @@ bool mpnwSocketReceiveFrom(
 	struct SocketAddress** address,
 	size_t* _count)
 {
-	if(!socket ||
+	if (!socket ||
 		!buffer ||
 		!address ||
 		!_count)
@@ -558,7 +567,7 @@ bool mpnwSocketReceiveFrom(
 		(struct sockaddr*)&handle,
 		&length);
 
-	if(count < 0)
+	if (count < 0)
 		return false;
 
 	struct SocketAddress* newAddress =
@@ -578,7 +587,9 @@ bool mpnwSocketSendTo(
 	size_t size,
 	const struct SocketAddress* address)
 {
-	if(!socket || !buffer || !address)
+	if (!socket ||
+		!buffer ||
+		!address)
 		return false;
 
 	return sendto(
@@ -594,7 +605,7 @@ struct SocketAddress* mpnwCreateSocketAddress(
 	const char* host,
 	const char* service)
 {
-	if(!host || !service)
+	if (!host || !service)
 		return NULL;
 
 	struct addrinfo hints;
@@ -651,12 +662,12 @@ bool mpnwGetSocketAddressFamily(
 	const struct SocketAddress* address,
 	enum AddressFamily* _family)
 {
-	if(!address || !_family)
+	if (!address || !_family)
 		return false;
 
 	int family = address->handle.ss_family;
 
-	if(family != AF_INET && 
+	if (family != AF_INET &&
 		family != AF_INET6)
 		return false;
 
@@ -719,7 +730,7 @@ bool mpnwGetSocketAddressPort(
 	const struct SocketAddress* address,
 	uint16_t* port)
 {
-	if(!address || !port)
+	if (!address || !port)
 		return false;
 
 	int family = address->handle.ss_family;
@@ -748,14 +759,10 @@ bool mpnwGetSocketAddressHost(
 	const struct SocketAddress* address,
 	char** _host)
 {
-	if(!address || !_host)
+	if (!address || !_host)
 		return false;
 
-	char* host = malloc(
-		NI_MAXHOST * sizeof(char));
-
-	if (!host)
-		return false;
+	char buffer[NI_MAXHOST];
 
 	int flags =
 		NI_NUMERICHOST;
@@ -763,17 +770,27 @@ bool mpnwGetSocketAddressHost(
 	int result = getnameinfo(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
-		host,
+		buffer,
 		NI_MAXHOST,
 		NULL,
 		0,
 		flags);
 
 	if (result != 0)
-	{
-		free(host);
 		return false;
-	}
+
+	size_t hostLength =
+		strlen(buffer);
+	char* host = malloc(
+		hostLength * sizeof(char));
+
+	if (!host)
+		return false;
+
+	memcpy(
+		host,
+		buffer,
+		hostLength * sizeof(char));
 
 	*_host = host;
 	return true;
@@ -782,14 +799,10 @@ bool mpnwGetSocketAddressService(
 	const struct SocketAddress* address,
 	char** _service)
 {
-	if(!address || !_service)
+	if (!address || !_service)
 		return false;
 
-	char* service = malloc(
-		NI_MAXSERV * sizeof(char));
-
-	if (!service)
-		return false;
+	char buffer[NI_MAXSERV];
 
 	int flags =
 		NI_NUMERICSERV;
@@ -799,15 +812,25 @@ bool mpnwGetSocketAddressService(
 		sizeof(struct sockaddr_storage),
 		NULL,
 		0,
-		service,
+		buffer,
 		NI_MAXSERV,
 		flags);
 
 	if (result != 0)
-	{
-		free(service);
 		return false;
-	}
+
+	size_t serviceLength =
+		strlen(buffer);
+	char* service = malloc(
+		serviceLength * sizeof(char));
+
+	if (!service)
+		return false;
+
+	memcpy(
+		service,
+		buffer,
+		serviceLength * sizeof(char));
 
 	*_service = service;
 	return true;
@@ -817,23 +840,13 @@ bool mpnwGetSocketAddressHostService(
 	char** _host,
 	char** _service)
 {
-	if(!address || !_host || !_service)
+	if (!address ||
+		!_host ||
+		!_service)
 		return false;
 
-	char* host = malloc(
-		NI_MAXHOST * sizeof(char));
-
-	if (!host)
-		return false;
-
-	char* service = malloc(
-		NI_MAXSERV * sizeof(char));
-
-	if (!service)
-	{
-		free(host);
-		return false;
-	}
+	char hostBuffer[NI_MAXHOST];
+	char serviceBuffer[NI_MAXSERV];
 
 	int flags =
 		NI_NUMERICHOST |
@@ -842,18 +855,42 @@ bool mpnwGetSocketAddressHostService(
 	int result = getnameinfo(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
-		host,
+		hostBuffer,
 		NI_MAXHOST,
-		service,
+		serviceBuffer,
 		NI_MAXSERV,
 		flags);
 
 	if (result != 0)
+		return false;
+
+	size_t hostLength =
+		strlen(hostBuffer);
+	char* host = malloc(
+		hostLength * sizeof(char));
+
+	if (!host)
+		return false;
+
+	size_t serviceLength =
+		strlen(hostBuffer);
+	char* service = malloc(
+		serviceLength * sizeof(char));
+
+	if (!service)
 	{
 		free(host);
-		free(service);
 		return false;
 	}
+
+	memcpy(
+		host,
+		hostBuffer,
+		hostLength * sizeof(char));
+	memcpy(
+		service,
+		serviceBuffer,
+		serviceLength * sizeof(char));
 
 	*_host = host;
 	*_service = service;
