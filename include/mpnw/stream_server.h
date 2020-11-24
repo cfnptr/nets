@@ -14,8 +14,8 @@ typedef bool(*SessionReceiveHandler)(
 struct StreamServer* mpnwCreateStreamServer(
 	const struct SocketAddress* address,
 	size_t sessionBufferSize,
-	size_t sessionTimeoutTime,
 	size_t receiveBufferSize,
+	uint32_t sessionTimeoutTime,
 	SessionAcceptHandler acceptHandler,
 	SessionReceiveHandler receiveHandler);
 void mpnwDestroyStreamServer(

@@ -12,7 +12,8 @@
 #define SOCKET int
 #define INVALID_SOCKET -1
 #elif _WIN32
-// TODO:
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
 #error Unknown operating system
 #endif
@@ -35,11 +36,22 @@ struct Socket* mpnwCreateSocket(
 		type,
 		0);
 
-	if(handle == INVALID_SOCKET)
+	if (handle == INVALID_SOCKET)
 		return NULL;
 
 	struct Socket* socket =
 		malloc(sizeof(struct Socket));
+
+	if (!socket)
+	{
+#if __linux__ || __APPLE__
+		close(handle);
+#elif _WIN32
+		closesocket(handle);
+#endif
+		return NULL;
+	}
+
 	socket->handle = handle;
 	return socket;
 }
@@ -48,8 +60,8 @@ void mpnwDestroySocket(
 {
 	if(socket)
 	{
-		mpnwShutdownSocket(
-			socket,
+		shutdown(
+			socket->handle,
 			SHUTDOWN_RECEIVE_SEND);
 
 #if __linux__ || __APPLE__
@@ -113,6 +125,10 @@ struct SocketAddress* mpnwGetSocketLocalAddress(
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
+
+	if (!address)
+		return NULL;
+
 	address->handle = handle;
 	return address;
 }
@@ -137,11 +153,15 @@ struct SocketAddress* mpnwGetSocketRemoteAddress(
 		(struct sockaddr*)&handle,
 		&length);
 
-	if(result != 0)
+	if (result != 0)
 		return NULL;
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
+
+	if (!address)
+		return NULL;
+
 	address->handle = handle;
 	return address;
 }
@@ -184,7 +204,7 @@ bool mpnwGetSocketReceiveTimeout(
 	const struct Socket* socket,
 	uint32_t* _timeout)
 {
-	if(!socket || !_timeout)
+	if (!socket || !_timeout)
 		return false;
 
 #if __linux__ || __APPLE__
@@ -200,7 +220,7 @@ bool mpnwGetSocketReceiveTimeout(
 		&timeout,
 		&size);
 
-	if(result != 0)
+	if (result != 0)
 		return false;
 
 	*_timeout =
@@ -211,12 +231,20 @@ bool mpnwGetSocketReceiveTimeout(
 	int size =
 		sizeof(uint32_t);
 
-	return getsockopt(
+	uint32_t timeout;
+
+	int result = getsockopt(
 		socket->handle,
 		SOL_SOCKET,
 		SO_RCVTIMEO,
 		(char*)&timeout,
-		&size) == 0;
+		&size);
+
+	if (result != 0)
+		return false;
+
+	*_timeout = timeout;
+	return true;
 #endif
 }
 bool mpnwSetSocketReceiveTimeout(
@@ -278,12 +306,17 @@ bool mpnwGetSocketSendTimeout(
 	int size =
 		sizeof(uint32_t);
 
-	return getsockopt(
+	uint32_t timeout;
+
+	int result = getsockopt(
 		socket->handle,
 		SOL_SOCKET,
 		SO_SNDTIMEO,
 		(char*)&timeout,
-		&size) == 0;
+		&size);
+
+	*_timeout = timeout;
+	return true;
 #endif
 }
 bool mpnwSetSocketSendTimeout(
@@ -380,11 +413,44 @@ bool mpnwAcceptSocket(
 
 	struct Socket* acceptSocket =
 		malloc(sizeof(struct Socket));
+
+	if (!acceptSocket) 
+	{
+		shutdown(
+			socket->handle,
+			SHUTDOWN_RECEIVE_SEND);
+
+#if __linux__ || __APPLE__
+		close(socket->handle);
+#elif _WIN32
+		closesocket(socket->handle);
+#endif
+
+		return false;
+	}
+
 	acceptSocket->handle = socketHandle;
 	*_acceptedSocket = acceptSocket;
 
 	struct SocketAddress* acceptAddress =
 		malloc(sizeof(struct SocketAddress));
+
+	if (!acceptAddress)
+	{
+		shutdown(
+			socket->handle,
+			SHUTDOWN_RECEIVE_SEND);
+
+#if __linux__ || __APPLE__
+		close(socket->handle);
+#elif _WIN32
+		closesocket(socket->handle);
+#endif
+
+		free(acceptSocket);
+		return false;
+	}
+
 	acceptAddress->handle = addressHandle;
 	*_acceptedAddress = acceptAddress;
 	return true;
@@ -468,7 +534,10 @@ bool mpnwSocketReceiveFrom(
 	struct SocketAddress** address,
 	size_t* _count)
 {
-	if(!socket || !buffer || !address || !_count)
+	if(!socket ||
+		!buffer ||
+		!address ||
+		!_count)
 		return false;
 
 	socklen_t length =
@@ -494,6 +563,10 @@ bool mpnwSocketReceiveFrom(
 
 	struct SocketAddress* newAddress =
 		malloc(sizeof(struct SocketAddress));
+
+	if (!newAddress) 
+		return false;
+
 	newAddress->handle = handle;
 	*address = newAddress;
 	*_count = (size_t)count;
@@ -533,7 +606,7 @@ struct SocketAddress* mpnwCreateSocketAddress(
 
 	hints.ai_flags =
 		AI_NUMERICHOST |
-			AI_NUMERICSERV;
+		AI_NUMERICSERV;
 
 	struct addrinfo* addressInfos;
 
@@ -544,10 +617,7 @@ struct SocketAddress* mpnwCreateSocketAddress(
 		&addressInfos);
 
 	if (result != 0)
-	{
-		freeaddrinfo(addressInfos);
 		return NULL;
-	}
 
 	struct sockaddr_storage handle;
 
@@ -564,6 +634,10 @@ struct SocketAddress* mpnwCreateSocketAddress(
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
+
+	if (!address)
+		return NULL;
+
 	address->handle = handle;
 	return address;
 }
@@ -582,7 +656,8 @@ bool mpnwGetSocketAddressFamily(
 
 	int family = address->handle.ss_family;
 
-	if(family != AF_INET && family != AF_INET6)
+	if(family != AF_INET && 
+		family != AF_INET6)
 		return false;
 
 	*_family = family;
@@ -603,6 +678,9 @@ bool mpnwGetSocketAddressIP(
 		char* ip = malloc(
 			sizeof(const struct sockaddr_in));
 
+		if (!ip)
+			return false;
+
 		memcpy(
 			ip,
 			address4,
@@ -619,6 +697,9 @@ bool mpnwGetSocketAddressIP(
 
 		char* ip = malloc(
 			sizeof(const struct sockaddr_in6));
+
+		if (!ip)
+			return false;
 
 		memcpy(
 			ip,
@@ -670,9 +751,11 @@ bool mpnwGetSocketAddressHost(
 	if(!address || !_host)
 		return false;
 
-	char* host = calloc(
-		NI_MAXHOST,
-		sizeof(char));
+	char* host = malloc(
+		NI_MAXHOST * sizeof(char));
+
+	if (!host)
+		return false;
 
 	int flags =
 		NI_NUMERICHOST;
@@ -687,7 +770,10 @@ bool mpnwGetSocketAddressHost(
 		flags);
 
 	if (result != 0)
+	{
+		free(host);
 		return false;
+	}
 
 	*_host = host;
 	return true;
@@ -699,9 +785,11 @@ bool mpnwGetSocketAddressService(
 	if(!address || !_service)
 		return false;
 
-	char* service = calloc(
-		NI_MAXSERV,
-		sizeof(char));
+	char* service = malloc(
+		NI_MAXSERV * sizeof(char));
+
+	if (!service)
+		return false;
 
 	int flags =
 		NI_NUMERICSERV;
@@ -716,7 +804,10 @@ bool mpnwGetSocketAddressService(
 		flags);
 
 	if (result != 0)
+	{
+		free(service);
 		return false;
+	}
 
 	*_service = service;
 	return true;
@@ -729,12 +820,20 @@ bool mpnwGetSocketAddressHostService(
 	if(!address || !_host || !_service)
 		return false;
 
-	char* host = calloc(
-		NI_MAXHOST,
-		sizeof(char));
-	char* service = calloc(
-		NI_MAXSERV,
-		sizeof(char));
+	char* host = malloc(
+		NI_MAXHOST * sizeof(char));
+
+	if (!host)
+		return false;
+
+	char* service = malloc(
+		NI_MAXSERV * sizeof(char));
+
+	if (!service)
+	{
+		free(host);
+		return false;
+	}
 
 	int flags =
 		NI_NUMERICHOST |
@@ -750,7 +849,11 @@ bool mpnwGetSocketAddressHostService(
 		flags);
 
 	if (result != 0)
+	{
+		free(host);
+		free(service);
 		return false;
+	}
 
 	*_host = host;
 	*_service = service;

@@ -80,6 +80,10 @@ struct StreamSession* mpnwCreateStreamSession(
 {
 	struct StreamSession* session =
 		malloc(sizeof(struct StreamSession));
+
+	if (!session)
+		return NULL;
+
 	session->running = true;
 	session->receiveBufferSize = receiveBufferSize;
 	session->receiveHandler = receiveHandler;
@@ -144,11 +148,16 @@ bool mpnwAddStreamSession(
 		if(!created && !session)
 			continue;
 
-		sessionBuffer[i] = mpnwCreateStreamSession(
+		struct StreamSession* _session = mpnwCreateStreamSession(
 			receiveBufferSize,
 			receiveHandler,
 			socket,
 			socketAddress);
+
+		if (!_session)
+			continue;
+
+		sessionBuffer[i] = _session;
 		created = true;
 	}
 
@@ -213,8 +222,8 @@ void mpnwStreamServerAccept(
 struct StreamServer* mpnwCreateStreamServer(
 	const struct SocketAddress* address,
 	size_t sessionBufferSize,
-	size_t sessionTimeoutTime,
 	size_t receiveBufferSize,
+	uint32_t sessionTimeoutTime,
 	SessionAcceptHandler acceptHandler,
 	SessionReceiveHandler receiveHandler)
 {
@@ -265,6 +274,13 @@ struct StreamServer* mpnwCreateStreamServer(
 
 	struct StreamServer* server =
 		malloc(sizeof(struct StreamServer));
+
+	if (!server) 
+	{
+		mpnwDestroySocket(socket);
+		return NULL;
+	}
+
 	server->running = true;
 	server->sessionBufferSize = sessionBufferSize;
 	server->receiveBufferSize = receiveBufferSize;

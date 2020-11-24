@@ -3,5 +3,7 @@
 
 struct ClientSocket
 {
-	//struct Socket socket;
+	struct Socket* socket;
 };
+
+// TODO:
