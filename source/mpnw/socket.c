@@ -9,17 +9,19 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
 #define SOCKET int
 #define INVALID_SOCKET -1
 #elif _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 
-WSADATA wsaData;
-bool wsaInitalized = false;
+static WSADATA wsaData;
+static bool wsaInitialized = false;
 #else
 #error Unknown operating system
 #endif
@@ -521,11 +523,19 @@ bool socketReceive(
 		!size)
 		abort();
 
+#if __linux__ || __APPLE__
+	int count = recv(
+		socket->handle,
+		buffer,
+		size,
+		0);
+#elif _WIN32
 	int count = recv(
 		socket->handle,
 		(char*)buffer,
-		size,
+		(int)size,
 		0);
+#endif
 
 	if (count < 0)
 		return false;
@@ -543,11 +553,19 @@ bool socketSend(
 		!size)
 		abort();
 
+#if __linux__ || __APPLE__
+	return send(
+		socket->handle,
+		buffer,
+		size,
+		0) == size;
+#elif _WIN32
 	return send(
 		socket->handle,
 		(const char*)buffer,
-		size,
+		(int)size,
 		0) == size;
+#endif
 }
 
 bool socketReceiveFrom(
@@ -573,13 +591,23 @@ bool socketReceiveFrom(
 		0,
 		sizeof(struct sockaddr_storage));
 
+#if __linux__ || __APPLE__
 	int count = recvfrom(
 		socket->handle,
 		(char*)buffer,
+		(int)size,
+		0,
+		(struct sockaddr*)&handle,
+		&length);
+#elif _WIN32
+	int count = recvfrom(
+		socket->handle,
+		buffer,
 		size,
 		0,
 		(struct sockaddr*)&handle,
 		&length);
+#endif
 
 	if (count < 0)
 		return false;
@@ -606,13 +634,23 @@ bool socketSendTo(
 		!address)
 		abort();
 
+#if __linux__ || __APPLE__
 	return sendto(
 		socket->handle,
-		(const char*)buffer,
+		buffer,
 		size,
 		0,
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage)) == size;
+#elif _WIN32
+	return sendto(
+		socket->handle,
+		(const char*)buffer,
+		(int)size,
+		0,
+		(const struct sockaddr*)&address->handle,
+		sizeof(struct sockaddr_storage)) == size;
+#endif
 }
 
 struct SocketAddress* createSocketAddress(
