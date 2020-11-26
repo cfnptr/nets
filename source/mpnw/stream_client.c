@@ -63,77 +63,39 @@ struct StreamClient* createStreamClient(
 	uint32_t messageTimeoutTime,
 	StreamClientReceive clientReceive)
 {
-	if (!receiveBufferSize ||
-		!clientReceive)
-	{
-		return NULL;
-	}
+	if (!receiveBufferSize || !clientReceive)
+		abort();
+
+	struct StreamClient* client =
+		malloc(sizeof(struct StreamClient));
+	char* receiveBuffer = malloc(
+		receiveBufferSize * sizeof(char));
+
+	if (!client || !receiveBuffer)
+		abort();
 
 	enum AddressFamily family;
 
-	bool result = getSocketAddressFamily(
-		address,
-		&family);
-
-	if (!result)
-		return NULL;
+	family = getSocketAddressFamily(address);
 
 	struct Socket* socket = createSocket(
 		STREAM_SOCKET,
 		family);
 
-	if (!socket)
-		return NULL;
+	bindSocket(socket, address);
 
-	if (!bindSocket(socket, address))
-	{
-		destroySocket(socket);
-		return NULL;
-	}
-	if (!setSocketReceiveTimeout(socket, messageTimeoutTime) ||
-		!setSocketSendTimeout(socket, messageTimeoutTime))
-	{
-		destroySocket(socket);
-		return NULL;
-	}
-
-	struct StreamClient* client =
-		malloc(sizeof(struct StreamClient));
-
-	if (!client)
-	{
-		destroySocket(socket);
-		return NULL;
-	}
+	setSocketReceiveTimeout(socket, messageTimeoutTime);
+	setSocketSendTimeout(socket, messageTimeoutTime);
 
 	client->running = true;
 	client->receiveBufferSize = receiveBufferSize;
 	client->clientReceive = clientReceive;
 	client->socket = socket;
-
-	char* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(char));
-
-	if (!receiveBuffer)
-	{
-		destroySocket(socket);
-		free(client);
-		return NULL;
-	}
-
 	client->receiveBuffer = receiveBuffer;
 
 	struct Thread* receiveThread = createThread(
 		streamClientReceive,
 		client);
-
-	if (!receiveThread)
-	{
-		destroySocket(socket);
-		free(receiveBuffer);
-		free(clientReceive);
-		return NULL;
-	}
 
 	client->receiveThread = receiveThread;
 	return client;
@@ -143,26 +105,20 @@ void destroyStreamClient(
 {
 	if (client)
 	{
-		destroySocket(
-			client->socket);
-		joinThread(
-			client->receiveThread);
-		destroyThread(
-			client->receiveThread);
-
+		destroySocket(client->socket);
+		joinThread(client->receiveThread);
+		destroyThread(client->receiveThread);
 		free(client->receiveBuffer);
 	}
 
 	free(client);
 }
 
-bool getStreamClientRunning(
-	const struct StreamClient* server,
-	bool* running)
+bool isStreamClientRunning(
+	const struct StreamClient* server)
 {
 	if (!server)
-		return false;
+		abort();
 
-	*running = server->running;
-	return true;
+	return server->running;
 }

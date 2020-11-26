@@ -81,37 +81,22 @@ struct StreamSession* createStreamSession(
 {
 	struct StreamSession* session =
 		malloc(sizeof(struct StreamSession));
+	char* receiveBuffer =
+		malloc(receiveBufferSize * sizeof(char));
 
-	if (!session)
-		return NULL;
+	if (!session || !receiveBuffer)
+		abort();
 
 	session->running = true;
 	session->receiveBufferSize = receiveBufferSize;
 	session->sessionReceive = sessionReceive;
 	session->socket = socket;
 	session->socketAddress = socketAddress;
-
-	char* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(char));
-
-	if (!receiveBuffer)
-	{
-		free(session);
-		return NULL;
-	}
-
 	session->receiveBuffer = receiveBuffer;
 
 	struct Thread* receiveThread = createThread(
 		streamSessionReceive,
 		session);
-
-	if (!receiveThread)
-	{
-		free(receiveBuffer);
-		free(session);
-		return NULL;
-	}
 
 	session->receiveThread = receiveThread;
 	return session;
@@ -200,13 +185,8 @@ void streamServerAccept(
 			return;
 		}
 
-		if (!setSocketReceiveTimeout(socket, messageTimeoutTime) ||
-			!setSocketSendTimeout(socket, messageTimeoutTime))
-		{
-			destroySocket(acceptedSocket);
-			destroySocketAddress(acceptedAddress);
-			return;
-		}
+		setSocketReceiveTimeout(socket, messageTimeoutTime);
+		setSocketSendTimeout(socket, messageTimeoutTime);
 
 		result = serverAccept(
 			acceptedSocket,
@@ -248,44 +228,27 @@ struct StreamServer* createStreamServer(
 		!serverAccept ||
 		!sessionReceive)
 	{
-		return NULL;
+		abort();
 	}
 
-	enum AddressFamily family;
+	struct StreamServer* server =
+		malloc(sizeof(struct StreamServer));
+	struct StreamSession** sessionBuffer = calloc(
+		sessionBufferSize,
+		sizeof(struct StreamSession*));
 
-	bool result = getSocketAddressFamily(
-		address,
-		&family);
+	if (!server || !sessionBuffer)
+		abort();
 
-	if (!result)
-		return NULL;
+	enum AddressFamily family =
+		getSocketAddressFamily(address);
 
 	struct Socket* socket = createSocket(
 		STREAM_SOCKET,
 		family);
 
-	if (!socket)
-		return NULL;
-
-	if (!bindSocket(socket, address))
-	{
-		destroySocket(socket);
-		return NULL;
-	}
-	if (!listenSocket(socket))
-	{
-		destroySocket(socket);
-		return NULL;
-	}
-
-	struct StreamServer* server =
-		malloc(sizeof(struct StreamServer));
-
-	if (!server) 
-	{
-		destroySocket(socket);
-		return NULL;
-	}
+	bindSocket(socket, address);
+	listenSocket(socket);
 
 	server->running = true;
 	server->sessionBufferSize = sessionBufferSize;
@@ -294,31 +257,11 @@ struct StreamServer* createStreamServer(
 	server->serverAccept = serverAccept;
 	server->sessionReceive = sessionReceive;
 	server->socket = socket;
-
-	struct StreamSession** sessionBuffer = calloc(
-		sessionBufferSize,
-		sizeof(struct StreamSession*));
-
-	if (!sessionBuffer)
-	{
-		destroySocket(socket);
-		free(server);
-		return NULL;
-	}
-
 	server->sessionBuffer = sessionBuffer;
 
 	struct Thread* acceptThread = createThread(
 		streamServerAccept,
 		server);
-
-	if (!acceptThread)
-	{
-		destroySocket(socket);
-		free(sessionBuffer);
-		free(server);
-		return NULL;
-	}
 
 	server->acceptThread = acceptThread;
 	return server;
@@ -328,20 +271,16 @@ void destroyStreamServer(
 {
 	if (server)
 	{
-		destroySocket(
-			server->socket);
-		joinThread(
-			server->acceptThread);
-		destroyThread(
-			server->acceptThread);
+		destroySocket(server->socket);
+		joinThread(server->acceptThread);
+		destroyThread(server->acceptThread);
 
 		size_t sessionBufferSize = server->sessionBufferSize;
 		struct StreamSession** sessionBuffer = server->sessionBuffer;
 
 		for (size_t i = 0; i < sessionBufferSize; i++)
 		{
-			struct StreamSession* session =
-				sessionBuffer[i];
+			struct StreamSession* session = sessionBuffer[i];
 
 			if (session)
 				destroyStreamSession(session);
@@ -353,13 +292,11 @@ void destroyStreamServer(
 	free(server);
 }
 
-bool getStreamServerRunning(
-	const struct StreamServer* server,
-	bool* running)
+bool isStreamServerRunning(
+	const struct StreamServer* server)
 {
 	if (!server)
-		return false;
+		abort();
 
-	*running = server->running;
-	return true;
+	return  server->running;
 }

@@ -31,37 +31,34 @@ struct Socket* createSocket(
 void destroySocket(
 	struct Socket* socket);
 
-bool getSocketListening(
-	const struct Socket* socket,
-	bool* listening);
+bool isSocketListening(
+	const struct Socket* socket);
 
 struct SocketAddress* getSocketLocalAddress(
 	const struct Socket* socket);
 struct SocketAddress* getSocketRemoteAddress(
 	const struct Socket* socket);
 
-bool setSocketBlocking(
+void setSocketBlocking(
 	struct Socket* socket,
 	bool blocking);
 
-bool getSocketReceiveTimeout(
-	const struct Socket* socket,
-	uint32_t* timeout);
-bool setSocketReceiveTimeout(
+size_t getSocketReceiveTimeout(
+	const struct Socket* socket);
+void setSocketReceiveTimeout(
 	struct Socket* socket,
-	uint32_t timeout);
+	size_t timeout);
 
-bool getSocketSendTimeout(
-	const struct Socket* socket,
-	uint32_t* timeout);
-bool setSocketSendTimeout(
+size_t getSocketSendTimeout(
+	const struct Socket* socket);
+void setSocketSendTimeout(
 	struct Socket* socket,
-	uint32_t timeout);
+	size_t timeout);
 
-bool bindSocket(
+void bindSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address);
-bool listenSocket(
+void listenSocket(
 	struct Socket* socket);
 
 bool acceptSocket(
@@ -104,24 +101,20 @@ struct SocketAddress* createSocketAddress(
 void destroySocketAddress(
 	struct SocketAddress* address);
 
-bool getSocketAddressFamily(
-	const struct SocketAddress* address,
-	enum AddressFamily* family);
-bool getSocketAddressIP(
+enum AddressFamily getSocketAddressFamily(
+	const struct SocketAddress* address);
+void getSocketAddressIP(
 	const struct SocketAddress* address,
 	char** ip,
 	size_t* size);
-bool getSocketAddressPort(
-	const struct SocketAddress* address,
-	uint16_t* port);
+uint16_t getSocketAddressPort(
+	const struct SocketAddress* address);
 
-bool getSocketAddressHost(
-	const struct SocketAddress* address,
-	char** host);
-bool getSocketAddressService(
-	const struct SocketAddress* address,
-	char** service);
-bool getSocketAddressHostService(
+char* getSocketAddressHost(
+	const struct SocketAddress* address);
+char* getSocketAddressService(
+	const struct SocketAddress* address);
+void getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char** host,
 	char** service);

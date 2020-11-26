@@ -16,6 +16,5 @@ struct StreamClient* createStreamClient(
 void destroyStreamClient(
 	struct StreamClient* client);
 
-bool getStreamClientRunning(
-	const struct StreamClient* server,
-	bool* running);
+bool isStreamClientRunning(
+	const struct StreamClient* server);

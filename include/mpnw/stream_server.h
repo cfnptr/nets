@@ -21,7 +21,6 @@ struct StreamServer* createStreamServer(
 void destroyStreamServer(
 	struct StreamServer* server);
 
-bool getStreamServerRunning(
-	const struct StreamServer* server,
-	bool* running);
+bool isStreamServerRunning(
+	const struct StreamServer* server);
 
