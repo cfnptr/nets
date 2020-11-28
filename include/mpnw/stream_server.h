@@ -5,19 +5,22 @@ struct StreamServer;
 
 typedef bool(*StreamServerAccept)(
 	struct Socket*,
-	const struct SocketAddress*);
+	const struct SocketAddress*,
+	void* argument);
 typedef bool(*StreamSessionReceive)(
 	size_t count,
 	struct Socket* socket,
-	const char* receiveBuffer);
+	const uint8_t* receiveBuffer,
+	void* argument);
 
 struct StreamServer* createStreamServer(
 	const struct SocketAddress* address,
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
-	uint32_t messageTimeoutTime,
-	StreamServerAccept serverAccept,
-	StreamSessionReceive sessionReceive);
+	StreamServerAccept acceptFunction,
+	StreamSessionReceive receiveFunction,
+	void* acceptArgument,
+	void* receiveArgument);
 void destroyStreamServer(
 	struct StreamServer* server);
 

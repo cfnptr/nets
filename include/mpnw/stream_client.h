@@ -6,13 +6,14 @@ struct StreamClient;
 typedef bool(*StreamClientReceive)(
 	size_t count,
 	struct Socket* socket,
-	const char* receiveBuffer);
+	const uint8_t* receiveBuffer,
+	void* receiveArgument);
 
 struct StreamClient* createStreamClient(
-	struct SocketAddress* address,
+	const struct SocketAddress* address,
 	size_t receiveBufferSize,
-	uint32_t messageTimeoutTime,
-	StreamClientReceive clientReceive);
+	StreamClientReceive receiveFunction,
+	void* receiveArgument);
 void destroyStreamClient(
 	struct StreamClient* client);
 

@@ -7,22 +7,23 @@ struct StreamClient
 {
 	volatile bool running;
 	size_t receiveBufferSize;
-	StreamClientReceive clientReceive;
+	StreamClientReceive receiveFunction;
+	void* receiveArgument;
 	struct Socket* socket;
-	char* receiveBuffer;
+	uint8_t * receiveBuffer;
 	struct Thread* receiveThread;
 };
 
-void streamClientReceive(
-	void* argument)
+void streamClientReceive(void* argument)
 {
 	struct StreamClient* client =
 		(struct StreamClient*)argument;
 
 	size_t receiveBufferSize = client->receiveBufferSize;
-	StreamClientReceive clientReceive = client->clientReceive;
+	StreamClientReceive receiveFunction = client->receiveFunction;
+	void* receiveArgument = client->receiveArgument;
 	struct Socket* socket = client->socket;
-	char* receiveBuffer = client->receiveBuffer;
+	uint8_t* receiveBuffer = client->receiveBuffer;
 
 	while (true)
 	{
@@ -43,10 +44,11 @@ void streamClientReceive(
 			return;
 		}
 
-		result = clientReceive(
+		result = receiveFunction(
 			count,
 			socket,
-			receiveBuffer);
+			receiveBuffer,
+			receiveArgument);
 
 		if (result == false)
 		{
@@ -60,19 +62,19 @@ void streamClientReceive(
 }
 
 struct StreamClient* createStreamClient(
-	struct SocketAddress* address,
+	const struct SocketAddress* address,
 	size_t receiveBufferSize,
-	uint32_t messageTimeoutTime,
-	StreamClientReceive clientReceive)
+	StreamClientReceive receiveFunction,
+	void* receiveArgument)
 {
 	assert(address != NULL);
 	assert(receiveBufferSize > 0);
-	assert(clientReceive != NULL);
+	assert(receiveFunction != NULL);
 
 	struct StreamClient* client =
 		malloc(sizeof(struct StreamClient));
-	char* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(char));
+	uint8_t* receiveBuffer = malloc(
+		receiveBufferSize * sizeof(uint8_t));
 
 	if (client == NULL ||
 		receiveBuffer == NULL)
@@ -89,12 +91,10 @@ struct StreamClient* createStreamClient(
 
 	bindSocket(socket, address);
 
-	setSocketReceiveTimeout(socket, messageTimeoutTime);
-	setSocketSendTimeout(socket, messageTimeoutTime);
-
 	client->running = true;
 	client->receiveBufferSize = receiveBufferSize;
-	client->clientReceive = clientReceive;
+	client->receiveFunction = receiveFunction;
+	client->receiveArgument = receiveArgument;
 	client->socket = socket;
 	client->receiveBuffer = receiveBuffer;
 

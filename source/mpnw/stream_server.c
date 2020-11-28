@@ -9,9 +9,9 @@ struct StreamSession
 	volatile bool running;
 	size_t receiveBufferSize;
 	StreamSessionReceive sessionReceive;
+	void* receiveArgument;
 	struct Socket* socket;
-	struct SocketAddress* socketAddress;
-	char* receiveBuffer;
+	uint8_t* receiveBuffer;
 	struct Thread* receiveThread;
 };
 struct StreamServer
@@ -19,24 +19,25 @@ struct StreamServer
 	volatile bool running;
 	size_t sessionBufferSize;
 	size_t receiveBufferSize;
-	size_t messageTimeoutTime;
-	StreamServerAccept serverAccept;
-	StreamSessionReceive sessionReceive;
+	StreamServerAccept acceptFunction;
+	StreamSessionReceive receiveFunction;
+	void* acceptArgument;
+	void* receiveArgument;
 	struct StreamSession** sessionBuffer;
 	struct Socket* socket;
 	struct Thread* acceptThread;
 };
 
-void streamSessionReceive(
-	void* argument)
+void streamSessionReceive(void* argument)
 {
 	struct StreamSession* session =
 		(struct StreamSession*)argument;
 
 	size_t receiveBufferSize = session->receiveBufferSize;
 	StreamSessionReceive sessionReceive = session->sessionReceive;
+	void* receiveArgument = session->receiveArgument;
 	struct Socket* socket = session->socket;
-	char* receiveBuffer = session->receiveBuffer;
+	uint8_t* receiveBuffer = session->receiveBuffer;
 
 	while (true)
 	{
@@ -60,7 +61,8 @@ void streamSessionReceive(
 		result = sessionReceive(
 			count,
 			socket,
-			receiveBuffer);
+			receiveBuffer,
+			receiveArgument);
 
 		if (result == false)
 		{
@@ -76,22 +78,25 @@ void streamSessionReceive(
 struct StreamSession* createStreamSession(
 	size_t receiveBufferSize,
 	StreamSessionReceive sessionReceive,
-	struct Socket* socket,
-	struct SocketAddress* socketAddress)
+	void* receiveArgument,
+	struct Socket* socket)
 {
 	struct StreamSession* session =
 		malloc(sizeof(struct StreamSession));
-	char* receiveBuffer =
-		malloc(receiveBufferSize * sizeof(char));
+	uint8_t* receiveBuffer =
+		malloc(receiveBufferSize * sizeof(uint8_t));
 
-	if (session == NULL || receiveBuffer == NULL)
+	if (session == NULL ||
+		receiveBuffer == NULL)
+	{
 		abort();
+	}
 
 	session->running = true;
 	session->receiveBufferSize = receiveBufferSize;
 	session->sessionReceive = sessionReceive;
+	session->receiveArgument = receiveArgument;
 	session->socket = socket;
-	session->socketAddress = socketAddress;
 	session->receiveBuffer = receiveBuffer;
 
 	struct Thread* receiveThread = createThread(
@@ -107,7 +112,6 @@ void destroyStreamSession(
 	destroySocket(session->socket);
 	joinThread(session->receiveThread);
 	destroyThread(session->receiveThread);
-	destroySocketAddress(session->socketAddress);
 
 	free(session->receiveBuffer);
 	free(session);
@@ -117,8 +121,8 @@ bool addStreamSession(
 	struct StreamSession** sessionBuffer,
 	size_t sessionBufferSize,
 	struct Socket* socket,
-	struct SocketAddress* socketAddress,
 	StreamSessionReceive sessionReceive,
+	void* receiveArgument,
 	size_t receiveBufferSize)
 {
 	bool created = false;
@@ -134,14 +138,17 @@ bool addStreamSession(
 			sessionBuffer[i] = session = NULL;
 		}
 
-		if (created == false && session == NULL)
+		if (created == false &&
+			session == NULL)
+		{
 			continue;
+		}
 
 		sessionBuffer[i] = createStreamSession(
 			receiveBufferSize,
 			sessionReceive,
-			socket,
-			socketAddress);
+			receiveArgument,
+			socket);
 
 		created = true;
 	}
@@ -156,9 +163,10 @@ void streamServerAccept(
 
 	size_t sessionBufferSize = server->sessionBufferSize;
 	size_t receiveBufferSize = server->receiveBufferSize;
-	size_t messageTimeoutTime = server->messageTimeoutTime;
-	StreamServerAccept serverAccept = server->serverAccept;
-	StreamSessionReceive sessionReceive = server->sessionReceive;
+	StreamServerAccept acceptFunction = server->acceptFunction;
+	StreamSessionReceive receiveFunction = server->receiveFunction;
+	void* acceptArgument = server->acceptArgument;
+	void* receiveArgument = server->receiveArgument;
 	struct StreamSession** sessionBuffer = server->sessionBuffer;
 	struct Socket* socket = server->socket;
 
@@ -178,17 +186,18 @@ void streamServerAccept(
 			return;
 		}
 
-		setSocketReceiveTimeout(socket, messageTimeoutTime);
-		setSocketSendTimeout(socket, messageTimeoutTime);
-
-		result = serverAccept(
+		result = acceptFunction(
 			acceptedSocket,
+			acceptedAddress,
+			acceptArgument);
+
+		destroySocketAddress(
 			acceptedAddress);
 
 		if (result == false)
 		{
-			destroySocket(acceptedSocket);
-			destroySocketAddress(acceptedAddress);
+			destroySocket(
+				acceptedSocket);
 			continue;
 		}
 
@@ -196,14 +205,14 @@ void streamServerAccept(
 			sessionBuffer,
 			sessionBufferSize,
 			acceptedSocket,
-			acceptedAddress,
-			sessionReceive,
+			receiveFunction,
+			receiveArgument,
 			receiveBufferSize);
 
 		if (result == false)
 		{
-			destroySocket(acceptedSocket);
-			destroySocketAddress(acceptedAddress);
+			destroySocket(
+				acceptedSocket);
 		}
 	}
 }
@@ -212,15 +221,16 @@ struct StreamServer* createStreamServer(
 	const struct SocketAddress* address,
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
-	uint32_t messageTimeoutTime,
-	StreamServerAccept serverAccept,
-	StreamSessionReceive sessionReceive)
+	StreamServerAccept acceptFunction,
+	StreamSessionReceive receiveFunction,
+	void* acceptArgument,
+	void* receiveArgument)
 {
 	assert(address != NULL);
 	assert(sessionBufferSize > 0);
 	assert(receiveBufferSize > 0);
-	assert(serverAccept != NULL);
-	assert(sessionReceive != NULL);
+	assert(acceptFunction != NULL);
+	assert(receiveFunction != NULL);
 
 	struct StreamServer* server =
 		malloc(sizeof(struct StreamServer));
@@ -228,8 +238,11 @@ struct StreamServer* createStreamServer(
 		sessionBufferSize,
 		sizeof(struct StreamSession*));
 
-	if (server == NULL || sessionBuffer == NULL)
+	if (server == NULL ||
+		sessionBuffer == NULL)
+	{
 		abort();
+	}
 
 	enum AddressFamily family =
 		getSocketAddressFamily(address);
@@ -244,9 +257,10 @@ struct StreamServer* createStreamServer(
 	server->running = true;
 	server->sessionBufferSize = sessionBufferSize;
 	server->receiveBufferSize = receiveBufferSize;
-	server->messageTimeoutTime = messageTimeoutTime;
-	server->serverAccept = serverAccept;
-	server->sessionReceive = sessionReceive;
+	server->acceptFunction = acceptFunction;
+	server->receiveFunction = receiveFunction;
+	server->acceptArgument = acceptArgument;
+	server->receiveArgument = receiveArgument;
 	server->socket = socket;
 	server->sessionBuffer = sessionBuffer;
 
@@ -271,11 +285,8 @@ void destroyStreamServer(
 
 		for (size_t i = 0; i < sessionBufferSize; i++)
 		{
-			struct StreamSession* session =
-				sessionBuffer[i];
-
-			if (session != NULL)
-				destroyStreamSession(session);
+			if (sessionBuffer[i] != NULL)
+				destroyStreamSession(sessionBuffer[i]);
 		}
 
 		free(sessionBuffer);
