@@ -5,7 +5,7 @@
 
 struct StreamClient
 {
-	bool running;
+	volatile bool running;
 	size_t receiveBufferSize;
 	StreamClientReceive clientReceive;
 	struct Socket* socket;
@@ -34,7 +34,7 @@ void streamClientReceive(
 			receiveBufferSize,
 			&count);
 
-		if (!result || count == 0)
+		if (result == false || count == 0)
 		{
 			shutdownSocket(
 				socket,
@@ -48,7 +48,7 @@ void streamClientReceive(
 			socket,
 			receiveBuffer);
 
-		if (!result)
+		if (result == false)
 		{
 			shutdownSocket(
 				socket,
@@ -65,21 +65,23 @@ struct StreamClient* createStreamClient(
 	uint32_t messageTimeoutTime,
 	StreamClientReceive clientReceive)
 {
-	assert(address);
-	assert(receiveBufferSize);
-	assert(clientReceive);
+	assert(address != NULL);
+	assert(receiveBufferSize > 0);
+	assert(clientReceive != NULL);
 
 	struct StreamClient* client =
 		malloc(sizeof(struct StreamClient));
 	char* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(char));
 
-	if (!client || !receiveBuffer)
+	if (client == NULL ||
+		receiveBuffer == NULL)
+	{
 		abort();
+	}
 
-	enum AddressFamily family;
-
-	family = getSocketAddressFamily(address);
+	enum AddressFamily family =
+		getSocketAddressFamily(address);
 
 	struct Socket* socket = createSocket(
 		STREAM_SOCKET,
@@ -120,6 +122,6 @@ void destroyStreamClient(
 bool isStreamClientRunning(
 	const struct StreamClient* client)
 {
-	assert(client);
+	assert(client != NULL);
 	return client->running;
 }

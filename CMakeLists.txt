@@ -5,7 +5,9 @@ if(${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
 endif()
 
 project(mpnw 
-	VERSION 0.1.0
+	VERSION 1.0.0
+	DESCRIPTION "An open-source multi-platform networking library"
+	HOMEPAGE_URL "https://github.com/cfnptr/mpnw"
 	LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
@@ -18,8 +20,8 @@ configure_file(
 add_subdirectory(libraries/mpmt)
 
 add_library(mpnw STATIC
-		source/mpnw/stream_client.c
 	source/mpnw/socket.c
+	source/mpnw/stream_client.c
 	source/mpnw/stream_server.c)
 target_link_libraries(mpnw PRIVATE
 	mpmt)

@@ -6,7 +6,7 @@
 
 struct StreamSession
 {
-	bool running;
+	volatile bool running;
 	size_t receiveBufferSize;
 	StreamSessionReceive sessionReceive;
 	struct Socket* socket;
@@ -16,7 +16,7 @@ struct StreamSession
 };
 struct StreamServer
 {
-	bool running;
+	volatile bool running;
 	size_t sessionBufferSize;
 	size_t receiveBufferSize;
 	size_t messageTimeoutTime;
@@ -48,7 +48,7 @@ void streamSessionReceive(
 			receiveBufferSize,
 			&count);
 
-		if (!result || count == 0)
+		if (result == false || count == 0)
 		{
 			shutdownSocket(
 				socket,
@@ -62,7 +62,7 @@ void streamSessionReceive(
 			socket,
 			receiveBuffer);
 
-		if (!result)
+		if (result == false)
 		{
 			shutdownSocket(
 				socket,
@@ -84,7 +84,7 @@ struct StreamSession* createStreamSession(
 	char* receiveBuffer =
 		malloc(receiveBufferSize * sizeof(char));
 
-	if (!session || !receiveBuffer)
+	if (session == NULL || receiveBuffer == NULL)
 		abort();
 
 	session->running = true;
@@ -104,14 +104,11 @@ struct StreamSession* createStreamSession(
 void destroyStreamSession(
 	struct StreamSession* session)
 {
-	destroySocket(
-		session->socket);
-	joinThread(
-		session->receiveThread);
-	destroyThread(
-		session->receiveThread);
-	destroySocketAddress(
-		session->socketAddress);
+	destroySocket(session->socket);
+	joinThread(session->receiveThread);
+	destroyThread(session->receiveThread);
+	destroySocketAddress(session->socketAddress);
+
 	free(session->receiveBuffer);
 	free(session);
 }
@@ -131,25 +128,21 @@ bool addStreamSession(
 		struct StreamSession* session =
 			sessionBuffer[i];
 
-		if (session && !session->running)
+		if (session != NULL && session->running == false)
 		{
 			destroyStreamSession(session);
 			sessionBuffer[i] = session = NULL;
 		}
 
-		if (!created && !session)
+		if (created == false && session == NULL)
 			continue;
 
-		struct StreamSession* _session = createStreamSession(
+		sessionBuffer[i] = createStreamSession(
 			receiveBufferSize,
 			sessionReceive,
 			socket,
 			socketAddress);
 
-		if (!_session)
-			continue;
-
-		sessionBuffer[i] = _session;
 		created = true;
 	}
 
@@ -179,7 +172,7 @@ void streamServerAccept(
 			&acceptedSocket,
 			&acceptedAddress);
 
-		if (!result)
+		if (result == false)
 		{
 			server->running = false;
 			return;
@@ -192,7 +185,7 @@ void streamServerAccept(
 			acceptedSocket,
 			acceptedAddress);
 
-		if (!result)
+		if (result == false)
 		{
 			destroySocket(acceptedSocket);
 			destroySocketAddress(acceptedAddress);
@@ -207,7 +200,7 @@ void streamServerAccept(
 			sessionReceive,
 			receiveBufferSize);
 
-		if (!result)
+		if (result == false)
 		{
 			destroySocket(acceptedSocket);
 			destroySocketAddress(acceptedAddress);
@@ -223,11 +216,11 @@ struct StreamServer* createStreamServer(
 	StreamServerAccept serverAccept,
 	StreamSessionReceive sessionReceive)
 {
-	assert(address);
-	assert(sessionBufferSize);
-	assert(receiveBufferSize);
-	assert(serverAccept);
-	assert(sessionReceive);
+	assert(address != NULL);
+	assert(sessionBufferSize > 0);
+	assert(receiveBufferSize > 0);
+	assert(serverAccept != NULL);
+	assert(sessionReceive != NULL);
 
 	struct StreamServer* server =
 		malloc(sizeof(struct StreamServer));
@@ -235,7 +228,7 @@ struct StreamServer* createStreamServer(
 		sessionBufferSize,
 		sizeof(struct StreamSession*));
 
-	if (!server || !sessionBuffer)
+	if (server == NULL || sessionBuffer == NULL)
 		abort();
 
 	enum AddressFamily family =
@@ -267,7 +260,7 @@ struct StreamServer* createStreamServer(
 void destroyStreamServer(
 	struct StreamServer* server)
 {
-	if (server)
+	if (server != NULL)
 	{
 		destroySocket(server->socket);
 		joinThread(server->acceptThread);
@@ -278,9 +271,10 @@ void destroyStreamServer(
 
 		for (size_t i = 0; i < sessionBufferSize; i++)
 		{
-			struct StreamSession* session = sessionBuffer[i];
+			struct StreamSession* session =
+				sessionBuffer[i];
 
-			if (session)
+			if (session != NULL)
 				destroyStreamSession(session);
 		}
 
@@ -293,6 +287,6 @@ void destroyStreamServer(
 bool isStreamServerRunning(
 	const struct StreamServer* server)
 {
-	assert(server);
-	return  server->running;
+	assert(server != NULL);
+	return server->running;
 }
