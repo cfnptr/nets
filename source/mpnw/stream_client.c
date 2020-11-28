@@ -1,6 +1,8 @@
 #include "mpnw/stream_client.h"
 #include "mpmt/thread.h"
 
+#include <assert.h>
+
 struct StreamClient
 {
 	bool running;
@@ -63,8 +65,9 @@ struct StreamClient* createStreamClient(
 	uint32_t messageTimeoutTime,
 	StreamClientReceive clientReceive)
 {
-	if (!receiveBufferSize || !clientReceive)
-		abort();
+	assert(address);
+	assert(receiveBufferSize);
+	assert(clientReceive);
 
 	struct StreamClient* client =
 		malloc(sizeof(struct StreamClient));
@@ -115,10 +118,8 @@ void destroyStreamClient(
 }
 
 bool isStreamClientRunning(
-	const struct StreamClient* server)
+	const struct StreamClient* client)
 {
-	if (!server)
-		abort();
-
-	return server->running;
+	assert(client);
+	return client->running;
 }

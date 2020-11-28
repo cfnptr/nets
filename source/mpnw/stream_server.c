@@ -2,7 +2,7 @@
 #include "mpmt/thread.h"
 
 #include <stdlib.h>
-#include "time.h"
+#include <assert.h>
 
 struct StreamSession
 {
@@ -223,13 +223,11 @@ struct StreamServer* createStreamServer(
 	StreamServerAccept serverAccept,
 	StreamSessionReceive sessionReceive)
 {
-	if (!sessionBufferSize ||
-		!receiveBufferSize ||
-		!serverAccept ||
-		!sessionReceive)
-	{
-		abort();
-	}
+	assert(address);
+	assert(sessionBufferSize);
+	assert(receiveBufferSize);
+	assert(serverAccept);
+	assert(sessionReceive);
 
 	struct StreamServer* server =
 		malloc(sizeof(struct StreamServer));
@@ -295,8 +293,6 @@ void destroyStreamServer(
 bool isStreamServerRunning(
 	const struct StreamServer* server)
 {
-	if (!server)
-		abort();
-
+	assert(server);
 	return  server->running;
 }
