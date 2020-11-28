@@ -87,8 +87,8 @@ void destroySocket(
 		if (result != 0)
 			abort();
 #elif _WIN32
-		int result = closesocket(s
-			ocket->handle);
+		int result = closesocket(
+			socket->handle);
 
 		if (result != 0)
 			abort();
@@ -578,16 +578,16 @@ bool socketReceiveFrom(
 #if __linux__ || __APPLE__
 	int count = recvfrom(
 		socket->handle,
-		(char*)buffer,
-		(int)size,
+		buffer,
+		size,
 		0,
 		(struct sockaddr*)&handle,
 		&length);
 #elif _WIN32
 	int count = recvfrom(
 		socket->handle,
-		buffer,
-		size,
+		(char*)buffer,
+		(int)size,
 		0,
 		(struct sockaddr*)&handle,
 		&length);
