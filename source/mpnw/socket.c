@@ -30,6 +30,7 @@ static bool wsaInitialized = false;
 struct Socket
 {
 	SOCKET handle;
+	bool blocking;
 };
 
 struct SocketAddress
@@ -38,8 +39,8 @@ struct SocketAddress
 };
 
 struct Socket* createSocket(
-	enum SocketType type,
-	enum AddressFamily family)
+	enum SocketType _type,
+	enum AddressFamily _family)
 {
 #if _WIN32
 	if (wsaInitialized == false)
@@ -61,13 +62,34 @@ struct Socket* createSocket(
 	if (_socket == NULL)
 		abort();
 
-	_socket->handle = socket(
+	_socket->blocking = false;
+
+	int type;
+	int family;
+
+	if(_type == STREAM_SOCKET)
+		type = SOCK_STREAM;
+	else if(_type == DATAGRAM_SOCKET)
+		type = SOCK_DGRAM;
+	else
+		abort();
+
+	if(_family == INTERNET_PROTOCOL_V4)
+		family = AF_INET;
+	else if(_family == INTERNET_PROTOCOL_V6)
+		family = AF_INET6;
+	else
+		abort();
+
+	SOCKET handle = socket(
 		family,
 		type,
 		0);
 
-	if (_socket->handle == INVALID_SOCKET)
+	if (handle == INVALID_SOCKET)
 		abort();
+
+	_socket->handle = handle;
 
 	return _socket;
 }
@@ -98,15 +120,72 @@ void destroySocket(
 	free(socket);
 }
 
+enum SocketType getSocketType(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
+
+	int type;
+
+#if __linux__ || __APPLE__
+	socklen_t length =
+		sizeof(int);
+
+	int result = getsockopt(
+		socket->handle,
+		SOL_SOCKET,
+		SO_TYPE,
+		&type,
+		&length);
+#elif _WIN32
+	int length =
+		sizeof(int);
+
+	int result = getsockopt(
+		socket->handle,
+		SOL_SOCKET,
+		SO_TYPE,
+		(char*)&type,
+		&length);
+#endif
+
+	if (result != 0)
+		abort();
+
+	if (type == SOCK_STREAM)
+		return STREAM_SOCKET;
+	else if (type == SOCK_DGRAM)
+		return DATAGRAM_SOCKET;
+	else
+		abort();
+}
 bool isSocketListening(
 	const struct Socket* socket)
 {
 	assert(socket != NULL);
 
-	socklen_t length =
-		sizeof(bool);
+#if __linux__ || __APPLE__
+	int listening;
 
-	bool listening;
+	socklen_t length =
+		sizeof(int);
+
+	int result = getsockopt(
+		socket->handle,
+		SOL_SOCKET,
+		SO_ACCEPTCONN,
+		&listening,
+		&length);
+
+	if (result != 0)
+		abort();
+
+	return listening;
+#elif _WIN32
+	BOOL listening;
+
+	int length =
+		sizeof(BOOL);
 
 	int result = getsockopt(
 		socket->handle,
@@ -118,7 +197,8 @@ bool isSocketListening(
 	if (result != 0)
 		abort();
 
-	return listening;
+	return listening == TRUE;
+#endif
 }
 
 struct SocketAddress* getSocketLocalAddress(
@@ -166,6 +246,7 @@ struct SocketAddress* getSocketRemoteAddress(
 		0,
 		sizeof(struct sockaddr_storage));
 
+#if __linux__ || __APPLE__
 	socklen_t length =
 		sizeof(struct sockaddr_storage);
 
@@ -173,6 +254,15 @@ struct SocketAddress* getSocketRemoteAddress(
 		socket->handle,
 		(struct sockaddr*)&address->handle,
 		&length);
+#elif
+	int length =
+		sizeof(struct sockaddr_storage);
+
+	int result = getpeername(
+		socket->handle,
+		(struct sockaddr*)&address->handle,
+		&length);
+#endif
 
 	if (result != 0)
 		abort();
@@ -180,6 +270,12 @@ struct SocketAddress* getSocketRemoteAddress(
 	return address;
 }
 
+bool getSocketBlocking(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
+	return socket->blocking;
+}
 void setSocketBlocking(
 	struct Socket* socket,
 	bool blocking)
@@ -217,6 +313,8 @@ void setSocketBlocking(
 	if (result != 0)
 		abort();
 #endif
+
+	socket->blocking = blocking;
 }
 
 size_t getSocketReceiveTimeout(
@@ -244,10 +342,10 @@ size_t getSocketReceiveTimeout(
 		timeout.tv_sec * 1000 +
 		timeout.tv_usec / 1000;
 #elif _WIN32
+	uint32_t timeout;
+
 	int size =
 		sizeof(uint32_t);
-
-	uint32_t timeout;
 
 	int result = getsockopt(
 		socket->handle,
@@ -264,14 +362,14 @@ size_t getSocketReceiveTimeout(
 }
 void setSocketReceiveTimeout(
 	struct Socket* socket,
-	size_t _timeout)
+	size_t milliseconds)
 {
 	assert(socket != NULL);
 
 #if __linux__ || __APPLE__
 	struct timeval timeout;
-	timeout.tv_sec = _timeout / 1000;
-	timeout.tv_usec = (_timeout % 1000) * 1000;
+	timeout.tv_sec = milliseconds / 1000;
+	timeout.tv_usec = (milliseconds % 1000) * 1000;
 
 	int result = setsockopt(
 		socket->handle,
@@ -284,7 +382,7 @@ void setSocketReceiveTimeout(
 		abort();
 #elif _WIN32
 	uint32_t timeout =
-		(uint32_t)_timeout;
+		(uint32_t)milliseconds;
 
 	int result = setsockopt(
 		socket->handle,
@@ -323,10 +421,10 @@ size_t getSocketSendTimeout(
 		timeout.tv_sec * 1000 +
 		timeout.tv_usec / 1000;
 #elif _WIN32
+	uint32_t timeout;
+
 	int size =
 		sizeof(uint32_t);
-
-	uint32_t timeout;
 
 	int result = getsockopt(
 		socket->handle,
@@ -343,14 +441,14 @@ size_t getSocketSendTimeout(
 }
 void setSocketSendTimeout(
 	struct Socket* socket,
-	size_t _timeout)
+	size_t milliseconds)
 {
 	assert(socket != NULL);
 
 #if __linux__ || __APPLE__
 	struct timeval timeout;
-	timeout.tv_sec = _timeout / 1000;
-	timeout.tv_usec = (_timeout % 1000) * 1000;
+	timeout.tv_sec = milliseconds / 1000;
+	timeout.tv_usec = (milliseconds % 1000) * 1000;
 
 	int result = setsockopt(
 		socket->handle,
@@ -362,11 +460,14 @@ void setSocketSendTimeout(
 	if (result != 0)
 		abort();
 #elif _WIN32
+	uint32_t timeout =
+		(uint32_t)milliseconds;
+
 	int result = setsockopt(
 		socket->handle,
 		SOL_SOCKET,
 		SO_SNDTIMEO,
-		(const char*)&_timeout,
+		(const char*)&timeout,
 		sizeof(uint32_t));
 
 	if (result != 0)
@@ -383,7 +484,11 @@ void bindSocket(
 
 	int family = address->handle.ss_family;
 
+#if __linux__ || __APPLE__
 	socklen_t length;
+#elif _WIN32
+	int length;
+#endif
 
 	if (family == AF_INET)
 		length = sizeof(struct sockaddr_in);
@@ -413,54 +518,27 @@ void listenSocket(
 		abort();
 }
 
-bool acceptSocket(
-	struct Socket* socket,
-	struct Socket** _acceptedSocket,
-	struct SocketAddress** _acceptedAddress)
+struct Socket* acceptSocket(
+	struct Socket* socket)
 {
 	assert(socket != NULL);
-	assert(_acceptedSocket != NULL);
-	assert(_acceptedAddress != NULL);
 
-	socklen_t length =
-		sizeof(struct sockaddr_storage);
-
-	struct sockaddr_storage addressHandle;
-
-	memset(
-		&addressHandle,
-		0,
-		sizeof(struct sockaddr_storage));
-
-	SOCKET socketHandle = accept(
+	SOCKET handle = accept(
 		socket->handle,
-		(struct sockaddr*)&addressHandle,
-		&length);
+		NULL,
+		0);
 
-	if (socketHandle == INVALID_SOCKET ||
-		(addressHandle.ss_family != AF_INET &&
-		addressHandle.ss_family != AF_INET6))
-	{
-		return false;
-	}
+	if (handle == INVALID_SOCKET)
+		return  NULL;
 
-	struct Socket* acceptSocket =
+	struct Socket* _socket =
 		malloc(sizeof(struct Socket));
-	struct SocketAddress* acceptAddress =
-		malloc(sizeof(struct SocketAddress));
 
-	if (acceptSocket == NULL ||
-		acceptAddress == NULL)
-	{
+	if(_socket == NULL)
 		abort();
-	}
 
-	acceptSocket->handle = socketHandle;
-	acceptAddress->handle = addressHandle;
-
-	*_acceptedSocket = acceptSocket;
-	*_acceptedAddress = acceptAddress;
-	return true;
+	_socket->handle = handle;
+	return _socket;
 }
 bool connectSocket(
 	struct Socket* socket,
@@ -471,7 +549,11 @@ bool connectSocket(
 
 	int family = address->handle.ss_family;
 
+#if __linux__ || __APPLE__
 	socklen_t length;
+#elif _WIN32
+	int length;
+#endif
 
 	if (family == AF_INET)
 		length = sizeof(struct sockaddr_in);
@@ -488,9 +570,20 @@ bool connectSocket(
 
 bool shutdownSocket(
 	struct Socket* socket,
-	enum SocketShutdown type)
+	enum SocketShutdown _type)
 {
 	assert(socket != NULL);
+
+	int type;
+
+	if (_type == SHUTDOWN_RECEIVE_ONLY)
+		type = SHUT_RD;
+	else if (_type == SHUTDOWN_SEND_ONLY)
+		type = SHUT_WR;
+	else if (_type == SHUTDOWN_RECEIVE_SEND)
+		type = SHUT_RDWR;
+	else
+		abort();
 
 	return shutdown(
 		socket->handle,
@@ -698,15 +791,16 @@ enum AddressFamily getSocketAddressFamily(
 
 	int family = address->handle.ss_family;
 
-	if (family != AF_INET &&
-		family != AF_INET6)
+	if (family == AF_INET)
+		return INTERNET_PROTOCOL_V4;
+	else if (family == AF_INET6)
+		return INTERNET_PROTOCOL_V6;
+	else
 		abort();
-
-	return (enum AddressFamily)family;
 }
 void getSocketAddressIP(
 	const struct SocketAddress* address,
-	char** _ip,
+	uint8_t ** _ip,
 	size_t* size)
 {
 	assert(address != NULL);
@@ -717,8 +811,8 @@ void getSocketAddressIP(
 
 	if (family == AF_INET)
 	{
-		char* ip = malloc(
-			sizeof(const struct sockaddr_in));
+		uint8_t* ip = malloc(
+			sizeof(struct sockaddr_in));
 
 		if (ip == NULL)
 			abort();
@@ -729,15 +823,15 @@ void getSocketAddressIP(
 		memcpy(
 			ip,
 			address4,
-			sizeof(const struct sockaddr_in));
+			sizeof(struct sockaddr_in));
 
 		*_ip = ip;
-		*size = sizeof(const struct sockaddr_in6);
+		*size = sizeof(struct sockaddr_in);
 	}
 	else if (family == AF_INET6)
 	{
-		char* ip = malloc(
-			sizeof(const struct sockaddr_in6));
+		uint8_t* ip = malloc(
+			sizeof(struct sockaddr_in6));
 
 		if (ip == NULL)
 			abort();
@@ -748,10 +842,10 @@ void getSocketAddressIP(
 		memcpy(
 			ip,
 			address6,
-			sizeof(const struct sockaddr_in6));
+			sizeof(struct sockaddr_in6));
 
 		*_ip = ip;
-		*size = sizeof(const struct sockaddr_in6);
+		*size = sizeof(struct sockaddr_in6);
 	}
 	else
 	{
