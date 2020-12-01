@@ -1,36 +1,36 @@
 #include "mpnw/stream_socket.h"
+
 #include "mpmt/thread.h"
+#include "mpmt/xalloc.h"
 
 #include <stdlib.h>
 #include <assert.h>
 
 struct StreamClient
 {
-	volatile bool running;
 	size_t receiveBufferSize;
 	StreamClientReceive receiveFunction;
 	StreamClientStop stopFunction;
-	void* receiveArgument;
-	void* stopArgument;
-	struct Socket* streamSocket;
+	void* customData;
 	uint8_t* receiveBuffer;
+	struct Socket* streamSocket;
 	struct Thread* receiveThread;
+	bool threadStarted;
+	volatile bool threadRunning;
 };
 
 struct StreamServer
 {
-	volatile bool running;
 	size_t receiveBufferSize;
 	StreamServerAccept serverAcceptFunction;
 	StreamServerStop serverStopFunction;
 	StreamClientReceive clientReceiveFunction;
 	StreamClientStop clientStopFunction;
-	void* serverAcceptArgument;
-	void* serverStopArgument;
-	void* clientReceiveArgument;
-	void* clientStopArgument;
+	void* customData;
 	struct Socket* streamSocket;
 	struct Thread* acceptThread;
+	bool threadStarted;
+	volatile bool threadRunning;
 };
 
 void streamClientReceive(void* argument)
@@ -46,10 +46,6 @@ void streamClientReceive(void* argument)
 		streamClient->receiveFunction;
 	StreamClientStop stopFunction =
 		streamClient->stopFunction;
-	void* receiveArgument =
-		streamClient->receiveArgument;
-	void* stopArgument =
-		streamClient->stopArgument;
 	struct Socket* streamSocket =
 		streamClient->streamSocket;
 	uint8_t* receiveBuffer =
@@ -69,73 +65,116 @@ void streamClientReceive(void* argument)
 		if (result == false)
 		{
 			stopFunction(
-				streamClient,
-				stopArgument);
+				streamClient);
 			shutdownSocket(
 				streamSocket,
 				SHUTDOWN_RECEIVE_SEND);
-			streamClient->running = false;
+			streamClient->threadRunning = false;
 			return;
 		}
 
 		result = receiveFunction(
 			streamClient,
 			receiveCount,
-			receiveBuffer,
-			receiveArgument);
+			receiveBuffer);
 
 		if (result == false)
 		{
 			stopFunction(
-				streamClient,
-				stopArgument);
+				streamClient);
 			shutdownSocket(
 				streamSocket,
 				SHUTDOWN_RECEIVE_SEND);
-			streamClient->running = false;
+			streamClient->threadRunning = false;
 			return;
 		}
 	}
 }
 
 struct StreamClient* createStreamClient(
-	enum AddressFamily addressFamily,
 	size_t receiveBufferSize,
 	StreamClientReceive receiveFunction,
 	StreamClientStop stopFunction,
-	void* receiveArgument,
-	void* stopArgument)
+	void* customData)
 {
 	assert(receiveBufferSize > 0);
 	assert(receiveFunction != NULL);
 	assert(stopFunction != NULL);
 
 	struct StreamClient* streamClient =
-		malloc(sizeof(struct StreamClient));
-	uint8_t* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(uint8_t));
+		xmalloc(sizeof(struct StreamClient));
 
-	if (streamClient == NULL ||
-		receiveBuffer == NULL)
-	{
-		abort();
-	}
-
-	streamClient->running = true;
 	streamClient->receiveBufferSize =
 		receiveBufferSize;
 	streamClient->receiveFunction =
 		receiveFunction;
 	streamClient->stopFunction =
 		stopFunction;
-	streamClient->receiveArgument =
-		receiveArgument;
-	streamClient->stopArgument =
-		stopArgument;
-	streamClient->receiveBuffer =
-		receiveBuffer;
+	streamClient->customData =
+		customData;
 
-	struct Socket* socket = createSocket(
+	streamClient->receiveBuffer = xmalloc(
+		receiveBufferSize * sizeof(uint8_t));
+
+	streamClient->streamSocket = NULL;
+	streamClient->receiveThread = NULL;
+	streamClient->threadStarted = false;
+	streamClient->threadRunning = false;
+
+	return streamClient;
+}
+void destroyStreamClient(
+	struct StreamClient* client)
+{
+	if (client != NULL)
+	{
+		if (client->threadStarted == true)
+		{
+			destroySocket(client->streamSocket);
+			joinThread(client->receiveThread);
+			destroyThread(client->receiveThread);
+		}
+
+		free(client->receiveBuffer);
+	}
+
+	free(client);
+}
+
+size_t getStreamClientReceiveBufferSize(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->receiveBufferSize;
+}
+void* getStreamClientCustomData(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->customData;
+}
+
+bool isStreamClientStarted(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->threadStarted;
+}
+bool isStreamClientRunning(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->threadRunning;
+}
+
+void startStreamClient(
+	struct StreamClient* client,
+	enum AddressFamily addressFamily)
+{
+	assert(client != NULL);
+	assert(client->threadStarted != true);
+
+	struct Socket* streamSocket = createSocket(
 		STREAM_SOCKET,
 		addressFamily);
 
@@ -159,45 +198,27 @@ struct StreamClient* createStreamClient(
 	}
 
 	bindSocket(
-		socket,
+		streamSocket,
+		address);
+	destroySocketAddress(
 		address);
 
-	destroySocketAddress(address);
-	streamClient->streamSocket = socket;
-
+	client->streamSocket = streamSocket;
+	client->threadStarted = true;
+	client->threadRunning = true;
 
 	struct Thread* receiveThread = createThread(
 		streamClientReceive,
-		streamClient);
+		client);
 
-	streamClient->receiveThread = receiveThread;
-	return streamClient;
-}
-void destroyStreamClient(
-	struct StreamClient* client)
-{
-	if (client)
-	{
-		destroySocket(client->streamSocket);
-		joinThread(client->receiveThread);
-		destroyThread(client->receiveThread);
-		free(client->receiveBuffer);
-	}
-
-	free(client);
-}
-
-bool isStreamClientRunning(
-	const struct StreamClient* client)
-{
-	assert(client != NULL);
-	return client->running;
+	client->receiveThread = receiveThread;
 }
 
 struct SocketAddress* getStreamClientLocalAddress(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
+	assert(client->threadStarted == true);
 
 	return getSocketLocalAddress(
 		client->streamSocket);
@@ -206,6 +227,7 @@ struct SocketAddress* getStreamClientRemoteAddress(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
+	assert(client->threadStarted == true);
 
 	return getSocketRemoteAddress(
 		client->streamSocket);
@@ -215,6 +237,7 @@ size_t getStreamClientReceiveTimeout(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
+	assert(client->threadStarted == true);
 
 	return getSocketReceiveTimeout(
 		client->streamSocket);
@@ -224,6 +247,7 @@ void setStreamClientReceiveTimeout(
 	size_t milliseconds)
 {
 	assert(client != NULL);
+	assert(client->threadStarted == true);
 
 	setSocketReceiveTimeout(
 		client->streamSocket,
@@ -234,6 +258,7 @@ size_t getStreamClientSendTimeout(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
+	assert(client->threadStarted == true);
 
 	return getSocketSendTimeout(
 		client->streamSocket);
@@ -243,10 +268,27 @@ void setStreamClientSendTimeout(
 	size_t milliseconds)
 {
 	assert(client != NULL);
+	assert(client->threadStarted == true);
 
 	setSocketSendTimeout(
 		client->streamSocket,
 		milliseconds);
+}
+
+bool streamClientSend(
+	struct StreamClient* client,
+	void* buffer,
+	size_t count)
+{
+	assert(client != NULL);
+	assert(buffer != NULL);
+	assert(count > 0);
+	assert(client->threadStarted == true);
+
+	return socketSend(
+		client->streamSocket,
+		buffer,
+		count);
 }
 
 void streamServerAccept(
@@ -267,17 +309,12 @@ void streamServerAccept(
 		streamServer->clientReceiveFunction;
 	StreamClientStop clientStopFunction =
 		streamServer->clientStopFunction;
-	void* serverAcceptArgument =
-		streamServer->serverAcceptArgument;
-	void* serverStopArgument =
-		streamServer->serverStopArgument;
-	void* clientReceiveArgument =
-		streamServer->clientReceiveArgument;
-	void* clientStopArgument =
-		streamServer->clientStopArgument;
+	void* customData =
+		streamServer->customData;
 	struct Socket* streamSocket =
 		streamServer->streamSocket;
 
+	bool result = false;
 	struct Socket* acceptedSocket = NULL;
 
 	while (true)
@@ -288,64 +325,60 @@ void streamServerAccept(
 		if (acceptedSocket == NULL)
 		{
 			serverStopFunction(
-				streamServer,
-				serverStopArgument);
-			streamServer->running = false;
+				streamServer);
+			streamServer->threadRunning = false;
 			return;
 		}
 
 		struct StreamClient* streamClient =
-			malloc(sizeof(struct StreamClient));
-		uint8_t* receiveBuffer = malloc(
-			receiveBufferSize * sizeof(uint8_t));
+			xmalloc(sizeof(struct StreamClient));
 
-		if (streamClient == NULL ||
-			receiveBuffer == NULL)
-		{
-			abort();
-		}
-
-		streamClient->running = true;
 		streamClient->receiveBufferSize =
 			receiveBufferSize;
 		streamClient->receiveFunction =
 			clientReceiveFunction;
 		streamClient->stopFunction =
 			clientStopFunction;
-		streamClient->receiveArgument =
-			clientReceiveArgument;
-		streamClient->stopArgument =
-			clientStopArgument;
-		streamClient->receiveBuffer =
-			receiveBuffer;
+		streamClient->customData =
+			customData;
 		streamClient->streamSocket =
 			acceptedSocket;
 
-		struct Thread* receiveThread = createThread(
-			streamClientReceive,
+		streamClient->receiveBuffer = xmalloc(
+			receiveBufferSize * sizeof(uint8_t));
+
+		streamClient->receiveThread = NULL;
+		streamClient->threadStarted = true;
+		streamClient->threadRunning = true;
+
+		result = serverAcceptFunction(
+			streamServer,
 			streamClient);
 
-		streamClient->receiveThread = receiveThread;
+		if (result == true)
+		{
+			struct Thread* receiveThread = createThread(
+				streamClientReceive,
+				streamClient);
 
-		serverAcceptFunction(
-			streamServer,
-			streamClient,
-			serverAcceptArgument);
+			streamClient->receiveThread = receiveThread;
+		}
+		else
+		{
+			destroySocket(acceptedSocket);
+			free(streamClient->receiveBuffer);
+			free(streamClient);
+		}
 	}
 }
 
 struct StreamServer* createStreamServer(
-	enum AddressFamily addressFamily,
-	const char* portNumber,
 	size_t receiveBufferSize,
 	StreamServerAccept serverAcceptFunction,
 	StreamServerStop serverStopFunction,
 	StreamClientReceive clientReceiveFunction,
 	StreamClientStop clientStopFunction,
-	void* serverAcceptArgument,
-	void* serverStopArgument,
-	void* clientReceiveArgument,
-	void* clientStopArgument)
+	void* customData)
 {
 	assert(receiveBufferSize > 0);
 	assert(serverAcceptFunction != NULL);
@@ -354,12 +387,10 @@ struct StreamServer* createStreamServer(
 	assert(clientStopFunction != NULL);
 
 	struct StreamServer* streamServer =
-		malloc(sizeof(struct StreamServer));
+		xmalloc(sizeof(struct StreamServer));
 
-	if (streamServer == NULL)
-		abort();
-
-	streamServer->running = true;
+	streamServer->receiveBufferSize =
+		receiveBufferSize;
 	streamServer->serverAcceptFunction =
 		serverAcceptFunction;
 	streamServer->serverStopFunction =
@@ -368,14 +399,63 @@ struct StreamServer* createStreamServer(
 		clientReceiveFunction;
 	streamServer->clientStopFunction =
 		clientStopFunction;
-	streamServer->serverAcceptArgument =
-		serverAcceptArgument;
-	streamServer->serverStopArgument =
-		serverStopArgument;
-	streamServer->clientReceiveArgument =
-		clientReceiveArgument;
-	streamServer->clientStopArgument =
-		clientStopArgument;
+	streamServer->customData =
+		customData;
+
+	streamServer->streamSocket = NULL;
+	streamServer->acceptThread = NULL;
+	streamServer->threadStarted = false;
+	streamServer->threadRunning = false;
+
+	return streamServer;
+}
+void destroyStreamServer(
+	struct StreamServer* server)
+{
+	if (server != NULL && server->threadStarted == true)
+	{
+		destroySocket(server->streamSocket);
+		joinThread(server->acceptThread);
+		destroyThread(server->acceptThread);
+	}
+
+	free(server);
+}
+
+size_t getStreamServerReceiveBufferSize(
+	const struct StreamServer* server)
+{
+	assert(server != NULL);
+	return server->receiveBufferSize;
+}
+void* getStreamServerCustomData(
+	const struct StreamServer* server)
+{
+	assert(server != NULL);
+	return server->customData;
+}
+
+bool isStreamServerStarted(
+	const struct StreamServer* server)
+{
+	assert(server != NULL);
+	return server->threadStarted;
+}
+bool isStreamServerRunning(
+	const struct StreamServer* server)
+{
+	assert(server != NULL);
+	return server->threadRunning;
+}
+
+void startStreamServer(
+	struct StreamServer* server,
+	enum AddressFamily addressFamily,
+	const char* portNumber)
+{
+	assert(server != NULL);
+	assert(portNumber != NULL);
+	assert(server->threadStarted != true);
 
 	struct Socket* streamSocket = createSocket(
 		STREAM_SOCKET,
@@ -405,33 +485,26 @@ struct StreamServer* createStreamServer(
 		address);
 	listenSocket(
 		streamSocket);
+	destroySocketAddress(
+		address);
 
-	destroySocketAddress(address);
-	streamServer->streamSocket = streamSocket;
+	server->streamSocket = streamSocket;
+	server->threadStarted = true;
+	server->threadRunning = true;
 
 	struct Thread* acceptThread = createThread(
 		streamServerAccept,
-		streamServer);
+		server);
 
-	streamServer->acceptThread = acceptThread;
-	return streamServer;
-}
-void destroyStreamServer(
-	struct StreamServer* server)
-{
-	if (server != NULL)
-	{
-		destroySocket(server->streamSocket);
-		joinThread(server->acceptThread);
-		destroyThread(server->acceptThread);
-	}
-
-	free(server);
+	server->acceptThread = acceptThread;
 }
 
-bool isStreamServerRunning(
+struct SocketAddress* getStreamServerLocalAddress(
 	const struct StreamServer* server)
 {
 	assert(server != NULL);
-	return server->running;
+	assert(server->threadStarted == true);
+
+	return getSocketLocalAddress(
+		server->streamSocket);
 }

@@ -1,4 +1,5 @@
 #include "mpnw/socket.h"
+#include "mpmt/xalloc.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -57,10 +58,7 @@ struct Socket* createSocket(
 #endif
 
 	struct Socket* _socket =
-		malloc(sizeof(struct Socket));
-
-	if (_socket == NULL)
-		abort();
+		xmalloc(sizeof(struct Socket));
 
 	_socket->blocking = false;
 
@@ -207,10 +205,7 @@ struct SocketAddress* getSocketLocalAddress(
 	assert(socket != NULL);
 
 	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		abort();
+		xmalloc(sizeof(struct SocketAddress));
 
 	memset(
 		&address->handle,
@@ -236,10 +231,7 @@ struct SocketAddress* getSocketRemoteAddress(
 	assert(socket != NULL);
 
 	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		abort();
+		xmalloc(sizeof(struct SocketAddress));
 
 	memset(
 		&address->handle,
@@ -254,7 +246,7 @@ struct SocketAddress* getSocketRemoteAddress(
 		socket->handle,
 		(struct sockaddr*)&address->handle,
 		&length);
-#elif
+#elif _WIN32
 	int length =
 		sizeof(struct sockaddr_storage);
 
@@ -532,10 +524,7 @@ struct Socket* acceptSocket(
 		return  NULL;
 
 	struct Socket* _socket =
-		malloc(sizeof(struct Socket));
-
-	if(_socket == NULL)
-		abort();
+		xmalloc(sizeof(struct Socket));
 
 	_socket->handle = handle;
 	return _socket;
@@ -624,18 +613,18 @@ bool socketReceive(
 bool socketSend(
 	struct Socket* socket,
 	const void* buffer,
-	size_t size)
+	size_t count)
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(size > 0);
+	assert(count > 0);
 
 #if __linux__ || __APPLE__
 	return send(
 		socket->handle,
 		buffer,
-		size,
-		0) == size;
+		count,
+		0) == count;
 #elif _WIN32
 	return send(
 		socket->handle,
@@ -690,10 +679,7 @@ bool socketReceiveFrom(
 		return false;
 
 	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		abort();
+		xmalloc(sizeof(struct SocketAddress));
 
 	address->handle = handle;
 	*_address = address;
@@ -703,22 +689,22 @@ bool socketReceiveFrom(
 bool socketSendTo(
 	struct Socket* socket,
 	const void* buffer,
-	size_t size,
+	size_t count,
 	const struct SocketAddress* address)
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(size > 0);
+	assert(count > 0);
 	assert(address != NULL);
 
 #if __linux__ || __APPLE__
 	return sendto(
 		socket->handle,
 		buffer,
-		size,
+		count,
 		0,
 		(const struct sockaddr*)&address->handle,
-		sizeof(struct sockaddr_storage)) == size;
+		sizeof(struct sockaddr_storage)) == count;
 #elif _WIN32
 	return sendto(
 		socket->handle,
@@ -738,10 +724,7 @@ struct SocketAddress* createSocketAddress(
 	assert(service != NULL);
 
 	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		abort();
+		xmalloc(sizeof(struct SocketAddress));
 
 	memset(
 		&address->handle,
@@ -811,11 +794,8 @@ void getSocketAddressIP(
 
 	if (family == AF_INET)
 	{
-		uint8_t* ip = malloc(
+		uint8_t* ip = xmalloc(
 			sizeof(struct sockaddr_in));
-
-		if (ip == NULL)
-			abort();
 
 		const struct sockaddr_in* address4 =
 			(const struct sockaddr_in*)&address->handle;
@@ -830,11 +810,8 @@ void getSocketAddressIP(
 	}
 	else if (family == AF_INET6)
 	{
-		uint8_t* ip = malloc(
+		uint8_t* ip = xmalloc(
 			sizeof(struct sockaddr_in6));
-
-		if (ip == NULL)
-			abort();
 
 		const struct sockaddr_in6* address6 =
 			(const struct sockaddr_in6*)&address->handle;
@@ -861,14 +838,14 @@ uint16_t getSocketAddressPort(
 
 	if (family == AF_INET)
 	{
-		const struct sockaddr_in* address4 =
-			(const struct sockaddr_in*)&address->handle;
+		struct sockaddr_in* address4 =
+			(struct sockaddr_in*)&address->handle;
 		return (uint16_t)address4->sin_port;
 	}
 	else if (family == AF_INET6)
 	{
-		const struct sockaddr_in6* address6 =
-			(const struct sockaddr_in6*)&address->handle;
+		struct sockaddr_in6* address6 =
+			(struct sockaddr_in6*)&address->handle;
 		return (uint16_t)address6->sin6_port;
 	}
 	else
@@ -898,17 +875,14 @@ char* getSocketAddressHost(
 		abort();
 
 	size_t hostLength =
-		strlen(buffer);
-	char* host = malloc(
-		hostLength * sizeof(char));
-
-	if (host == NULL)
-		abort();
+		strlen(buffer) * sizeof(char);
+	char* host = xmalloc(
+		hostLength);
 
 	memcpy(
 		host,
 		buffer,
-		hostLength * sizeof(char));
+		hostLength);
 
 	return host;
 }
@@ -933,17 +907,14 @@ char* getSocketAddressService(
 		abort();
 
 	size_t serviceLength =
-		strlen(buffer);
-	char* service = malloc(
-		serviceLength * sizeof(char));
-
-	if (service == NULL)
-		abort();
+		strlen(buffer) * sizeof(char);
+	char* service = xmalloc(
+		serviceLength);
 
 	memcpy(
 		service,
 		buffer,
-		serviceLength * sizeof(char));
+		serviceLength);
 
 	return service;
 }
@@ -976,29 +947,23 @@ void getSocketAddressHostService(
 		abort();
 
 	size_t hostLength =
-		strlen(hostBuffer);
-	char* host = malloc(
-		hostLength * sizeof(char));
+		strlen(hostBuffer) * sizeof(char);
+	char* host = xmalloc(
+		hostLength);
 
 	size_t serviceLength =
-		strlen(hostBuffer);
-	char* service = malloc(
-		serviceLength * sizeof(char));
-
-	if (host == NULL ||
-		service == NULL)
-	{
-		abort();
-	}
+		strlen(hostBuffer) * sizeof(char);
+	char* service = xmalloc(
+		serviceLength);
 
 	memcpy(
 		host,
 		hostBuffer,
-		hostLength * sizeof(char));
+		hostLength);
 	memcpy(
 		service,
 		serviceBuffer,
-		serviceLength * sizeof(char));
+		serviceLength);
 
 	*_host = host;
 	*_service = service;

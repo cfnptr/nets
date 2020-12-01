@@ -91,7 +91,7 @@ bool socketReceive(
 bool socketSend(
 	struct Socket* socket,
 	const void* buffer,
-	size_t size);
+	size_t count);
 
 bool socketReceiveFrom(
 	struct Socket* socket,
@@ -102,7 +102,7 @@ bool socketReceiveFrom(
 bool socketSendTo(
 	struct Socket* socket,
 	const void* buffer,
-	size_t size,
+	size_t count,
 	const struct SocketAddress* address);
 
 struct SocketAddress* createSocketAddress(

@@ -22,7 +22,7 @@ add_subdirectory(libraries/mpmt)
 add_library(mpnw STATIC
 	source/mpnw/socket.c
 	source/mpnw/stream_socket.c)
-target_link_libraries(mpnw PRIVATE
+target_link_libraries(mpnw PUBLIC
 	mpmt)
 target_include_directories(mpnw PUBLIC
 	${PROJECT_BINARY_DIR}
