@@ -8,7 +8,7 @@
 
 struct StreamClient
 {
-	size_t receiveBufferSize;
+	size_t bufferSize;
 	StreamClientReceive receiveFunction;
 	StreamClientStop stopFunction;
 	void* customData;
@@ -21,7 +21,7 @@ struct StreamClient
 
 struct StreamServer
 {
-	size_t receiveBufferSize;
+	size_t clientBufferSize;
 	StreamServerAccept serverAcceptFunction;
 	StreamServerStop serverStopFunction;
 	StreamClientReceive clientReceiveFunction;
@@ -40,8 +40,8 @@ void streamClientReceive(void* argument)
 	struct StreamClient* streamClient =
 		(struct StreamClient*)argument;
 
-	size_t receiveBufferSize =
-		streamClient->receiveBufferSize;
+	size_t bufferSize =
+		streamClient->bufferSize;
 	StreamClientReceive receiveFunction =
 		streamClient->receiveFunction;
 	StreamClientStop stopFunction =
@@ -59,7 +59,7 @@ void streamClientReceive(void* argument)
 		result = socketReceive(
 			streamSocket,
 			receiveBuffer,
-			receiveBufferSize,
+			bufferSize,
 			&receiveCount);
 
 		if (result == false)
@@ -92,20 +92,20 @@ void streamClientReceive(void* argument)
 }
 
 struct StreamClient* createStreamClient(
-	size_t receiveBufferSize,
+	size_t bufferSize,
 	StreamClientReceive receiveFunction,
 	StreamClientStop stopFunction,
 	void* customData)
 {
-	assert(receiveBufferSize > 0);
+	assert(bufferSize > 0);
 	assert(receiveFunction != NULL);
 	assert(stopFunction != NULL);
 
 	struct StreamClient* streamClient =
 		xmalloc(sizeof(struct StreamClient));
 
-	streamClient->receiveBufferSize =
-		receiveBufferSize;
+	streamClient->bufferSize =
+		bufferSize;
 	streamClient->receiveFunction =
 		receiveFunction;
 	streamClient->stopFunction =
@@ -114,7 +114,7 @@ struct StreamClient* createStreamClient(
 		customData;
 
 	streamClient->receiveBuffer = xmalloc(
-		receiveBufferSize * sizeof(uint8_t));
+		bufferSize * sizeof(uint8_t));
 
 	streamClient->streamSocket = NULL;
 	streamClient->receiveThread = NULL;
@@ -123,6 +123,7 @@ struct StreamClient* createStreamClient(
 
 	return streamClient;
 }
+
 void destroyStreamClient(
 	struct StreamClient* client)
 {
@@ -141,12 +142,13 @@ void destroyStreamClient(
 	free(client);
 }
 
-size_t getStreamClientReceiveBufferSize(
+size_t getStreamClientBufferSize(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
-	return client->receiveBufferSize;
+	return client->bufferSize;
 }
+
 void* getStreamClientCustomData(
 	const struct StreamClient* client)
 {
@@ -160,6 +162,7 @@ bool isStreamClientStarted(
 	assert(client != NULL);
 	return client->threadStarted;
 }
+
 bool isStreamClientRunning(
 	const struct StreamClient* client)
 {
@@ -169,24 +172,24 @@ bool isStreamClientRunning(
 
 void startStreamClient(
 	struct StreamClient* client,
-	enum AddressFamily addressFamily)
+	enum AddressFamily family)
 {
 	assert(client != NULL);
 	assert(client->threadStarted != true);
 
 	struct Socket* streamSocket = createSocket(
 		STREAM_SOCKET,
-		addressFamily);
+		family);
 
 	struct SocketAddress* address;
 
-	if (addressFamily == INTERNET_PROTOCOL_V4)
+	if (family == INTERNET_PROTOCOL_V4)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V4,
 			ANY_IP_ADDRESS_PORT);
 	}
-	else if (addressFamily == INTERNET_PROTOCOL_V6)
+	else if (family == INTERNET_PROTOCOL_V6)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
@@ -223,6 +226,7 @@ struct SocketAddress* getStreamClientLocalAddress(
 	return getSocketLocalAddress(
 		client->streamSocket);
 }
+
 struct SocketAddress* getStreamClientRemoteAddress(
 	const struct StreamClient* client)
 {
@@ -242,6 +246,7 @@ size_t getStreamClientReceiveTimeout(
 	return getSocketReceiveTimeout(
 		client->streamSocket);
 }
+
 void setStreamClientReceiveTimeout(
 	struct StreamClient* client,
 	size_t milliseconds)
@@ -263,6 +268,7 @@ size_t getStreamClientSendTimeout(
 	return getSocketSendTimeout(
 		client->streamSocket);
 }
+
 void setStreamClientSendTimeout(
 	struct StreamClient* client,
 	size_t milliseconds)
@@ -299,8 +305,8 @@ void streamServerAccept(
 	struct StreamServer* streamServer =
 		(struct StreamServer*)argument;
 
-	size_t receiveBufferSize =
-		streamServer->receiveBufferSize;
+	size_t clientBufferSize =
+		streamServer->clientBufferSize;
 	StreamServerAccept serverAcceptFunction =
 		streamServer->serverAcceptFunction;
 	StreamServerStop serverStopFunction =
@@ -333,8 +339,8 @@ void streamServerAccept(
 		struct StreamClient* streamClient =
 			xmalloc(sizeof(struct StreamClient));
 
-		streamClient->receiveBufferSize =
-			receiveBufferSize;
+		streamClient->bufferSize =
+			clientBufferSize;
 		streamClient->receiveFunction =
 			clientReceiveFunction;
 		streamClient->stopFunction =
@@ -345,7 +351,7 @@ void streamServerAccept(
 			acceptedSocket;
 
 		streamClient->receiveBuffer = xmalloc(
-			receiveBufferSize * sizeof(uint8_t));
+			clientBufferSize * sizeof(uint8_t));
 
 		streamClient->receiveThread = NULL;
 		streamClient->threadStarted = true;
@@ -373,14 +379,14 @@ void streamServerAccept(
 }
 
 struct StreamServer* createStreamServer(
-	size_t receiveBufferSize,
+	size_t clientBufferSize,
 	StreamServerAccept serverAcceptFunction,
 	StreamServerStop serverStopFunction,
 	StreamClientReceive clientReceiveFunction,
 	StreamClientStop clientStopFunction,
 	void* customData)
 {
-	assert(receiveBufferSize > 0);
+	assert(clientBufferSize > 0);
 	assert(serverAcceptFunction != NULL);
 	assert(serverStopFunction != NULL);
 	assert(clientReceiveFunction != NULL);
@@ -389,8 +395,8 @@ struct StreamServer* createStreamServer(
 	struct StreamServer* streamServer =
 		xmalloc(sizeof(struct StreamServer));
 
-	streamServer->receiveBufferSize =
-		receiveBufferSize;
+	streamServer->clientBufferSize =
+		clientBufferSize;
 	streamServer->serverAcceptFunction =
 		serverAcceptFunction;
 	streamServer->serverStopFunction =
@@ -422,12 +428,13 @@ void destroyStreamServer(
 	free(server);
 }
 
-size_t getStreamServerReceiveBufferSize(
+size_t getStreamServerClientBufferSize(
 	const struct StreamServer* server)
 {
 	assert(server != NULL);
-	return server->receiveBufferSize;
+	return server->clientBufferSize;
 }
+
 void* getStreamServerCustomData(
 	const struct StreamServer* server)
 {
@@ -441,6 +448,7 @@ bool isStreamServerStarted(
 	assert(server != NULL);
 	return server->threadStarted;
 }
+
 bool isStreamServerRunning(
 	const struct StreamServer* server)
 {
@@ -451,10 +459,10 @@ bool isStreamServerRunning(
 void startStreamServer(
 	struct StreamServer* server,
 	enum AddressFamily addressFamily,
-	const char* portNumber)
+	const char* service)
 {
 	assert(server != NULL);
-	assert(portNumber != NULL);
+	assert(service != NULL);
 	assert(server->threadStarted != true);
 
 	struct Socket* streamSocket = createSocket(
@@ -467,13 +475,13 @@ void startStreamServer(
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V4,
-			portNumber);
+			service);
 	}
 	else if (addressFamily == INTERNET_PROTOCOL_V6)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
-			portNumber);
+			service);
 	}
 	else
 	{

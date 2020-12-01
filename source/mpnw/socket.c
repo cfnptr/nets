@@ -91,6 +91,7 @@ struct Socket* createSocket(
 
 	return _socket;
 }
+
 void destroySocket(
 	struct Socket* socket)
 {
@@ -98,7 +99,7 @@ void destroySocket(
 	{
 		shutdown(
 			socket->handle,
-			SHUTDOWN_RECEIVE_SEND);
+			SHUT_RDWR);
 
 #if __linux__ || __APPLE__
 		int result = close(
@@ -157,6 +158,7 @@ enum SocketType getSocketType(
 	else
 		abort();
 }
+
 bool isSocketListening(
 	const struct Socket* socket)
 {
@@ -225,6 +227,7 @@ struct SocketAddress* getSocketLocalAddress(
 
 	return address;
 }
+
 struct SocketAddress* getSocketRemoteAddress(
 	const struct Socket* socket)
 {
@@ -268,6 +271,7 @@ bool getSocketBlocking(
 	assert(socket != NULL);
 	return socket->blocking;
 }
+
 void setSocketBlocking(
 	struct Socket* socket,
 	bool blocking)
@@ -352,6 +356,7 @@ size_t getSocketReceiveTimeout(
 	return timeout;
 #endif
 }
+
 void setSocketReceiveTimeout(
 	struct Socket* socket,
 	size_t milliseconds)
@@ -431,6 +436,7 @@ size_t getSocketSendTimeout(
 	return timeout;
 #endif
 }
+
 void setSocketSendTimeout(
 	struct Socket* socket,
 	size_t milliseconds)
@@ -497,6 +503,7 @@ void bindSocket(
 	if (result != 0)
 		abort();
 }
+
 void listenSocket(
 	struct Socket* socket)
 {
@@ -529,6 +536,7 @@ struct Socket* acceptSocket(
 	_socket->handle = handle;
 	return _socket;
 }
+
 bool connectSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address)
@@ -610,6 +618,7 @@ bool socketReceive(
 	*_count = (size_t)count;
 	return true;
 }
+
 bool socketSend(
 	struct Socket* socket,
 	const void* buffer,
@@ -761,6 +770,7 @@ struct SocketAddress* createSocketAddress(
 	freeaddrinfo(addressInfos);
 	return address;
 }
+
 void destroySocketAddress(
 	struct SocketAddress* address)
 {
@@ -781,6 +791,7 @@ enum AddressFamily getSocketAddressFamily(
 	else
 		abort();
 }
+
 void getSocketAddressIP(
 	const struct SocketAddress* address,
 	uint8_t ** _ip,
@@ -829,6 +840,7 @@ void getSocketAddressIP(
 		abort();
 	}
 }
+
 uint16_t getSocketAddressPort(
 	const struct SocketAddress* address)
 {
@@ -886,6 +898,7 @@ char* getSocketAddressHost(
 
 	return host;
 }
+
 char* getSocketAddressService(
 	const struct SocketAddress* address)
 {
@@ -918,6 +931,7 @@ char* getSocketAddressService(
 
 	return service;
 }
+
 void getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char** _host,
