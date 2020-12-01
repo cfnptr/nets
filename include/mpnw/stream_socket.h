@@ -70,27 +70,24 @@ bool isStreamClientRunning(
 /*
  * Starts a new stream client receive thread.
  * Binds socket address before thread start.
+ * Returns true if stream client has been started.
  *
  * client - pointer to the valid stream client.
  * family - socket internet protocol address family.
  */
-void startStreamClient(
+bool startStreamClient(
 	struct StreamClient* client,
 	enum AddressFamily family);
 
 /*
- * Returns stream client local socket address.
- * Stream client should be started before function call.
- *
+ * Returns a new local address on success, otherwise null.
  * client - pointer to the valid stream client.
  */
 struct SocketAddress* getStreamClientLocalAddress(
 	const struct StreamClient* client);
 
 /*
- * Returns stream client remote socket address.
- * Stream client should be started before function call.
- *
+ * Returns a new remote address on success, otherwise null.
  * client - pointer to the valid stream client.
  */
 struct SocketAddress* getStreamClientRemoteAddress(
@@ -206,20 +203,19 @@ bool isStreamServerRunning(
 /*
  * Starts a new stream server accept thread.
  * Binds socket address before thread start.
+ * Returns true if stream server has been started.
  *
  * server - pointer to the valid stream server.
  * family - socket internet protocol address family.
  * service - local socket address service name.
  */
-void startStreamServer(
+bool startStreamServer(
 	struct StreamServer* server,
 	enum AddressFamily family,
 	const char* service);
 
 /*
- * Returns stream server local socket address.
- * Stream server should be started before function call.
- *
+ * Returns a new local address on success, otherwise null.
  * server - pointer to the valid stream server.
  */
 struct SocketAddress* getStreamServerLocalAddress(

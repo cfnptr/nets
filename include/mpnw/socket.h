@@ -23,15 +23,17 @@ struct SocketAddress;
 /* Socket internet protocol address family */
 enum AddressFamily
 {
-	INTERNET_PROTOCOL_V4,
-	INTERNET_PROTOCOL_V6,
+	UNKNOWN_ADDRESS_FAMILY,
+	IP_V4_ADDRESS_FAMILY,
+	IP_V6_ADDRESS_FAMILY,
 };
 
 /* Socket communication type */
 enum SocketType
 {
-	STREAM_SOCKET,
-	DATAGRAM_SOCKET,
+	UNKNOWN_SOCKET_TYPE,
+	STREAM_SOCKET_TYPE,
+	DATAGRAM_SOCKET_TYPE,
 };
 
 /* Socket connection shutdown */
@@ -44,7 +46,7 @@ enum SocketShutdown
 
 /*
  * Creates a new socket.
- * Return valid pointer to the socket.
+ * Return socket on success, otherwise null.
  *
  * type - socket communication type.
  * family - internet protocol address family.
@@ -77,18 +79,14 @@ bool isSocketListening(
 	const struct Socket* socket);
 
 /*
- * Returns a new pointer to the socket local address.
- * Socket should be bound before function call.
- *
+ * Returns a new local address on success, otherwise null.
  * socket - pointer to the valid socket.
  */
 struct SocketAddress* getSocketLocalAddress(
 	const struct Socket* socket);
 
 /*
- * Returns a new pointer to the socket remote address.
- * Socket should be bound before function call.
- *
+ * Returns a new remote address on success, otherwise null.
  * socket - pointer to the valid socket.
  */
 struct SocketAddress* getSocketRemoteAddress(
@@ -141,26 +139,26 @@ void setSocketSendTimeout(
 
 /*
  * Binds specified address to the socket.
- * Socket should be bound only once.
+ * Returns true if socket bound successfully.
  *
  * socket - pointer to the valid socket.
  * address - pointer to the valid socket address.
  */
-void bindSocket(
+bool bindSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address);
 
 /*
  * Starts socket listening for a new connections.
- * Socket should be started listening only once.
+ * Returns true if socket listening successfully.
  *
  * socket - pointer to the valid socket.
  */
-void listenSocket(
+bool listenSocket(
 	struct Socket* socket);
 
 /*
- * Returns a new accepted socket connection.
+ * Returns a new socket on success, otherwise null.
  * socket - pointer to the valid socket.
  */
 struct Socket* acceptSocket(
@@ -168,6 +166,7 @@ struct Socket* acceptSocket(
 
 /*
  * Starts connection to the specified address.
+ * Returns true if socket connected successfully.
  *
  * socket - pointer to the valid socket.
  * address - pointer to the valid socket address.
@@ -178,6 +177,7 @@ bool connectSocket(
 
 /*
  * Shutdowns part of the full-duplex connection.
+ * Returns true if socket shutdown successfully.
  *
  * socket - pointer to the valid socket.
  * type - socket connection shutdown.
@@ -229,7 +229,6 @@ bool socketReceiveFrom(
 	struct SocketAddress** address,
 	size_t* count);
 
-
 /*
  * Returns true on successful socket message send.
  *
@@ -245,7 +244,7 @@ bool socketSendTo(
 	const struct SocketAddress* address);
 
 /*
- * Creates a new socket endpoint address.
+ * Creates a new address on success, otherwise null.
  *
  * host - pointer to the valid host name.
  * service - pointer to the valid service name.
@@ -261,7 +260,7 @@ void destroySocketAddress(
 	struct SocketAddress* address);
 
 /*
- * Returns socket address internet protocol family.
+ * Returns address family on success, otherwise unknown.
  * address - pointer to the valid socket address.
  */
 enum AddressFamily getSocketAddressFamily(
@@ -280,34 +279,34 @@ void getSocketAddressIP(
 	size_t* size);
 
 /*
- * Returns socket address port number.
+ * Returns port number on success, otherwise zero.
  * address - pointer to the valid socket address.
  */
 uint16_t getSocketAddressPort(
 	const struct SocketAddress* address);
 
 /*
- * Returns a new socket address host name.
+ * Returns a new host name on success, otherwise null.
  * address - pointer to the valid socket address.
  */
 char* getSocketAddressHost(
 	const struct SocketAddress* address);
 
 /*
- * Returns a new socket address service name.
+ * Returns a new service name on success, otherwise null.
  * address - pointer to the valid socket address.
  */
 char* getSocketAddressService(
 	const struct SocketAddress* address);
 
 /*
- * Returns a new socket address host and service name.
+ * Returns true on success host and service get.
  *
  * address - pointer to the valid socket address.
  * host - pointer to the valid host name string.
  * service - pointer to the valid host name string.
  */
-void getSocketAddressHostService(
+bool getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char** host,
 	char** service);

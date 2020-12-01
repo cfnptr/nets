@@ -170,26 +170,29 @@ bool isStreamClientRunning(
 	return client->threadRunning;
 }
 
-void startStreamClient(
+bool startStreamClient(
 	struct StreamClient* client,
 	enum AddressFamily family)
 {
 	assert(client != NULL);
 	assert(client->threadStarted != true);
 
-	struct Socket* streamSocket = createSocket(
-		STREAM_SOCKET,
+	struct Socket* socket = createSocket(
+		STREAM_SOCKET_TYPE,
 		family);
+
+	if(socket == NULL)
+		return false;
 
 	struct SocketAddress* address;
 
-	if (family == INTERNET_PROTOCOL_V4)
+	if (family == IP_V4_ADDRESS_FAMILY)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V4,
 			ANY_IP_ADDRESS_PORT);
 	}
-	else if (family == INTERNET_PROTOCOL_V6)
+	else if (family == IP_V6_ADDRESS_FAMILY)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
@@ -197,16 +200,28 @@ void startStreamClient(
 	}
 	else
 	{
-		abort();
+		return false;
 	}
 
-	bindSocket(
-		streamSocket,
-		address);
-	destroySocketAddress(
+	if(address == NULL)
+	{
+		destroySocket(socket);
+		return false;
+	}
+
+	bool result = bindSocket(
+		socket,
 		address);
 
-	client->streamSocket = streamSocket;
+	destroySocketAddress(address);
+
+	if(result == false)
+	{
+		destroySocket(socket);
+		return false;
+	}
+
+	client->streamSocket = socket;
 	client->threadStarted = true;
 	client->threadRunning = true;
 
@@ -215,6 +230,7 @@ void startStreamClient(
 		client);
 
 	client->receiveThread = receiveThread;
+	return true;
 }
 
 struct SocketAddress* getStreamClientLocalAddress(
@@ -456,7 +472,7 @@ bool isStreamServerRunning(
 	return server->threadRunning;
 }
 
-void startStreamServer(
+bool startStreamServer(
 	struct StreamServer* server,
 	enum AddressFamily family,
 	const char* service)
@@ -465,19 +481,22 @@ void startStreamServer(
 	assert(service != NULL);
 	assert(server->threadStarted != true);
 
-	struct Socket* streamSocket = createSocket(
-		STREAM_SOCKET,
+	struct Socket* socket = createSocket(
+		STREAM_SOCKET_TYPE,
 		family);
+
+	if(socket == NULL)
+		return false;
 
 	struct SocketAddress* address;
 
-	if (family == INTERNET_PROTOCOL_V4)
+	if (family == IP_V4_ADDRESS_FAMILY)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V4,
 			service);
 	}
-	else if (family == INTERNET_PROTOCOL_V6)
+	else if (family == IP_V6_ADDRESS_FAMILY)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
@@ -485,18 +504,36 @@ void startStreamServer(
 	}
 	else
 	{
-		abort();
+		return false;
 	}
 
-	bindSocket(
-		streamSocket,
-		address);
-	listenSocket(
-		streamSocket);
-	destroySocketAddress(
+	if(address == NULL)
+	{
+		destroySocket(socket);
+		return false;
+	}
+
+	bool result = bindSocket(
+		socket,
 		address);
 
-	server->streamSocket = streamSocket;
+	destroySocketAddress(address);
+
+	if(result == false)
+	{
+		destroySocket(socket);
+		return false;
+	}
+
+	result = listenSocket(socket);
+
+	if(result == false)
+	{
+		destroySocket(socket);
+		return false;
+	}
+
+	server->streamSocket = socket;
 	server->threadStarted = true;
 	server->threadRunning = true;
 
@@ -505,6 +542,7 @@ void startStreamServer(
 		server);
 
 	server->acceptThread = acceptThread;
+	return true;
 }
 
 struct SocketAddress* getStreamServerLocalAddress(
