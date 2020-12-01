@@ -213,7 +213,7 @@ bool isStreamServerRunning(
  */
 void startStreamServer(
 	struct StreamServer* server,
-	enum AddressFamily addressFamily,
+	enum AddressFamily family,
 	const char* service);
 
 /*

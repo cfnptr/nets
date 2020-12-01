@@ -458,7 +458,7 @@ bool isStreamServerRunning(
 
 void startStreamServer(
 	struct StreamServer* server,
-	enum AddressFamily addressFamily,
+	enum AddressFamily family,
 	const char* service)
 {
 	assert(server != NULL);
@@ -467,17 +467,17 @@ void startStreamServer(
 
 	struct Socket* streamSocket = createSocket(
 		STREAM_SOCKET,
-		addressFamily);
+		family);
 
 	struct SocketAddress* address;
 
-	if (addressFamily == INTERNET_PROTOCOL_V4)
+	if (family == INTERNET_PROTOCOL_V4)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V4,
 			service);
 	}
-	else if (addressFamily == INTERNET_PROTOCOL_V6)
+	else if (family == INTERNET_PROTOCOL_V6)
 	{
 		address = createSocketAddress(
 			ANY_IP_ADDRESS_V6,

@@ -97,9 +97,15 @@ void destroySocket(
 {
 	if (socket != NULL)
 	{
+#if __linux__ || __APPLE__
 		shutdown(
 			socket->handle,
 			SHUT_RDWR);
+#elif _WIN32
+		shutdown(
+			socket->handle,
+			SD_BOTH);
+#endif
 
 #if __linux__ || __APPLE__
 		int result = close(
@@ -573,6 +579,7 @@ bool shutdownSocket(
 
 	int type;
 
+#if __linux__ || __APPLE__
 	if (_type == SHUTDOWN_RECEIVE_ONLY)
 		type = SHUT_RD;
 	else if (_type == SHUTDOWN_SEND_ONLY)
@@ -581,6 +588,16 @@ bool shutdownSocket(
 		type = SHUT_RDWR;
 	else
 		abort();
+#elif _WIN32
+	if (_type == SHUTDOWN_RECEIVE_ONLY)
+		type = SD_RECEIVE;
+	else if (_type == SHUTDOWN_SEND_ONLY)
+		type = SD_SEND;
+	else if (_type == SHUTDOWN_RECEIVE_SEND)
+		type = SD_BOTH;
+	else
+		abort();
+#endif
 
 	return shutdown(
 		socket->handle,
@@ -638,8 +655,8 @@ bool socketSend(
 	return send(
 		socket->handle,
 		(const char*)buffer,
-		(int)size,
-		0) == size;
+		(int)count,
+		0) == count;
 #endif
 }
 
@@ -718,10 +735,10 @@ bool socketSendTo(
 	return sendto(
 		socket->handle,
 		(const char*)buffer,
-		(int)size,
+		(int)count,
 		0,
 		(const struct sockaddr*)&address->handle,
-		sizeof(struct sockaddr_storage)) == size;
+		sizeof(struct sockaddr_storage)) == count;
 #endif
 }
 
