@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
