@@ -65,7 +65,7 @@ void destroySocket(
 	struct Socket* socket);
 
 /*
- * Return specified socket communication type.
+ * Return socket communication type.
  * socket - pointer to the valid socket.
  */
 enum SocketType getSocketType(
@@ -267,13 +267,13 @@ enum AddressFamily getSocketAddressFamily(
 	const struct SocketAddress* address);
 
 /*
- * Returns a new socket address byte array.
+ * Returns true on success IP address get.
  *
  * address - pointer to the valid socket address.
  * ip - pointer to the valid byte array.
  * size - pointer to the valid byte array size.
  */
-void getSocketAddressIP(
+bool getSocketAddressIP(
 	const struct SocketAddress* address,
 	uint8_t** ip,
 	size_t* size);
