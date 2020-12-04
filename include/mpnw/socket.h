@@ -44,6 +44,11 @@ enum SocketShutdown
 	SHUTDOWN_RECEIVE_SEND,
 };
 
+/* Returns true if network was initialized. */
+bool initializeNetwork();
+/* Terminates network. */
+void terminateNetwork();
+
 /*
  * Creates a new socket.
  * Return socket on success, otherwise null.
@@ -244,7 +249,7 @@ bool socketSendTo(
 	const struct SocketAddress* address);
 
 /*
- * Creates a new address on success, otherwise null.
+ * Returns a new address on success, otherwise null.
  *
  * host - pointer to the valid host name.
  * service - pointer to the valid service name.

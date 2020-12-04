@@ -44,30 +44,46 @@ struct SocketAddress
 
 static bool networkInitialized = false;
 
-inline static void initializeNetwork()
+bool initializeNetwork()
 {
-	if (networkInitialized == false)
-	{
-#if __linux__ || __APPLE__
-		signal(SIGPIPE, SIG_IGN);
-#elif _WIN32
-		int result = WSAStartup(
-			MAKEWORD(2,2),
-			&wsaData);
+	if (networkInitialized == true)
+		return false;
 
-		if (result != 0)
-			return NULL;
+#if __linux__ || __APPLE__
+	signal(SIGPIPE, SIG_IGN);
+#elif _WIN32
+	int result = WSAStartup(
+		MAKEWORD(2,2),
+		&wsaData);
+
+	if (result != 0)
+		return false;
 #endif
 
-		networkInitialized = true;
-	}
+	networkInitialized = true;
+	return true;
+}
+/* Terminates network. */
+void terminateNetwork()
+{
+	if(networkInitialized == true)
+		return;
+
+#if __linux__ || __APPLE__
+	signal(SIGPIPE, SIG_DFL);
+#elif _WIN32
+	WSACleanup();
+#endif
+
+	networkInitialized = false;
 }
 
 struct Socket* createSocket(
 	enum SocketType _type,
 	enum AddressFamily _family)
 {
-	initializeNetwork();
+	if(networkInitialized == false)
+		return NULL;
 
 	struct Socket* _socket =
 		malloc(sizeof(struct Socket));
@@ -691,6 +707,9 @@ struct SocketAddress* createSocketAddress(
 {
 	assert(host != NULL);
 	assert(service != NULL);
+
+	if(networkInitialized == false)
+		return NULL;
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
