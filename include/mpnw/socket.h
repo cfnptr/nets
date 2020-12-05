@@ -23,7 +23,6 @@ struct SocketAddress;
 /* Socket internet protocol address family */
 enum AddressFamily
 {
-	UNKNOWN_ADDRESS_FAMILY,
 	IP_V4_ADDRESS_FAMILY,
 	IP_V6_ADDRESS_FAMILY,
 };
@@ -31,7 +30,6 @@ enum AddressFamily
 /* Socket communication type */
 enum SocketType
 {
-	UNKNOWN_SOCKET_TYPE,
 	STREAM_SOCKET_TYPE,
 	DATAGRAM_SOCKET_TYPE,
 };
@@ -70,75 +68,112 @@ void destroySocket(
 	struct Socket* socket);
 
 /*
- * Return socket communication type.
+ * Returns socket type.
+ * Returns true on successful get.
+ *
  * socket - pointer to the valid socket.
+ * type - pointer to the valid socket type.
  */
-enum SocketType getSocketType(
-	const struct Socket* socket);
+bool getSocketType(
+	const struct Socket* socket,
+	enum SocketType* type);
 
 /*
- * Returns true if socket is in listening state.
+ * Returns current socket listening state.
+ * Returns true on successful get.
+ *
  * socket - pointer to the valid socket.
+ * listening - pointer to the valid listening state.
  */
-bool isSocketListening(
-	const struct Socket* socket);
+bool getSocketListening(
+	const struct Socket* socket,
+	bool* listening);
 
 /*
- * Returns a new local address on success, otherwise null.
+ * Returns a new local socket address.
+ * Returns true on successful get.
+ *
  * socket - pointer to the valid socket.
+ * address - pointer to the valid socket address.
  */
-struct SocketAddress* getSocketLocalAddress(
-	const struct Socket* socket);
+bool getSocketLocalAddress(
+	const struct Socket* socket,
+	struct SocketAddress** address);
 
 /*
- * Returns a new remote address on success, otherwise null.
+ * Returns a new remote socket address.
+ * Returns true on successful get.
+ *
  * socket - pointer to the valid socket.
+ * address - pointer to the valid socket address.
  */
-struct SocketAddress* getSocketRemoteAddress(
-	const struct Socket* socket);
+bool getSocketRemoteAddress(
+	const struct Socket* socket,
+	struct SocketAddress** address);
 
 /*
- * Returns true if socket is in blocking mode.
+ * Returns current socket blocking mode.
+ * Returns true on successful get.
+ *
  * socket - pointer to the valid socket.
+ * blocking - pointer to the valid blocking mode.
  */
 bool getSocketBlocking(
-	const struct Socket* socket);
+	const struct Socket* socket,
+	bool* blocking);
 
 /*
- * Sets socket to the specified blocking mode.
+ * Sets socket blocking mode.
+ * Returns true on successful set.
+ *
  * socket - pointer to the valid socket.
+ * blocking - target socket blocking mode.
  */
-void setSocketBlocking(
+bool setSocketBlocking(
 	struct Socket* socket,
 	bool blocking);
 
 /*
- * Returns socket message receive timeout time.
+ * Returns current socket receive timeout.
+ * Returns true on successful get.
+ *
  * socket - pointer to the valid socket.
+ * milliseconds - pointer to the valid receive timeout.
  */
-size_t getSocketReceiveTimeout(
-	const struct Socket* socket);
+bool getSocketReceiveTimeout(
+	const struct Socket* socket,
+	size_t* milliseconds);
 
 /*
- * Sets socket message receive timeout time.
+ * Sets socket receive timeout.
+ * Returns true on successful set.
+ *
  * socket - pointer to the valid socket.
+ * milliseconds - socket receive timeout.
  */
-void setSocketReceiveTimeout(
+bool setSocketReceiveTimeout(
 	struct Socket* socket,
 	size_t milliseconds);
 
 /*
- * Returns socket message send timeout time.
+ * Returns current socket send timeout.
+ * Returns true on successful get.
+ *
  * socket - pointer to the valid socket.
+ * milliseconds - pointer to the valid receive timeout.
  */
-size_t getSocketSendTimeout(
-	const struct Socket* socket);
+bool getSocketSendTimeout(
+	const struct Socket* socket,
+	size_t* milliseconds);
 
 /*
- * Sets socket message send timeout time.
+ * Sets socket send timeout.
+ * Returns true on successful set.
+ *
  * socket - pointer to the valid socket.
+ * milliseconds - socket send timeout.
  */
-void setSocketSendTimeout(
+bool setSocketSendTimeout(
 	struct Socket* socket,
 	size_t milliseconds);
 
@@ -163,11 +198,15 @@ bool listenSocket(
 	struct Socket* socket);
 
 /*
- * Returns a new socket on success, otherwise null.
+ * Returns a new accepted socket.
+ * Returns true on successful accept.
+ *
  * socket - pointer to the valid socket.
+ * acceptedSocket - pointer to the valid socket.
  */
-struct Socket* acceptSocket(
-	struct Socket* socket);
+bool acceptSocket(
+	struct Socket* socket,
+	struct Socket** acceptedSocket);
 
 /*
  * Starts connection to the specified address.
@@ -192,7 +231,8 @@ bool shutdownSocket(
 	enum SocketShutdown type);
 
 /*
- * Returns true on successful socket message receive.
+ * Receives socket message.
+ * Returns true on successful receive.
  *
  * socket - pointer to the valid socket.
  * buffer - pointer to the valid receive buffer.
@@ -206,7 +246,8 @@ bool socketReceive(
 	size_t* count);
 
 /*
- * Returns true on successful socket message send.
+ * Sends socket message.
+ * Returns true on successful send.
  *
  * socket - pointer to the valid socket.
  * buffer - pointer to the valid send buffer.
@@ -218,8 +259,8 @@ bool socketSend(
 	size_t count);
 
 /*
- * Returns true on successful socket message receive.
- * Sets a new message sender address on success.
+ * Receives socket message from a new address.
+ * Returns true on successful receive.
  *
  * socket - pointer to the valid socket.
  * buffer - pointer to the valid receive buffer.
@@ -235,7 +276,8 @@ bool socketReceiveFrom(
 	size_t* count);
 
 /*
- * Returns true on successful socket message send.
+ * Receives socket message to the specified address.
+ * Returns true on successful send.
  *
  * socket - pointer to the valid socket.
  * buffer - pointer to the valid send buffer.
@@ -265,14 +307,16 @@ void destroySocketAddress(
 	struct SocketAddress* address);
 
 /*
- * Returns address family on success, otherwise unknown.
+ * Returns true if successfully got address family.
  * address - pointer to the valid socket address.
  */
-enum AddressFamily getSocketAddressFamily(
-	const struct SocketAddress* address);
+bool getSocketAddressFamily(
+	const struct SocketAddress* address,
+	enum AddressFamily* family);
 
 /*
- * Returns true on success IP address get.
+ * Returns socket address IP byte array.
+ * Returns true on successful get.
  *
  * address - pointer to the valid socket address.
  * ip - pointer to the valid byte array.
@@ -284,28 +328,41 @@ bool getSocketAddressIP(
 	size_t* size);
 
 /*
- * Returns port number on success, otherwise zero.
+ * Returns socket address port number.
+ * Returns true on successful get.
+ *
  * address - pointer to the valid socket address.
+ * port - pointer to the valid port number.
  */
-uint16_t getSocketAddressPort(
-	const struct SocketAddress* address);
+bool getSocketAddressPort(
+	const struct SocketAddress* address,
+	uint16_t* portNumber);
 
 /*
- * Returns a new host name on success, otherwise null.
+ * Returns socket address host name string.
+ * Returns true on successful get.
+ *
  * address - pointer to the valid socket address.
+ * host - pointer to the valid socket host name.
  */
-char* getSocketAddressHost(
-	const struct SocketAddress* address);
+bool getSocketAddressHost(
+	const struct SocketAddress* address,
+	char** host);
 
 /*
- * Returns a new service name on success, otherwise null.
+ * Returns socket address service name string.
+ * Returns true on successful get.
+ *
  * address - pointer to the valid socket address.
+ * service - pointer to the valid socket service name.
  */
-char* getSocketAddressService(
-	const struct SocketAddress* address);
+bool getSocketAddressService(
+	const struct SocketAddress* address,
+	char** service);
 
 /*
- * Returns true on success host and service get.
+ * Returns socket address host and service name string.
+ * Returns true on successful get.
  *
  * address - pointer to the valid socket address.
  * host - pointer to the valid host name string.

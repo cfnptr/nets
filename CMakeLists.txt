@@ -13,12 +13,19 @@ project(mpnw
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
+add_subdirectory(libraries/mpmt)
+
 configure_file(
 	cmake/defines.h.in
 	mpnw/defines.h)
-
 add_library(mpnw STATIC
-	source/mpnw/socket.c)
+	source/mpnw/datagram_client.c
+	source/mpnw/datagram_server.c
+	source/mpnw/socket.c
+	source/mpnw/stream_client.c
+	source/mpnw/stream_server.c)
+target_link_libraries(mpnw PUBLIC
+	mpmt)
 target_include_directories(mpnw PUBLIC
 	${PROJECT_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/include)
