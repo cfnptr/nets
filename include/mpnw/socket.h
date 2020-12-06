@@ -13,6 +13,9 @@
 /* Internet protocol V6 loopback address */
 #define LOOPBACK_IP_ADDRESS_V6 "::1"
 
+/* Current computer IP address */
+#define LOCALHOST_HOSTNAME "localhost"
+/* System-allocated, dynamic port */
 #define ANY_IP_ADDRESS_PORT "0"
 
 /* Socket instance handle */
