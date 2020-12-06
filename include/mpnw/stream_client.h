@@ -6,6 +6,7 @@ struct StreamClient;
 
 /* Stream client message receive function */
 typedef void(*StreamClientReceive)(
+	struct StreamClient* client,
 	const uint8_t* buffer,
 	size_t count,
 	void* argument);

@@ -74,6 +74,7 @@ static void streamClientReceiveHandler(
 				receiveFunctions[functionIndex];
 
 			receiveFunction(
+				client,
 				receiveBuffer,
 				byteCount,
 				functionArgument);

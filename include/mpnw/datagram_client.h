@@ -6,6 +6,7 @@ struct DatagramClient;
 
 /* Datagram client datagram receive function */
 typedef void(*DatagramClientReceive)(
+	struct DatagramClient* client,
 	const uint8_t* buffer,
 	size_t count,
 	void* argument);

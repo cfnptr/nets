@@ -60,6 +60,7 @@ static void datagramClientReceiveHandler(
 				receiveFunctions[functionIndex];
 
 			receiveFunction(
+				client,
 				receiveBuffer,
 				byteCount,
 				functionArgument);
