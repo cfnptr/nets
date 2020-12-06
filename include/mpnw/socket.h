@@ -203,7 +203,8 @@ bool socketSendTo(
 	const struct SocketAddress* address);
 
 /*
- * Returns a new address on success, otherwise null.
+ * Creates a new socket address.
+ * Returns address on success, otherwise null.
  *
  * host - pointer to the valid host name.
  * service - pointer to the valid service name.
@@ -211,6 +212,19 @@ bool socketSendTo(
 struct SocketAddress* createSocketAddress(
 	const char* host,
 	const char* service);
+
+/*
+ * Resolves a new socket addresses.
+ * Returns address on success, otherwise null.
+ *
+ * host - pointer to the valid host name.
+ * service - pointer to the valid service name.
+ */
+struct SocketAddress* resolveSocketAddress(
+	const char* host,
+	const char* service,
+	enum AddressFamily family,
+	enum SocketType type);
 
 /*
  * Destroys specified socket endpoint address.
@@ -226,7 +240,15 @@ void destroySocketAddress(
 struct SocketAddress* copySocketAddress(
 	const struct SocketAddress* address);
 
-// TODO: compare socket addresses
+/*
+ * Compares two addresses.
+ *
+ * a - pointer to the valid socket address.
+ * b - pointer to the valid socket address.
+ */
+int compareSocketAddress(
+	const struct SocketAddress* a,
+	const struct SocketAddress* b);
 
 /*
  * Returns true if successfully got address family.

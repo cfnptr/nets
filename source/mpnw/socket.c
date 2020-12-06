@@ -93,14 +93,14 @@ struct Socket* createSocket(
 	else if (_type == DATAGRAM_SOCKET_TYPE)
 		type = SOCK_DGRAM;
 	else
-		return NULL;
+		abort();
 
 	if (_family == IP_V4_ADDRESS_FAMILY)
 		family = AF_INET;
 	else if (_family == IP_V6_ADDRESS_FAMILY)
 		family = AF_INET6;
 	else
-		return NULL;
+		abort();
 
 	struct Socket* _socket =
 		malloc(sizeof(struct Socket));
@@ -324,7 +324,7 @@ bool shutdownSocket(
 	else if (_type == SHUTDOWN_RECEIVE_SEND)
 		type = SHUT_RDWR;
 	else
-		return false;
+		abort();
 #elif _WIN32
 	if (_type == SHUTDOWN_RECEIVE_ONLY)
 		type = SD_RECEIVE;
@@ -333,7 +333,7 @@ bool shutdownSocket(
 	else if (_type == SHUTDOWN_RECEIVE_SEND)
 		type = SD_BOTH;
 	else
-		return false;
+		abort();
 #endif
 
 	return shutdown(
@@ -498,6 +498,76 @@ struct SocketAddress* createSocketAddress(
 	return address;
 }
 
+struct SocketAddress* resolveSocketAddress(
+	const char* host,
+	const char* service,
+	enum AddressFamily family,
+	enum SocketType type)
+{
+	assert(host != NULL);
+	assert(service != NULL);
+
+	if(networkInitialized == false)
+		return NULL;
+
+	struct SocketAddress* address =
+		malloc(sizeof(struct SocketAddress));
+
+	if (address == NULL)
+		return NULL;
+
+	struct addrinfo hints;
+
+	memset(
+		&hints,
+		0,
+		sizeof(struct addrinfo));
+
+	hints.ai_flags =
+		AI_ADDRCONFIG |
+		AI_V4MAPPED;
+
+	if(family == IP_V4_ADDRESS_FAMILY)
+		hints.ai_family = AF_INET;
+	else if(family == IP_V6_ADDRESS_FAMILY)
+		hints.ai_family = AF_INET6;
+	else
+		abort();
+
+	if(type == STREAM_SOCKET_TYPE)
+		hints.ai_socktype = SOCK_STREAM;
+	else if(type == DATAGRAM_SOCKET_TYPE)
+		hints.ai_socktype = SOCK_DGRAM;
+	else
+		abort();
+
+	struct addrinfo* addressInfos;
+
+	int result = getaddrinfo(
+		host,
+		service,
+		&hints,
+		&addressInfos);
+
+	if (result != 0)
+	{
+		free(address);
+		return NULL;
+	}
+
+	memset(
+		&address->handle,
+		0,
+		sizeof(struct sockaddr_storage));
+	memcpy(
+		&address->handle,
+		addressInfos->ai_addr,
+		addressInfos->ai_addrlen);
+
+	freeaddrinfo(addressInfos);
+	return address;
+}
+
 void destroySocketAddress(
 	struct SocketAddress* address)
 {
@@ -521,6 +591,19 @@ struct SocketAddress* copySocketAddress(
 		sizeof(struct sockaddr_storage));
 
 	return _address;
+}
+
+int compareSocketAddress(
+	const struct SocketAddress* a,
+	const struct SocketAddress* b)
+{
+	assert(a != NULL);
+	assert(b != NULL);
+
+	return memcmp(
+		&a->handle,
+		&b->handle,
+		sizeof(struct sockaddr_storage));
 }
 
 bool getSocketAddressFamily(
