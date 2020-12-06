@@ -5,7 +5,7 @@
 struct StreamClient;
 
 /* Stream client message receive function */
-typedef void(*StreamClientReceive)(
+typedef bool(*StreamClientReceive)(
 	struct StreamClient* client,
 	const uint8_t* buffer,
 	size_t count,
@@ -25,7 +25,7 @@ typedef void(*StreamClientReceive)(
 struct StreamClient* createStreamClient(
 	const struct SocketAddress* localAddress,
 	const struct SocketAddress* remoteAddress,
-	StreamClientReceive* receiveFunctions,
+	const StreamClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
 	void* functionArgument,
 	size_t receiveBufferSize);

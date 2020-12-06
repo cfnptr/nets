@@ -209,14 +209,12 @@ struct StreamServer* createStreamServer(
 	for (size_t i = 0; i < sessionBufferSize; i++)
 	{
 		struct StreamSession session;
-
 		session.server = server;
 		session.receiveBufferOffset = receiveBufferSize * i;
 		session.hasRunningSocket = false;
 		session.lastMessageTime = 0;
 		session.receiveSocket = NULL;
 		session.receiveThread = NULL;
-
 		sessionBuffer[i] = session;
 	}
 
@@ -237,17 +235,6 @@ struct StreamServer* createStreamServer(
 		_receiveFunctions,
 		receiveFunctionSize);
 
-	server->sessionBuffer = sessionBuffer;
-	server->sessionBufferSize = sessionBufferSize;
-	server->receiveFunctions = receiveFunctions;
-	server->receiveFunctionCount = receiveFunctionCount;
-	server->receiveTimeoutTime = receiveTimeoutTime;
-	server->functionArgument = functionArgument;
-	server->receiveFunctionCount = receiveFunctionCount;
-	server->receiveBufferSize = receiveBufferSize;
-
-	server->threadRunning = true;
-
 	uint8_t* receiveBuffer = malloc(sizeof(uint8_t) *
 		sessionBufferSize * receiveBufferSize);
 
@@ -258,8 +245,6 @@ struct StreamServer* createStreamServer(
 		free(server);
 		return NULL;
 	}
-
-	server->receiveBuffer = receiveBuffer;
 
 	enum AddressFamily addressFamily;
 
@@ -316,6 +301,16 @@ struct StreamServer* createStreamServer(
 		return NULL;
 	}
 
+	server->sessionBuffer = sessionBuffer;
+	server->sessionBufferSize = sessionBufferSize;
+	server->receiveFunctions = receiveFunctions;
+	server->receiveFunctionCount = receiveFunctionCount;
+	server->receiveTimeoutTime = receiveTimeoutTime;
+	server->functionArgument = functionArgument;
+	server->receiveFunctionCount = receiveFunctionCount;
+	server->receiveBufferSize = receiveBufferSize;
+	server->receiveBuffer = receiveBuffer;
+	server->threadRunning = true;
 	server->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
@@ -371,6 +366,7 @@ void destroyStreamServer(
 	}
 
 	free(server->receiveBuffer);
+	free(server->receiveFunctions);
 	free(server->sessionBuffer);
 	free(server);
 }

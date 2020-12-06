@@ -5,7 +5,7 @@
 struct DatagramClient;
 
 /* Datagram client datagram receive function */
-typedef void(*DatagramClientReceive)(
+typedef bool(*DatagramClientReceive)(
 	struct DatagramClient* client,
 	const uint8_t* buffer,
 	size_t count,
@@ -26,7 +26,7 @@ typedef void(*DatagramClientReceive)(
 struct DatagramClient* createDatagramClient(
 	const struct SocketAddress* localAddress,
 	const struct SocketAddress* remoteAddress,
-	DatagramClientReceive* receiveFunctions,
+	const DatagramClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
 	void* functionArgument,
 	size_t receiveBufferSize);

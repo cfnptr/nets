@@ -110,14 +110,6 @@ struct DatagramServer* createDatagramServer(
 		_receiveFunctions,
 		receiveFunctionSize);
 
-	server->receiveFunctions = receiveFunctions;
-	server->receiveFunctionCount = receiveFunctionCount;
-	server->functionArgument = functionArgument;
-	server->receiveFunctionCount = receiveFunctionCount;
-	server->receiveBufferSize = receiveBufferSize;
-
-	server->threadRunning = true;
-
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
@@ -127,8 +119,6 @@ struct DatagramServer* createDatagramServer(
 		free(server);
 		return NULL;
 	}
-
-	server->receiveBuffer = receiveBuffer;
 
 	enum AddressFamily addressFamily;
 
@@ -169,6 +159,13 @@ struct DatagramServer* createDatagramServer(
 		return NULL;
 	}
 
+	server->receiveFunctions = receiveFunctions;
+	server->receiveFunctionCount = receiveFunctionCount;
+	server->functionArgument = functionArgument;
+	server->receiveFunctionCount = receiveFunctionCount;
+	server->receiveBufferSize = receiveBufferSize;
+	server->receiveBuffer = receiveBuffer;
+	server->threadRunning = true;
 	server->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(

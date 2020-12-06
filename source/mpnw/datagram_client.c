@@ -2,6 +2,7 @@
 #include "mpmt/thread.h"
 
 #include <assert.h>
+#include <string.h>
 
 struct DatagramClient
 {
@@ -59,11 +60,17 @@ static void datagramClientReceiveHandler(
 			DatagramClientReceive receiveFunction =
 				receiveFunctions[functionIndex];
 
-			receiveFunction(
+			result = receiveFunction(
 				client,
 				receiveBuffer,
 				byteCount,
 				functionArgument);
+
+			if (result == false)
+			{
+				client->threadRunning = false;
+				return;
+			}
 		}
 	}
 }
@@ -71,13 +78,13 @@ static void datagramClientReceiveHandler(
 struct DatagramClient* createDatagramClient(
 	const struct SocketAddress* localAddress,
 	const struct SocketAddress* remoteAddress,
-	DatagramClientReceive* receiveFunctions,
+	const DatagramClientReceive* _receiveFunctions,
 	size_t receiveFunctionCount,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
 	assert(localAddress != NULL);
-	assert(receiveFunctions != NULL);
+	assert(_receiveFunctions != NULL);
 	assert(receiveFunctionCount > 0);
 	assert(receiveFunctionCount <= 256);
 	assert(receiveBufferSize > 0);
@@ -88,24 +95,31 @@ struct DatagramClient* createDatagramClient(
 	if (client == NULL)
 		return NULL;
 
-	client->receiveFunctions = receiveFunctions;
-	client->receiveFunctionCount = receiveFunctionCount;
-	client->functionArgument = functionArgument;
-	client->receiveFunctionCount = receiveFunctionCount;
-	client->receiveBufferSize = receiveBufferSize;
+	size_t receiveFunctionSize =
+		receiveFunctionCount * sizeof(DatagramClientReceive);
+	DatagramClientReceive* receiveFunctions = malloc(
+		receiveFunctionSize);
 
-	client->threadRunning = true;
+	if (receiveFunctions == NULL)
+	{
+		free(client);
+		return NULL;
+	}
+
+	memcpy(
+		receiveFunctions,
+		_receiveFunctions,
+		receiveFunctionSize);
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
 	if (receiveBuffer == NULL)
 	{
+		free(receiveFunctions);
 		free(client);
 		return NULL;
 	}
-
-	client->receiveBuffer = receiveBuffer;
 
 	enum AddressFamily addressFamily;
 
@@ -116,6 +130,7 @@ struct DatagramClient* createDatagramClient(
 	if (result == false)
 	{
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(client);
 		return NULL;
 	}
@@ -127,6 +142,7 @@ struct DatagramClient* createDatagramClient(
 	if (receiveSocket == NULL)
 	{
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(client);
 		return NULL;
 	}
@@ -139,6 +155,7 @@ struct DatagramClient* createDatagramClient(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(client);
 		return NULL;
 	}
@@ -151,10 +168,18 @@ struct DatagramClient* createDatagramClient(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(client);
 		return NULL;
 	}
 
+	client->receiveFunctions = receiveFunctions;
+	client->receiveFunctionCount = receiveFunctionCount;
+	client->functionArgument = functionArgument;
+	client->receiveFunctionCount = receiveFunctionCount;
+	client->receiveBufferSize = receiveBufferSize;
+	client->receiveBuffer = receiveBuffer;
+	client->threadRunning = true;
 	client->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
@@ -165,6 +190,7 @@ struct DatagramClient* createDatagramClient(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(client);
 		return NULL;
 	}
@@ -184,6 +210,7 @@ void destroyDatagramClient(
 	destroyThread(client->receiveThread);
 
 	free(client->receiveBuffer);
+	free(client->receiveFunctions);
 	free(client);
 }
 
