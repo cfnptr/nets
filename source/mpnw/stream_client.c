@@ -162,7 +162,6 @@ struct StreamClient* createStreamClient(
 	client->receiveFunctions = receiveFunctions;
 	client->receiveFunctionCount = receiveFunctionCount;
 	client->functionArgument = functionArgument;
-	client->receiveFunctionCount = receiveFunctionCount;
 	client->receiveBufferSize = receiveBufferSize;
 	client->receiveBuffer = receiveBuffer;
 	client->threadRunning = true;

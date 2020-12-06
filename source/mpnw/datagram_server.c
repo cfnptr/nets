@@ -143,7 +143,6 @@ struct DatagramServer* createDatagramServer(
 	server->receiveFunctions = receiveFunctions;
 	server->receiveFunctionCount = receiveFunctionCount;
 	server->functionArgument = functionArgument;
-	server->receiveFunctionCount = receiveFunctionCount;
 	server->receiveBufferSize = receiveBufferSize;
 	server->receiveBuffer = receiveBuffer;
 	server->threadRunning = true;

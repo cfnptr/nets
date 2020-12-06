@@ -384,7 +384,7 @@ bool socketReceive(
 		(int)size,
 		0);
 
-	if (count < 0)
+	if (count < 1)
 		return false;
 
 	*_count = (size_t)count;
@@ -448,7 +448,7 @@ bool socketReceiveFrom(
 		(struct sockaddr*)&address->handle,
 		&length);
 
-	if (count < 0)
+	if (count < 1)
 	{
 		free(address);
 		return false;

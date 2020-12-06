@@ -266,7 +266,6 @@ struct StreamServer* createStreamServer(
 	server->receiveFunctionCount = receiveFunctionCount;
 	server->receiveTimeoutTime = receiveTimeoutTime;
 	server->functionArgument = functionArgument;
-	server->receiveFunctionCount = receiveFunctionCount;
 	server->receiveBufferSize = receiveBufferSize;
 	server->receiveBuffer = receiveBuffer;
 	server->threadRunning = true;
