@@ -458,6 +458,7 @@ bool socketReceiveFrom(
 	*_count = (size_t)count;
 	return true;
 }
+
 bool socketSendTo(
 	struct Socket* socket,
 	const void* buffer,
@@ -472,13 +473,22 @@ bool socketSendTo(
 		return false;
 	}
 
+	SOCKET_LENGTH length;
+
+	if (address->handle.ss_family == AF_INET)
+		length = sizeof(struct sockaddr_in);
+	else if(address->handle.ss_family == AF_INET6)
+		length = sizeof(struct sockaddr_in6);
+	else
+		return false;
+
 	return sendto(
 		socket->handle,
 		(const char*)buffer,
 		(int)count,
 		0,
 		(const struct sockaddr*)&address->handle,
-		sizeof(struct sockaddr_storage)) == count;
+		length) == count;
 }
 
 struct SocketAddress* createSocketAddress(
