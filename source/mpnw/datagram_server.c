@@ -10,8 +10,8 @@ struct DatagramServer
 	void* functionArgument;
 	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
-	struct Socket* receiveSocket;
 	volatile bool threadRunning;
+	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
 };
 
@@ -34,21 +34,19 @@ void datagramServerReceive(void* argument)
 	struct Socket* receiveSocket =
 		server->receiveSocket;
 
-	bool receiveResult;
 	size_t byteCount;
 	struct SocketAddress* remoteAddress;
 
-	while (server->threadRunning)
+	while (server->threadRunning == true)
 	{
-		receiveResult = socketReceiveFrom(
+		bool result = socketReceiveFrom(
 			receiveSocket,
 			receiveBuffer,
 			receiveBufferSize,
 			&remoteAddress,
 			&byteCount);
 
-		if (receiveResult == false ||
-			byteCount == 0)
+		if (result == false || byteCount == 0)
 		{
 			sleepThread(1);
 			continue;
@@ -68,6 +66,9 @@ void datagramServerReceive(void* argument)
 				byteCount,
 				functionArgument);
 		}
+
+		destroySocketAddress(
+			remoteAddress);
 	}
 }
 
@@ -123,7 +124,7 @@ struct DatagramServer* createDatagramServer(
 	}
 
 	struct Socket* receiveSocket = createSocket(
-		STREAM_SOCKET_TYPE,
+		DATAGRAM_SOCKET_TYPE,
 		addressFamily);
 
 	if (receiveSocket == NULL)
@@ -171,11 +172,7 @@ void destroyDatagramServer(
 
 	server->threadRunning = false;
 
-	shutdownSocket(
-		server->receiveSocket,
-		SHUTDOWN_RECEIVE_SEND);
 	destroySocket(server->receiveSocket);
-
 	joinThread(server->receiveThread);
 	destroyThread(server->receiveThread);
 

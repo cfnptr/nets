@@ -18,6 +18,7 @@ typedef void(*DatagramClientReceive)(
  * remoteAddress - pointer to the valid server address.
  * receiveFunctions - pointer to the valid receive functions.
  * receiveFunctionCount - receive function array item count.
+ * stopFunction - pointer to the valid stop function.
  * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket datagram receive buffer size.
  */
@@ -34,6 +35,13 @@ struct DatagramClient* createDatagramClient(
  * client - pointer to the valid datagram client.
  */
 void destroyDatagramClient(
+	struct DatagramClient* client);
+
+/*
+ * Returns true if datagram client is still running.
+ * client - pointer to the valid datagram client.
+ */
+bool isDatagramClientRunning(
 	struct DatagramClient* client);
 
 /*

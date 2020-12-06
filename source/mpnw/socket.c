@@ -15,7 +15,6 @@
 #define SOCKET int
 #define INVALID_SOCKET -1
 #define SOCKET_LENGTH socklen_t
-#define closesocket(x) close(x)
 #elif _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -34,7 +33,6 @@ static WSADATA wsaData;
 struct Socket
 {
 	SOCKET handle;
-	bool blocking;
 };
 
 struct SocketAddress
@@ -85,12 +83,6 @@ struct Socket* createSocket(
 	if(networkInitialized == false)
 		return NULL;
 
-	struct Socket* _socket =
-		malloc(sizeof(struct Socket));
-
-	if (_socket == NULL)
-		return NULL;
-
 	int type, family;
 
 	if (_type == STREAM_SOCKET_TYPE)
@@ -107,6 +99,12 @@ struct Socket* createSocket(
 	else
 		return NULL;
 
+	struct Socket* _socket =
+		malloc(sizeof(struct Socket));
+
+	if (_socket == NULL)
+		return NULL;
+
 	SOCKET handle = socket(
 		family,
 		type,
@@ -118,7 +116,6 @@ struct Socket* createSocket(
 		return NULL;
 	}
 
-	_socket->blocking = false;
 	_socket->handle = handle;
 	return _socket;
 }
@@ -129,95 +126,18 @@ void destroySocket(
 	if (socket == NULL)
 		return;
 
-	closesocket(
-		socket->handle);
-	free(socket);
-}
-
-bool getSocketType(
-	const struct Socket* socket,
-	enum SocketType* _type)
-{
-	assert(socket != NULL);
-	assert(_type != NULL);
-
-	int type;
-
-	SOCKET_LENGTH length =
-		sizeof(int);
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_TYPE,
-		(char*)&type,
-		&length);
-
-	if (result != 0)
-		return false;
-
-	if (type == SOCK_STREAM)
-	{
-		*_type = STREAM_SOCKET_TYPE;
-		return true;
-	}
-	else if (type == SOCK_DGRAM)
-	{
-		*_type = DATAGRAM_SOCKET_TYPE;
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-bool getSocketListening(
-	const struct Socket* socket,
-	bool* _listening)
-{
-	assert(socket != NULL);
-	assert(_listening != NULL);
-
 #if __linux__ || __APPLE__
-	int listening;
-
-	socklen_t length =
-		sizeof(int);
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_ACCEPTCONN,
-		&listening,
-		&length);
-
-	if (result != 0)
-		return false;
-
-	*_listening =
-		listening == true;
-	return true;
+	int result = close(
+		socket->handle);
 #elif _WIN32
-	BOOL listening;
-
-	socklen_t length =
-		sizeof(BOOL);
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_ACCEPTCONN,
-		(char*)&listening,
-		&length);
+	int result = closesocket(
+		socket->handle);
+#endif
 
 	if (result != 0)
-		return false;
+		abort();
 
-	*_listening =
-		listening == TRUE;
-	return true;
-#endif
+	free(socket);
 }
 
 bool getSocketLocalAddress(
@@ -226,6 +146,12 @@ bool getSocketLocalAddress(
 {
 	assert(socket != NULL);
 	assert(_address != NULL);
+
+	struct SocketAddress* address =
+		malloc(sizeof(struct SocketAddress));
+
+	if (address == NULL)
+		return false;
 
 	struct sockaddr_storage handle;
 
@@ -243,16 +169,12 @@ bool getSocketLocalAddress(
 		&length);
 
 	if (result != 0)
+	{
+		free(address);
 		return false;
-
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		return false;
+	}
 
 	address->handle = handle;
-
 	*_address = address;
 	return true;
 }
@@ -263,6 +185,12 @@ bool getSocketRemoteAddress(
 {
 	assert(socket != NULL);
 	assert(_address != NULL);
+
+	struct SocketAddress* address =
+		malloc(sizeof(struct SocketAddress));
+
+	if (address == NULL)
+		return false;
 
 	struct sockaddr_storage handle;
 
@@ -280,233 +208,14 @@ bool getSocketRemoteAddress(
 		&length);
 
 	if (result != 0)
+	{
+		free(address);
 		return false;
-
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		return false;
+	}
 
 	address->handle = handle;
-
 	*_address = address;
 	return true;
-}
-
-bool getSocketBlocking(
-	const struct Socket* socket,
-	bool* blocking)
-{
-	assert(socket != NULL);
-	assert(blocking != NULL);
-
-	*blocking = socket->blocking;
-	return true;
-}
-
-bool setSocketBlocking(
-	struct Socket* socket,
-	bool blocking)
-{
-	assert(socket != NULL);
-
-#if __linux__ || __APPLE__
-	int flags = fcntl(
-		socket->handle,
-		F_GETFL,
-		0);
-
-	if (flags == -1)
-		return false;
-
-	flags = blocking ?
-		(flags & ~O_NONBLOCK) :
-		(flags | O_NONBLOCK);
-
-	int result = fcntl(
-		socket->handle,
-		F_SETFL,
-		flags);
-
-	if (result == -1)
-		return false;
-#elif _WIN32
-	u_long mode = blocking ? 0 : 1;
-
-	int result = ioctlsocket(
-		socket->handle,
-		FIONBIO,
-		&mode);
-
-	if (result != 0)
-		return false;
-#endif
-
-	socket->blocking = blocking;
-	return true;
-}
-
-bool getSocketReceiveTimeout(
-	const struct Socket* socket,
-	size_t* milliseconds)
-{
-	assert(socket != NULL);
-	assert(milliseconds != NULL);
-
-#if __linux__ || __APPLE__
-	struct timeval timeout;
-
-	socklen_t size =
-		sizeof(struct timeval);
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_RCVTIMEO,
-		&timeout,
-		&size);
-
-	if (result != 0)
-		return false;
-
-	*milliseconds =
-		timeout.tv_sec * 1000 +
-		timeout.tv_usec / 1000;
-	return true;
-#elif _WIN32
-	uint32_t timeout;
-
-	int size =
-		sizeof(uint32_t);
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_RCVTIMEO,
-		(char*)&timeout,
-		&size);
-
-	if (result != 0)
-		return false;
-
-	*milliseconds =
-		(size_t)timeout;
-	return true;
-#endif
-}
-
-bool setSocketReceiveTimeout(
-	struct Socket* socket,
-	size_t milliseconds)
-{
-	assert(socket != NULL);
-
-#if __linux__ || __APPLE__
-	struct timeval timeout;
-	timeout.tv_sec = milliseconds / 1000;
-	timeout.tv_usec = (milliseconds % 1000) * 1000;
-
-	int result = setsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_RCVTIMEO,
-		&timeout,
-		sizeof(struct timeval));
-#elif _WIN32
-	uint32_t timeout =
-		(uint32_t)milliseconds;
-
-	int result = setsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_RCVTIMEO,
-		(const char*)&timeout,
-		sizeof(uint32_t));
-#endif
-
-	return result == 0;
-}
-
-bool getSocketSendTimeout(
-	const struct Socket* socket,
-	size_t* milliseconds)
-{
-	assert(socket != NULL);
-	assert(milliseconds != NULL);
-
-#if __linux__ || __APPLE__
-	struct timeval timeout;
-
-	socklen_t size =
-		sizeof(struct timeval);
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_SNDTIMEO,
-		&timeout,
-		&size);
-
-	if (result != 0)
-		return false;
-
-	*milliseconds =
-		timeout.tv_sec * 1000 +
-		timeout.tv_usec / 1000;
-	return true;
-#elif _WIN32
-	uint32_t timeout;
-
-	int size =
-		sizeof(uint32_t);
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_SNDTIMEO,
-		(char*)&timeout,
-		&size);
-
-	if (result != 0)
-		return false;
-
-	*milliseconds =
-		(size_t)timeout;
-	return true;
-#endif
-}
-
-bool setSocketSendTimeout(
-	struct Socket* socket,
-	size_t milliseconds)
-{
-	assert(socket != NULL);
-
-#if __linux__ || __APPLE__
-	struct timeval timeout;
-	timeout.tv_sec = milliseconds / 1000;
-	timeout.tv_usec = (milliseconds % 1000) * 1000;
-
-	int result = setsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_SNDTIMEO,
-		&timeout,
-		sizeof(struct timeval));
-#elif _WIN32
-	uint32_t timeout =
-		(uint32_t)milliseconds;
-
-	int result = setsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_SNDTIMEO,
-		(const char*)&timeout,
-		sizeof(uint32_t));
-#endif
-
-	return result == 0;
 }
 
 bool bindSocket(
@@ -550,25 +259,24 @@ bool acceptSocket(
 	assert(socket != NULL);
 	assert(_acceptedSocket != NULL);
 
+	struct Socket* acceptedSocket =
+		malloc(sizeof(struct Socket));
+
+	if (acceptedSocket == NULL)
+		return false;
+
 	SOCKET handle = accept(
 		socket->handle,
 		NULL,
 		0);
 
 	if (handle == INVALID_SOCKET)
-		return false;
-
-	struct Socket* acceptedSocket =
-		malloc(sizeof(struct Socket));
-
-	if (acceptedSocket == NULL)
 	{
-		closesocket(handle);
+		free(acceptedSocket);
 		return false;
 	}
 
 	acceptedSocket->handle = handle;
-
 	*_acceptedSocket = acceptedSocket;
 	return true;
 }
@@ -661,7 +369,6 @@ bool socketSend(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(count > 0);
 
 	return send(
 		socket->handle,
@@ -723,7 +430,6 @@ bool socketSendTo(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(count > 0);
 	assert(address != NULL);
 
 	return sendto(
@@ -793,6 +499,25 @@ void destroySocketAddress(
 	struct SocketAddress* address)
 {
 	free(address);
+}
+
+struct SocketAddress* copySocketAddress(
+	const struct SocketAddress* address)
+{
+	assert(address != NULL);
+
+	struct SocketAddress* _address =
+		malloc(sizeof(struct SocketAddress));
+
+	if (_address == NULL)
+		return NULL;
+
+	memcpy(
+		&_address->handle,
+		&address->handle,
+		sizeof(struct sockaddr_storage));
+
+	return _address;
 }
 
 bool getSocketAddressFamily(

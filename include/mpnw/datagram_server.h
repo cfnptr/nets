@@ -6,7 +6,7 @@ struct DatagramServer;
 
 /* Datagram server datagram receive function */
 typedef void(*DatagramServerReceive)(
-	struct SocketAddress* address,
+	const struct SocketAddress* address,
 	const uint8_t* buffer,
 	size_t count,
 	void* argument);
@@ -22,7 +22,7 @@ typedef void(*DatagramServerReceive)(
  * receiveBufferSize - socket datagram receive buffer size.
  */
 struct DatagramServer* createDatagramServer(
-	struct SocketAddress* localAddress,
+	const struct SocketAddress* localAddress,
 	DatagramServerReceive* receiveFunctions,
 	size_t receiveFunctionCount,
 	void* functionArgument,

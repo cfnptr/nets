@@ -10,8 +10,8 @@ struct DatagramClient
 	void* functionArgument;
 	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
-	struct Socket* receiveSocket;
 	volatile bool threadRunning;
+	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
 };
 
@@ -34,22 +34,20 @@ void datagramClientReceive(void* argument)
 	struct Socket* receiveSocket =
 		client->receiveSocket;
 
-	bool receiveResult;
 	size_t byteCount;
 
-	while (client->threadRunning)
+	while (true)
 	{
-		receiveResult = socketReceive(
+		bool result = socketReceive(
 			receiveSocket,
 			receiveBuffer,
 			receiveBufferSize,
 			&byteCount);
 
-		if (receiveResult == false ||
-			byteCount == 0)
+		if (result == false || byteCount == 0)
 		{
-			sleepThread(1);
-			continue;
+			client->threadRunning = false;
+			return;
 		}
 
 		size_t functionIndex =
@@ -73,7 +71,6 @@ struct DatagramClient* createDatagramClient(
 	const struct SocketAddress* remoteAddress,
 	DatagramClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
-	DatagramClientStop stopFunction,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
@@ -93,8 +90,9 @@ struct DatagramClient* createDatagramClient(
 	client->receiveFunctionCount = receiveFunctionCount;
 	client->functionArgument = functionArgument;
 	client->receiveFunctionCount = receiveFunctionCount;
-	client->stopFunction = stopFunction;
 	client->receiveBufferSize = receiveBufferSize;
+
+	client->threadRunning = true;
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
@@ -121,7 +119,7 @@ struct DatagramClient* createDatagramClient(
 	}
 
 	struct Socket* receiveSocket = createSocket(
-		STREAM_SOCKET_TYPE,
+		DATAGRAM_SOCKET_TYPE,
 		addressFamily);
 
 	if (receiveSocket == NULL)
@@ -179,16 +177,19 @@ void destroyDatagramClient(
 	if (client == NULL)
 		return;
 
-	shutdownSocket(
-		client->receiveSocket,
-		SHUTDOWN_RECEIVE_SEND);
 	destroySocket(client->receiveSocket);
-
 	joinThread(client->receiveThread);
 	destroyThread(client->receiveThread);
 
 	free(client->receiveBuffer);
 	free(client);
+}
+
+bool isDatagramClientRunning(
+	struct DatagramClient* client)
+{
+	assert(client != NULL);
+	return client->threadRunning;
 }
 
 bool datagramClientSend(
@@ -198,7 +199,6 @@ bool datagramClientSend(
 {
 	assert(client != NULL);
 	assert(buffer != NULL);
-	assert(count != 0);
 
 	return socketSend(
 		client->receiveSocket,

@@ -68,28 +68,6 @@ void destroySocket(
 	struct Socket* socket);
 
 /*
- * Returns socket type.
- * Returns true on successful get.
- *
- * socket - pointer to the valid socket.
- * type - pointer to the valid socket type.
- */
-bool getSocketType(
-	const struct Socket* socket,
-	enum SocketType* type);
-
-/*
- * Returns current socket listening state.
- * Returns true on successful get.
- *
- * socket - pointer to the valid socket.
- * listening - pointer to the valid listening state.
- */
-bool getSocketListening(
-	const struct Socket* socket,
-	bool* listening);
-
-/*
  * Returns a new local socket address.
  * Returns true on successful get.
  *
@@ -110,72 +88,6 @@ bool getSocketLocalAddress(
 bool getSocketRemoteAddress(
 	const struct Socket* socket,
 	struct SocketAddress** address);
-
-/*
- * Returns current socket blocking mode.
- * Returns true on successful get.
- *
- * socket - pointer to the valid socket.
- * blocking - pointer to the valid blocking mode.
- */
-bool getSocketBlocking(
-	const struct Socket* socket,
-	bool* blocking);
-
-/*
- * Sets socket blocking mode.
- * Returns true on successful set.
- *
- * socket - pointer to the valid socket.
- * blocking - target socket blocking mode.
- */
-bool setSocketBlocking(
-	struct Socket* socket,
-	bool blocking);
-
-/*
- * Returns current socket receive timeout.
- * Returns true on successful get.
- *
- * socket - pointer to the valid socket.
- * milliseconds - pointer to the valid receive timeout.
- */
-bool getSocketReceiveTimeout(
-	const struct Socket* socket,
-	size_t* milliseconds);
-
-/*
- * Sets socket receive timeout.
- * Returns true on successful set.
- *
- * socket - pointer to the valid socket.
- * milliseconds - socket receive timeout.
- */
-bool setSocketReceiveTimeout(
-	struct Socket* socket,
-	size_t milliseconds);
-
-/*
- * Returns current socket send timeout.
- * Returns true on successful get.
- *
- * socket - pointer to the valid socket.
- * milliseconds - pointer to the valid receive timeout.
- */
-bool getSocketSendTimeout(
-	const struct Socket* socket,
-	size_t* milliseconds);
-
-/*
- * Sets socket send timeout.
- * Returns true on successful set.
- *
- * socket - pointer to the valid socket.
- * milliseconds - socket send timeout.
- */
-bool setSocketSendTimeout(
-	struct Socket* socket,
-	size_t milliseconds);
 
 /*
  * Binds specified address to the socket.
@@ -282,7 +194,7 @@ bool socketReceiveFrom(
  * socket - pointer to the valid socket.
  * buffer - pointer to the valid send buffer.
  * count - message byte count to send.
- * address - pointer to the valid receiver address.
+ * address - pointer to the valid socket address.
  */
 bool socketSendTo(
 	struct Socket* socket,
@@ -302,9 +214,19 @@ struct SocketAddress* createSocketAddress(
 
 /*
  * Destroys specified socket endpoint address.
+ * address - pointer to the valid socket address.
  */
 void destroySocketAddress(
 	struct SocketAddress* address);
+
+/*
+ * Creates a new socket address copy.
+ * address - pointer to the valid socket address.
+ */
+struct SocketAddress* copySocketAddress(
+	const struct SocketAddress* address);
+
+// TODO: compare socket addresses
 
 /*
  * Returns true if successfully got address family.
