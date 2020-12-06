@@ -4,14 +4,6 @@
 /* Stream client instance handle */
 struct StreamClient;
 
-/* Stream client connection state */
-enum StreamClientState
-{
-	CONNECTING_STREAM_CLIENT,
-	CONNECTED_STREAM_CLIENT,
-	NOT_CONNECTED_STREAM_CLIENT,
-};
-
 /* Stream client message receive function */
 typedef void(*StreamClientReceive)(
 	const uint8_t* buffer,
@@ -34,7 +26,6 @@ struct StreamClient* createStreamClient(
 	const struct SocketAddress* remoteAddress,
 	StreamClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
-	StreamClientStop stopFunction,
 	void* functionArgument,
 	size_t receiveBufferSize);
 
@@ -46,13 +37,11 @@ void destroyStreamClient(
 	struct StreamClient* client);
 
 /*
- * Returns current stream client connection state.
+ * Returns true if stream client is still running;
  * client - pointer to the valid stream client.
  */
-enum StreamClientState getStreamClientState(
-	struct StreamClient* client);
-
-// TODO: make send async.
+bool isStreamClientRunning(
+	const struct StreamClient* client);
 
 /*
  * Sends message to the server.

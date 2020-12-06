@@ -15,7 +15,8 @@ struct DatagramClient
 	struct Thread* receiveThread;
 };
 
-void datagramClientReceive(void* argument)
+static void datagramClientReceiveHandler(
+	void* argument)
 {
 	assert(argument != NULL);
 
@@ -156,7 +157,7 @@ struct DatagramClient* createDatagramClient(
 	client->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
-		datagramClientReceive,
+		datagramClientReceiveHandler,
 		client);
 
 	if (receiveThread == NULL)
@@ -186,7 +187,7 @@ void destroyDatagramClient(
 }
 
 bool isDatagramClientRunning(
-	struct DatagramClient* client)
+	const struct DatagramClient* client)
 {
 	assert(client != NULL);
 	return client->threadRunning;

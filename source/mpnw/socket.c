@@ -70,7 +70,10 @@ void terminateNetwork()
 #if __linux__ || __APPLE__
 	signal(SIGPIPE, SIG_DFL);
 #elif _WIN32
-	WSACleanup();
+	int result = WSACleanup();
+
+	if (result != 0)
+		abort();
 #endif
 
 	networkInitialized = false;

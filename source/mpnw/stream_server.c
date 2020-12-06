@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <assert.h>
+#include <string.h>
 
 struct StreamServer
 {
@@ -29,7 +30,8 @@ struct StreamSession
 	struct Thread* receiveThread;
 };
 
-void streamSessionReceive(void* argument)
+static void streamSessionReceiveHandler(
+	void* argument)
 {
 	assert(argument != NULL);
 
@@ -98,7 +100,8 @@ void streamSessionReceive(void* argument)
 	}
 }
 
-void streamServerAccept(void* argument)
+static void streamServerAcceptHandler(
+	void* argument)
 {
 	assert(argument != NULL);
 
@@ -153,7 +156,7 @@ void streamServerAccept(void* argument)
 				session->receiveSocket = acceptedSocket;
 
 				struct Thread* receiveThread = createThread(
-					streamSessionReceive,
+					streamSessionReceiveHandler,
 					session);
 
 				if (receiveThread == NULL)
@@ -175,7 +178,7 @@ void streamServerAccept(void* argument)
 struct StreamServer* createStreamServer(
 	const struct SocketAddress* localAddress,
 	size_t sessionBufferSize,
-	StreamSessionReceive* receiveFunctions,
+	const StreamSessionReceive* _receiveFunctions,
 	size_t receiveFunctionCount,
 	size_t receiveTimeoutTime,
 	void* functionArgument,
@@ -183,7 +186,7 @@ struct StreamServer* createStreamServer(
 {
 	assert(localAddress != NULL);
 	assert(sessionBufferSize > 0);
-	assert(receiveFunctions != NULL);
+	assert(_receiveFunctions != NULL);
 	assert(receiveFunctionCount > 0);
 	assert(receiveFunctionCount <= 256);
 	assert(receiveBufferSize > 0);
@@ -217,6 +220,23 @@ struct StreamServer* createStreamServer(
 		sessionBuffer[i] = session;
 	}
 
+	size_t receiveFunctionSize =
+		receiveFunctionCount * sizeof(StreamSessionReceive);
+	StreamSessionReceive* receiveFunctions = malloc(
+		receiveFunctionSize);
+
+	if (receiveFunctions == NULL)
+	{
+		free(sessionBuffer);
+		free(server);
+		return NULL;
+	}
+
+	memcpy(
+		receiveFunctions,
+		_receiveFunctions,
+		receiveFunctionSize);
+
 	server->sessionBuffer = sessionBuffer;
 	server->sessionBufferSize = sessionBufferSize;
 	server->receiveFunctions = receiveFunctions;
@@ -233,6 +253,7 @@ struct StreamServer* createStreamServer(
 
 	if (receiveBuffer == NULL)
 	{
+		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -249,6 +270,7 @@ struct StreamServer* createStreamServer(
 	if (result == false)
 	{
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -261,6 +283,7 @@ struct StreamServer* createStreamServer(
 	if (receiveSocket == NULL)
 	{
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -274,6 +297,7 @@ struct StreamServer* createStreamServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -286,6 +310,7 @@ struct StreamServer* createStreamServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -294,13 +319,14 @@ struct StreamServer* createStreamServer(
 	server->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
-		streamServerAccept,
+		streamServerAcceptHandler,
 		server);
 
 	if (receiveThread == NULL)
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;

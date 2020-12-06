@@ -8,16 +8,16 @@ struct StreamClient
 	struct SocketAddress* remoteAddress;
 	StreamClientReceive* receiveFunctions;
 	size_t receiveFunctionCount;
-	StreamClientStop stopFunction;
 	void* functionArgument;
 	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
+	volatile bool threadRunning;
 	struct Socket* receiveSocket;
-	volatile enum StreamClientState state;
 	struct Thread* receiveThread;
 };
 
-void streamClientReceive(void* argument)
+static void streamClientReceiveHandler(
+	void* argument)
 {
 	assert(argument != NULL);
 
@@ -29,8 +29,6 @@ void streamClientReceive(void* argument)
 		client->receiveFunctions;
 	size_t receiveFunctionCount =
 		client->receiveFunctionCount;
-	StreamClientStop stopFunction =
-		client->stopFunction;
 	void* functionArgument =
 		client->functionArgument;
 	size_t receiveBufferSize =
@@ -46,12 +44,9 @@ void streamClientReceive(void* argument)
 
 	if (result == false)
 	{
-		client->state =
-			NOT_CONNECTED_STREAM_CLIENT;
+		client->threadRunning = false;
 		return;
 	}
-
-	client->state = CONNECTED_STREAM_CLIENT;
 
 	size_t byteCount;
 
@@ -66,8 +61,7 @@ void streamClientReceive(void* argument)
 		if (result == false ||
 			byteCount == 0)
 		{
-			stopFunction(
-				functionArgument);
+			client->threadRunning = false;
 			return;
 		}
 
@@ -92,7 +86,6 @@ struct StreamClient* createStreamClient(
 	const struct SocketAddress* remoteAddress,
 	StreamClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
-	StreamClientStop stopFunction,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
@@ -122,10 +115,9 @@ struct StreamClient* createStreamClient(
 	client->receiveFunctionCount = receiveFunctionCount;
 	client->functionArgument = functionArgument;
 	client->receiveFunctionCount = receiveFunctionCount;
-	client->stopFunction = stopFunction;
 	client->receiveBufferSize = receiveBufferSize;
 
-	client->state = CONNECTING_STREAM_CLIENT;
+	client->threadRunning = true;
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
@@ -177,7 +169,7 @@ struct StreamClient* createStreamClient(
 	client->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
-		streamClientReceive,
+		streamClientReceiveHandler,
 		client);
 
 	if (receiveThread == NULL)
@@ -209,11 +201,11 @@ void destroyStreamClient(
 	free(client);
 }
 
-enum StreamClientState getStreamClientState(
-	struct StreamClient* client)
+bool isStreamClientRunning(
+	const struct StreamClient* client)
 {
 	assert(client != NULL);
-	return client->state;
+	return client->threadRunning;
 }
 
 bool streamClientSend(
@@ -223,9 +215,6 @@ bool streamClientSend(
 {
 	assert(client != NULL);
 	assert(buffer != NULL);
-
-	if (client->state != CONNECTED_STREAM_CLIENT)
-		return false;
 
 	return socketSend(
 		client->receiveSocket,

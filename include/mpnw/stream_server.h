@@ -17,16 +17,18 @@ typedef bool(*StreamSessionReceive)(
  * Creates a new stream server.
  * Returns stream server on success, otherwise null.
  *
- * TODO:
  * localAddress - pointer to the valid socket address.
- * acceptFunctions - pointer to the valid accept functions.
+ * sessionBufferSize - socket session buffer size.
+ * receiveFunctions - pointer to the valid receive functions.
+ * receiveFunctionCount - receive function array item count.
+ * receiveTimeoutTime - socket message receive timeout time.
  * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket datagram receive buffer size.
  */
 struct StreamServer* createStreamServer(
 	const struct SocketAddress* localAddress,
 	size_t sessionBufferSize,
-	StreamSessionReceive* receiveFunctions,
+	const StreamSessionReceive* receiveFunctions,
 	size_t receiveFunctionCount,
 	size_t receiveTimeoutTime,
 	void* functionArgument,

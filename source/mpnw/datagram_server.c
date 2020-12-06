@@ -2,6 +2,7 @@
 #include "mpmt/thread.h"
 
 #include <assert.h>
+#include <string.h>
 
 struct DatagramServer
 {
@@ -15,7 +16,8 @@ struct DatagramServer
 	struct Thread* receiveThread;
 };
 
-void datagramServerReceive(void* argument)
+static void datagramServerReceiveHandler(
+	void* argument)
 {
 	assert(argument != NULL);
 
@@ -61,6 +63,7 @@ void datagramServerReceive(void* argument)
 				receiveFunctions[functionIndex];
 
 			receiveFunction(
+				server,
 				remoteAddress,
 				receiveBuffer,
 				byteCount,
@@ -74,13 +77,13 @@ void datagramServerReceive(void* argument)
 
 struct DatagramServer* createDatagramServer(
 	const struct SocketAddress* localAddress,
-	DatagramServerReceive* receiveFunctions,
+	const DatagramServerReceive* _receiveFunctions,
 	size_t receiveFunctionCount,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
 	assert(localAddress != NULL);
-	assert(receiveFunctions != NULL);
+	assert(_receiveFunctions != NULL);
 	assert(receiveFunctionCount > 0);
 	assert(receiveFunctionCount <= 256);
 	assert(receiveBufferSize > 0);
@@ -90,6 +93,22 @@ struct DatagramServer* createDatagramServer(
 
 	if (server == NULL)
 		return NULL;
+
+	size_t receiveFunctionSize =
+		receiveFunctionCount * sizeof(DatagramServerReceive);
+	DatagramServerReceive* receiveFunctions = malloc(
+		receiveFunctionSize);
+
+	if (receiveFunctions == NULL)
+	{
+		free(server);
+		return NULL;
+	}
+
+	memcpy(
+		receiveFunctions,
+		_receiveFunctions,
+		receiveFunctionSize);
 
 	server->receiveFunctions = receiveFunctions;
 	server->receiveFunctionCount = receiveFunctionCount;
@@ -104,6 +123,7 @@ struct DatagramServer* createDatagramServer(
 
 	if (receiveBuffer == NULL)
 	{
+		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -119,6 +139,7 @@ struct DatagramServer* createDatagramServer(
 	if (result == false)
 	{
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -130,6 +151,7 @@ struct DatagramServer* createDatagramServer(
 	if (receiveSocket == NULL)
 	{
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -142,6 +164,7 @@ struct DatagramServer* createDatagramServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -149,13 +172,14 @@ struct DatagramServer* createDatagramServer(
 	server->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
-		datagramServerReceive,
+		datagramServerReceiveHandler,
 		server);
 
 	if (receiveThread == NULL)
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
+		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -177,6 +201,7 @@ void destroyDatagramServer(
 	destroyThread(server->receiveThread);
 
 	free(server->receiveBuffer);
+	free(server->receiveFunctions);
 	free(server);
 }
 

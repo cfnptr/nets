@@ -42,7 +42,7 @@ void destroyDatagramClient(
  * client - pointer to the valid datagram client.
  */
 bool isDatagramClientRunning(
-	struct DatagramClient* client);
+	const struct DatagramClient* client);
 
 /*
  * Sends datagram to the server.
