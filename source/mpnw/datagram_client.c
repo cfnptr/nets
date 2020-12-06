@@ -1,7 +1,6 @@
 #include "mpnw/datagram_client.h"
 #include "mpmt/thread.h"
 
-#include <assert.h>
 #include <string.h>
 
 struct DatagramClient
@@ -19,8 +18,6 @@ struct DatagramClient
 static void datagramClientReceiveHandler(
 	void* argument)
 {
-	assert(argument != NULL);
-
 	struct DatagramClient* client =
 		(struct DatagramClient*)argument;
 	DatagramClientReceive* receiveFunctions =
@@ -76,33 +73,68 @@ static void datagramClientReceiveHandler(
 }
 
 struct DatagramClient* createDatagramClient(
-	const struct SocketAddress* localAddress,
+	enum AddressFamily addressFamily,
 	const struct SocketAddress* remoteAddress,
 	const DatagramClientReceive* _receiveFunctions,
 	size_t receiveFunctionCount,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
-	assert(localAddress != NULL);
-	assert(_receiveFunctions != NULL);
-	assert(receiveFunctionCount > 0);
-	assert(receiveFunctionCount <= 256);
-	assert(receiveBufferSize > 0);
+	if (_receiveFunctions == NULL ||
+		receiveFunctionCount == 0 ||
+		receiveFunctionCount > 256 ||
+		receiveBufferSize == 0)
+	{
+		return NULL;
+	}
 
 	struct DatagramClient* client =
 		malloc(sizeof(struct DatagramClient));
-
-	if (client == NULL)
-		return NULL;
-
 	size_t receiveFunctionSize =
 		receiveFunctionCount * sizeof(DatagramClientReceive);
 	DatagramClientReceive* receiveFunctions = malloc(
 		receiveFunctionSize);
+	uint8_t* receiveBuffer = malloc(
+		receiveBufferSize * sizeof(uint8_t));
 
-	if (receiveFunctions == NULL)
+	struct SocketAddress* localAddress = NULL;
+
+	if (addressFamily == IP_V4_ADDRESS_FAMILY)
+	{
+		localAddress = createSocketAddress(
+			ANY_IP_ADDRESS_V4,
+			ANY_IP_ADDRESS_PORT);
+	}
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
+	{
+		localAddress = createSocketAddress(
+			ANY_IP_ADDRESS_V6,
+			ANY_IP_ADDRESS_PORT);
+	}
+
+	struct Socket* receiveSocket = createSocket(
+		DATAGRAM_SOCKET_TYPE,
+		addressFamily);
+
+	bool result = bindSocket(
+		receiveSocket,
+		localAddress);
+	result &= connectSocket(
+		receiveSocket,
+		remoteAddress);
+
+	if (client == NULL ||
+		receiveFunctions == NULL ||
+		receiveBuffer == NULL ||
+		localAddress == NULL ||
+		receiveSocket == NULL ||
+		result == false)
 	{
 		free(client);
+		free(receiveFunctions);
+		free(receiveBuffer);
+		destroySocketAddress(localAddress);
+		destroySocket(receiveSocket);
 		return NULL;
 	}
 
@@ -110,68 +142,6 @@ struct DatagramClient* createDatagramClient(
 		receiveFunctions,
 		_receiveFunctions,
 		receiveFunctionSize);
-
-	uint8_t* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(uint8_t));
-
-	if (receiveBuffer == NULL)
-	{
-		free(receiveFunctions);
-		free(client);
-		return NULL;
-	}
-
-	enum AddressFamily addressFamily;
-
-	bool result = getSocketAddressFamily(
-		localAddress,
-		&addressFamily);
-
-	if (result == false)
-	{
-		free(receiveBuffer);
-		free(receiveFunctions);
-		free(client);
-		return NULL;
-	}
-
-	struct Socket* receiveSocket = createSocket(
-		DATAGRAM_SOCKET_TYPE,
-		addressFamily);
-
-	if (receiveSocket == NULL)
-	{
-		free(receiveBuffer);
-		free(receiveFunctions);
-		free(client);
-		return NULL;
-	}
-
-	result = bindSocket(
-		receiveSocket,
-		localAddress);
-
-	if (result == false)
-	{
-		destroySocket(receiveSocket);
-		free(receiveBuffer);
-		free(receiveFunctions);
-		free(client);
-		return NULL;
-	}
-
-	result = connectSocket(
-		receiveSocket,
-		remoteAddress);
-
-	if (result == false)
-	{
-		destroySocket(receiveSocket);
-		free(receiveBuffer);
-		free(receiveFunctions);
-		free(client);
-		return NULL;
-	}
 
 	client->receiveFunctions = receiveFunctions;
 	client->receiveFunctionCount = receiveFunctionCount;
@@ -188,10 +158,11 @@ struct DatagramClient* createDatagramClient(
 
 	if (receiveThread == NULL)
 	{
-		destroySocket(receiveSocket);
-		free(receiveBuffer);
-		free(receiveFunctions);
 		free(client);
+		free(receiveFunctions);
+		free(receiveBuffer);
+		destroySocketAddress(localAddress);
+		destroySocket(receiveSocket);
 		return NULL;
 	}
 
@@ -214,11 +185,18 @@ void destroyDatagramClient(
 	free(client);
 }
 
-bool isDatagramClientRunning(
-	const struct DatagramClient* client)
+bool getDatagramClientRunning(
+	const struct DatagramClient* client,
+	bool* running)
 {
-	assert(client != NULL);
-	return client->threadRunning;
+	if (client == NULL ||
+		running == NULL)
+	{
+		return false;
+	}
+
+	*running = client->threadRunning;
+	return true;
 }
 
 bool datagramClientSend(
@@ -226,8 +204,8 @@ bool datagramClientSend(
 	const void* buffer,
 	size_t count)
 {
-	assert(client != NULL);
-	assert(buffer != NULL);
+	if (client == NULL)
+		return false;
 
 	return socketSend(
 		client->receiveSocket,

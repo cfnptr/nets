@@ -15,7 +15,7 @@ typedef bool(*DatagramClientReceive)(
  * Creates a new datagram client.
  * Returns datagram client on success, otherwise null.
  *
- * localAddress - pointer to the valid client address.
+ * addressFamily - local datagram socket address family.
  * remoteAddress - pointer to the valid server address.
  * receiveFunctions - pointer to the valid receive functions.
  * receiveFunctionCount - receive function array item count.
@@ -24,7 +24,7 @@ typedef bool(*DatagramClientReceive)(
  * receiveBufferSize - socket datagram receive buffer size.
  */
 struct DatagramClient* createDatagramClient(
-	const struct SocketAddress* localAddress,
+	enum AddressFamily addressFamily,
 	const struct SocketAddress* remoteAddress,
 	const DatagramClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
@@ -39,11 +39,15 @@ void destroyDatagramClient(
 	struct DatagramClient* client);
 
 /*
- * Returns true if datagram client is still running.
+ * Gets current datagram client running state
+ * Returns true on successful get.
+ *
  * client - pointer to the valid datagram client.
+ * running - pointer to the valid running value.
  */
-bool isDatagramClientRunning(
-	const struct DatagramClient* client);
+bool getDatagramClientRunning(
+	const struct DatagramClient* client,
+	bool* running);
 
 /*
  * Sends datagram to the server.

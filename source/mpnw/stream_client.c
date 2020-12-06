@@ -1,7 +1,6 @@
 #include "mpnw/stream_client.h"
 #include "mpmt/thread.h"
 
-#include <assert.h>
 #include <string.h>
 
 struct StreamClient
@@ -20,8 +19,6 @@ struct StreamClient
 static void streamClientReceiveHandler(
 	void* argument)
 {
-	assert(argument != NULL);
-
 	struct StreamClient* client =
 		(struct StreamClient*)argument;
 	struct SocketAddress* remoteAddress =
@@ -90,44 +87,69 @@ static void streamClientReceiveHandler(
 }
 
 struct StreamClient* createStreamClient(
-	const struct SocketAddress* localAddress,
+	enum AddressFamily addressFamily,
 	const struct SocketAddress* _remoteAddress,
 	const StreamClientReceive* _receiveFunctions,
 	size_t receiveFunctionCount,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
-	assert(localAddress != NULL);
-	assert(_remoteAddress != NULL);
-	assert(_receiveFunctions != NULL);
-	assert(receiveFunctionCount > 0);
-	assert(receiveFunctionCount <= 256);
-	assert(receiveBufferSize > 0);
-
-	struct StreamClient* client =
-		malloc(sizeof(struct StreamClient));
-
-	if (client == NULL)
-		return NULL;
-
-	struct SocketAddress* remoteAddress =
-		copySocketAddress(remoteAddress);
-
-	if (remoteAddress == NULL)
+	if (_receiveFunctions == NULL ||
+		receiveFunctionCount == 0 ||
+		receiveFunctionCount > 256 ||
+		receiveBufferSize == 0)
 	{
-		free(client);
 		return NULL;
 	}
 
+	struct StreamClient* client =
+		malloc(sizeof(struct StreamClient));
+	struct SocketAddress* remoteAddress =
+		copySocketAddress(_remoteAddress);
 	size_t receiveFunctionSize =
 		receiveFunctionCount * sizeof(StreamClientReceive);
 	StreamClientReceive* receiveFunctions = malloc(
 		receiveFunctionSize);
+	uint8_t* receiveBuffer = malloc(
+		receiveBufferSize * sizeof(uint8_t));
 
-	if (receiveFunctions == NULL)
+	struct SocketAddress* localAddress = NULL;
+
+	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
-		destroySocketAddress(remoteAddress);
+		localAddress = createSocketAddress(
+			ANY_IP_ADDRESS_V4,
+			ANY_IP_ADDRESS_PORT);
+	}
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
+	{
+		localAddress = createSocketAddress(
+			ANY_IP_ADDRESS_V6,
+			ANY_IP_ADDRESS_PORT);
+	}
+
+	struct Socket* receiveSocket = createSocket(
+		STREAM_SOCKET_TYPE,
+		addressFamily);
+
+	bool result = bindSocket(
+		receiveSocket,
+		localAddress);
+
+	if (client == NULL ||
+		remoteAddress == NULL ||
+		receiveFunctions == NULL ||
+		receiveBuffer == NULL ||
+		localAddress == NULL ||
+		receiveSocket == NULL ||
+		result == false)
+	{
 		free(client);
+		destroySocketAddress(remoteAddress);
+		free(receiveFunctions);
+		free(receiveBuffer);
+		destroySocketAddress(localAddress);
+		destroySocket(receiveSocket);
 		return NULL;
 	}
 
@@ -135,59 +157,6 @@ struct StreamClient* createStreamClient(
 		receiveFunctions,
 		_receiveFunctions,
 		receiveFunctionSize);
-
-	uint8_t* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(uint8_t));
-
-	if (receiveBuffer == NULL)
-	{
-		free(receiveFunctions);
-		destroySocketAddress(remoteAddress);
-		free(client);
-		return NULL;
-	}
-
-	enum AddressFamily addressFamily;
-
-	bool result = getSocketAddressFamily(
-		localAddress,
-		&addressFamily);
-
-	if (result == false)
-	{
-		free(receiveBuffer);
-		free(receiveFunctions);
-		destroySocketAddress(remoteAddress);
-		free(client);
-		return NULL;
-	}
-
-	struct Socket* receiveSocket = createSocket(
-		STREAM_SOCKET_TYPE,
-		addressFamily);
-
-	if (receiveSocket == NULL)
-	{
-		free(receiveBuffer);
-		free(receiveFunctions);
-		destroySocketAddress(remoteAddress);
-		free(client);
-		return NULL;
-	}
-
-	result = bindSocket(
-		receiveSocket,
-		localAddress);
-
-	if (result == false)
-	{
-		destroySocket(receiveSocket);
-		free(receiveBuffer);
-		free(receiveFunctions);
-		destroySocketAddress(remoteAddress);
-		free(client);
-		return NULL;
-	}
 
 	client->remoteAddress = remoteAddress;
 	client->receiveFunctions = receiveFunctions;
@@ -205,11 +174,12 @@ struct StreamClient* createStreamClient(
 
 	if (receiveThread == NULL)
 	{
-		destroySocket(receiveSocket);
-		free(receiveBuffer);
-		free(receiveFunctions);
-		destroySocketAddress(remoteAddress);
 		free(client);
+		destroySocketAddress(remoteAddress);
+		free(receiveFunctions);
+		free(receiveBuffer);
+		destroySocketAddress(localAddress);
+		destroySocket(receiveSocket);
 		return NULL;
 	}
 
@@ -233,11 +203,18 @@ void destroyStreamClient(
 	free(client);
 }
 
-bool isStreamClientRunning(
-	const struct StreamClient* client)
+bool getStreamClientRunning(
+	const struct StreamClient* client,
+	bool* running)
 {
-	assert(client != NULL);
-	return client->threadRunning;
+	if (client == NULL ||
+		running == NULL)
+	{
+		return  false;
+	}
+
+	*running = client->threadRunning;
+	return true;
 }
 
 bool streamClientSend(
@@ -245,8 +222,8 @@ bool streamClientSend(
 	const void* buffer,
 	size_t count)
 {
-	assert(client != NULL);
-	assert(buffer != NULL);
+	if (client == NULL)
+		return false;
 
 	return socketSend(
 		client->receiveSocket,

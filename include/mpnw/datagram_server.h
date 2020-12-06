@@ -16,14 +16,16 @@ typedef void(*DatagramServerReceive)(
  * Creates a new datagram server.
  * Returns datagram server on success, otherwise null.
  *
- * localAddress - pointer to the valid socket address.
+ * addressFamily - local datagram socket address family.
+ * port - pointer to the valid local address port string.
  * receiveFunctions - pointer to the valid receive functions.
  * receiveFunctionCount - receive function array item count.
  * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket datagram receive buffer size.
  */
 struct DatagramServer* createDatagramServer(
-	const struct SocketAddress* localAddress,
+	enum AddressFamily addressFamily,
+	const char* port,
 	const DatagramServerReceive* receiveFunctions,
 	size_t receiveFunctionCount,
 	void* functionArgument,

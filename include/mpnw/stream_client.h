@@ -15,7 +15,7 @@ typedef bool(*StreamClientReceive)(
  * Creates a new stream client.
  * Returns stream client on success, otherwise null.
  *
- * localAddress - pointer to the valid client address.
+ * addressFamily - local stream socket address family.
  * remoteAddress - pointer to the valid server address.
  * receiveFunctions - pointer to the valid receive functions.
  * receiveFunctionCount - receive function array item count.
@@ -23,7 +23,7 @@ typedef bool(*StreamClientReceive)(
  * receiveBufferSize - socket message receive buffer size.
  */
 struct StreamClient* createStreamClient(
-	const struct SocketAddress* localAddress,
+	enum AddressFamily addressFamily,
 	const struct SocketAddress* remoteAddress,
 	const StreamClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
@@ -38,11 +38,15 @@ void destroyStreamClient(
 	struct StreamClient* client);
 
 /*
- * Returns true if stream client is still running;
+ * Gets current stream client running state
+ * Returns true on successful get.
+ *
  * client - pointer to the valid stream client.
+ * running - pointer to the valid running value.
  */
-bool isStreamClientRunning(
-	const struct StreamClient* client);
+bool getStreamClientRunning(
+	const struct StreamClient* client,
+	bool* running);
 
 /*
  * Sends message to the server.
