@@ -14,6 +14,7 @@
 #define SOCKET int
 #define INVALID_SOCKET -1
 #define SOCKET_LENGTH socklen_t
+#define closesocket(x) close(x)
 #elif _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -85,53 +86,45 @@ struct Socket* createSocket(
 	if(networkInitialized == false)
 		return NULL;
 
-	struct Socket* _socket =
-		malloc(sizeof(struct Socket));
-
-	if (_socket == NULL)
-		return NULL;
-
 	int type, family;
 
 	if (_type == STREAM_SOCKET_TYPE)
-	{
 		type = SOCK_STREAM;
-	}
 	else if (_type == DATAGRAM_SOCKET_TYPE)
-	{
 		type = SOCK_DGRAM;
-	}
 	else
-	{
-		free(_socket);
 		return NULL;
-	}
 
 	if (_family == IP_V4_ADDRESS_FAMILY)
-	{
 		family = AF_INET;
-	}
 	else if (_family == IP_V6_ADDRESS_FAMILY)
-	{
 		family = AF_INET6;
-	}
 	else
-	{
-		free(_socket);
 		return NULL;
-	}
 
-	_socket->handle = socket(
+	struct Socket* _socket =
+		malloc(sizeof(struct Socket));
+
+	SOCKET handle = socket(
 		family,
 		type,
 		0);
 
-	if (_socket->handle == INVALID_SOCKET)
+	if (_socket == NULL ||
+		handle == INVALID_SOCKET)
 	{
 		free(socket);
+
+		int result = closesocket(
+			handle);
+
+		if (result != 0)
+			abort();
+
 		return NULL;
 	}
 
+	_socket->handle = handle;
 	return _socket;
 }
 
@@ -141,13 +134,8 @@ void destroySocket(
 	if (socket == NULL)
 		return;
 
-#if __linux__ || __APPLE__
-	int result = close(
-		socket->handle);
-#elif _WIN32
 	int result = closesocket(
 		socket->handle);
-#endif
 
 	if (result != 0)
 		abort();
@@ -168,11 +156,10 @@ bool getSocketLocalAddress(
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
 
-	if (address == NULL)
-		return false;
+	struct sockaddr_storage handle;
 
 	memset(
-		&address->handle,
+		&handle,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -181,15 +168,17 @@ bool getSocketLocalAddress(
 
 	int result = getsockname(
 		socket->handle,
-		(struct sockaddr*)&address->handle,
+		(struct sockaddr*)&handle,
 		&length);
 
-	if (result != 0)
+	if (address == NULL ||
+		result != 0)
 	{
 		free(address);
 		return false;
 	}
 
+	address->handle = handle;
 	*_address = address;
 	return true;
 }
@@ -207,11 +196,10 @@ bool getSocketRemoteAddress(
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
 
-	if (address == NULL)
-		return false;
+	struct sockaddr_storage handle;
 
 	memset(
-		&address->handle,
+		&handle,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -220,15 +208,17 @@ bool getSocketRemoteAddress(
 
 	int result = getpeername(
 		socket->handle,
-		(struct sockaddr*)&address->handle,
+		(struct sockaddr*)&handle,
 		&length);
 
-	if (result != 0)
+	if (address == NULL ||
+		result != 0)
 	{
 		free(address);
 		return false;
 	}
 
+	address->handle = handle;
 	*_address = address;
 	return true;
 }
@@ -292,9 +282,17 @@ bool acceptSocket(
 		NULL,
 		0);
 
-	if (handle == INVALID_SOCKET)
+	if (acceptedSocket == NULL ||
+		handle == INVALID_SOCKET)
 	{
 		free(acceptedSocket);
+
+		int result = closesocket(
+			handle);
+
+		if (result != 0)
+			abort();
+
 		return false;
 	}
 
@@ -429,11 +427,10 @@ bool socketReceiveFrom(
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
 
-	if (address == NULL)
-		return false;
+	struct sockaddr_storage handle;
 
 	memset(
-		&address->handle,
+		&handle,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -445,14 +442,17 @@ bool socketReceiveFrom(
 		(char*)buffer,
 		(int)size,
 		0,
-		(struct sockaddr*)&address->handle,
+		(struct sockaddr*)&handle,
 		&length);
 
-	if (count < 1)
+	if (address == NULL ||
+		count < 1)
 	{
 		free(address);
 		return false;
 	}
+
+	address->handle = handle;
 
 	*_address = address;
 	*_count = (size_t)count;
@@ -501,13 +501,7 @@ struct SocketAddress* createSocketAddress(
 	{
 		return false;
 	}
-
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		return NULL;
-
+	
 	struct addrinfo hints;
 
 	memset(
@@ -519,6 +513,9 @@ struct SocketAddress* createSocketAddress(
 		AI_NUMERICHOST |
 		AI_NUMERICSERV;
 
+	struct SocketAddress* address =
+		malloc(sizeof(struct SocketAddress));
+
 	struct addrinfo* addressInfos;
 
 	int result = getaddrinfo(
@@ -527,7 +524,8 @@ struct SocketAddress* createSocketAddress(
 		&hints,
 		&addressInfos);
 
-	if (result != 0)
+	if (address == NULL ||
+		result != 0)
 	{
 		free(address);
 		return NULL;
@@ -556,17 +554,8 @@ struct SocketAddress* resolveSocketAddress(
 		service == NULL ||
 		networkInitialized == false)
 	{
-		return false;
+		return NULL;
 	}
-
-	if(networkInitialized == false)
-		return NULL;
-
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		return NULL;
 
 	struct addrinfo hints;
 
@@ -580,32 +569,21 @@ struct SocketAddress* resolveSocketAddress(
 		AI_V4MAPPED;
 
 	if(family == IP_V4_ADDRESS_FAMILY)
-	{
 		hints.ai_family = AF_INET;
-	}
 	else if(family == IP_V6_ADDRESS_FAMILY)
-	{
 		hints.ai_family = AF_INET6;
-	}
 	else
-	{
-		free(address);
 		return NULL;
-	}
 
 	if(type == STREAM_SOCKET_TYPE)
-	{
 		hints.ai_socktype = SOCK_STREAM;
-	}
 	else if(type == DATAGRAM_SOCKET_TYPE)
-	{
 		hints.ai_socktype = SOCK_DGRAM;
-	}
 	else
-	{
-		free(address);
 		return NULL;
-	}
+
+	struct SocketAddress* address =
+		malloc(sizeof(struct SocketAddress));
 
 	struct addrinfo* addressInfos;
 
@@ -615,7 +593,8 @@ struct SocketAddress* resolveSocketAddress(
 		&hints,
 		&addressInfos);
 
-	if (result != 0)
+	if (address == NULL ||
+		result != 0)
 	{
 		free(address);
 		return NULL;
