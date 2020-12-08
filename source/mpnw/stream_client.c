@@ -2,15 +2,16 @@
 #include "mpmt/thread.h"
 
 #include <string.h>
+#include <assert.h>
 
 struct StreamClient
 {
-	struct SocketAddress* remoteAddress;
 	StreamClientReceive* receiveFunctions;
 	size_t receiveFunctionCount;
 	void* functionArgument;
 	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
+	struct SocketAddress* remoteAddress;
 	volatile bool threadRunning;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
@@ -94,26 +95,51 @@ struct StreamClient* createStreamClient(
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
-	if (_receiveFunctions == NULL ||
-		receiveFunctionCount == 0 ||
-		receiveFunctionCount > 256 ||
-		receiveBufferSize == 0)
-	{
-		return NULL;
-	}
+	assert(_remoteAddress != NULL);
+	assert(_receiveFunctions != NULL);
+	assert(receiveFunctionCount != 0);
+	assert(receiveFunctionCount <= 256);
+	assert(receiveBufferSize != 0);
 
 	struct StreamClient* client =
 		malloc(sizeof(struct StreamClient));
-	struct SocketAddress* remoteAddress =
-		copySocketAddress(_remoteAddress);
+
+	if (client == NULL)
+		return NULL;
+
 	size_t receiveFunctionSize =
 		receiveFunctionCount * sizeof(StreamClientReceive);
 	StreamClientReceive* receiveFunctions = malloc(
 		receiveFunctionSize);
+
+	if (receiveFunctions == NULL)
+	{
+		free(client);
+		return NULL;
+	}
+
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
-	struct SocketAddress* localAddress = NULL;
+	if (receiveBuffer == NULL)
+	{
+		free(receiveFunctions);
+		free(client);
+		return NULL;
+	}
+
+	struct SocketAddress* remoteAddress =
+		copySocketAddress(_remoteAddress);
+
+	if (remoteAddress == NULL)
+	{
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(client);
+		return NULL;
+	}
+
+	struct SocketAddress* localAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -127,29 +153,46 @@ struct StreamClient* createStreamClient(
 			ANY_IP_ADDRESS_V6,
 			ANY_IP_ADDRESS_PORT);
 	}
+	else
+	{
+		abort();
+	}
+
+	if (localAddress == NULL)
+	{
+		destroySocketAddress(remoteAddress);
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(client);
+		return NULL;
+	}
 
 	struct Socket* receiveSocket = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily);
 
+	if (receiveSocket == NULL)
+	{
+		destroySocketAddress(localAddress);
+		destroySocketAddress(remoteAddress);
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(client);
+		return NULL;
+	}
+
 	bool result = bindSocket(
 		receiveSocket,
 		localAddress);
 
-	if (client == NULL ||
-		remoteAddress == NULL ||
-		receiveFunctions == NULL ||
-		receiveBuffer == NULL ||
-		localAddress == NULL ||
-		receiveSocket == NULL ||
-		result == false)
+	if (result == false)
 	{
-		free(client);
-		destroySocketAddress(remoteAddress);
-		free(receiveFunctions);
-		free(receiveBuffer);
-		destroySocketAddress(localAddress);
 		destroySocket(receiveSocket);
+		destroySocketAddress(localAddress);
+		destroySocketAddress(remoteAddress);
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(client);
 		return NULL;
 	}
 
@@ -173,12 +216,12 @@ struct StreamClient* createStreamClient(
 
 	if (receiveThread == NULL)
 	{
-		free(client);
-		destroySocketAddress(remoteAddress);
-		free(receiveFunctions);
-		free(receiveBuffer);
-		destroySocketAddress(localAddress);
 		destroySocket(receiveSocket);
+		destroySocketAddress(localAddress);
+		destroySocketAddress(remoteAddress);
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(client);
 		return NULL;
 	}
 
@@ -203,17 +246,10 @@ void destroyStreamClient(
 }
 
 bool getStreamClientRunning(
-	const struct StreamClient* client,
-	bool* running)
+	const struct StreamClient* client)
 {
-	if (client == NULL ||
-		running == NULL)
-	{
-		return  false;
-	}
-
-	*running = client->threadRunning;
-	return true;
+	assert(client != NULL);
+	return client;
 }
 
 bool streamClientSend(
@@ -221,8 +257,8 @@ bool streamClientSend(
 	const void* buffer,
 	size_t count)
 {
-	if (client == NULL)
-		return false;
+	assert(client != NULL);
+	assert(buffer != NULL);
 
 	return socketSend(
 		client->receiveSocket,

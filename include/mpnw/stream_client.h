@@ -39,14 +39,10 @@ void destroyStreamClient(
 
 /*
  * Gets current stream client running state
- * Returns true on successful get.
- *
  * client - pointer to the valid stream client.
- * running - pointer to the valid running value.
  */
 bool getStreamClientRunning(
-	const struct StreamClient* client,
-	bool* running);
+	const struct StreamClient* client);
 
 /*
  * Sends message to the server.

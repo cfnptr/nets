@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #if __linux__ || __APPLE__
 #include <netdb.h>
@@ -61,7 +62,6 @@ bool initializeNetwork()
 	networkInitialized = true;
 	return true;
 }
-/* Terminates network. */
 void terminateNetwork()
 {
 	if(networkInitialized == false)
@@ -78,12 +78,21 @@ void terminateNetwork()
 
 	networkInitialized = false;
 }
+bool getNetworkInitialized()
+{
+	return networkInitialized;
+}
 
 struct Socket* createSocket(
 	enum SocketType _type,
 	enum AddressFamily _family)
 {
-	if(networkInitialized == false)
+	assert(networkInitialized == true);
+
+	struct Socket* _socket =
+		malloc(sizeof(struct Socket));
+
+	if (_socket == NULL)
 		return NULL;
 
 	int type, family;
@@ -93,34 +102,23 @@ struct Socket* createSocket(
 	else if (_type == DATAGRAM_SOCKET_TYPE)
 		type = SOCK_DGRAM;
 	else
-		return NULL;
+		abort();
 
 	if (_family == IP_V4_ADDRESS_FAMILY)
 		family = AF_INET;
 	else if (_family == IP_V6_ADDRESS_FAMILY)
 		family = AF_INET6;
 	else
-		return NULL;
-
-	struct Socket* _socket =
-		malloc(sizeof(struct Socket));
+		abort();
 
 	SOCKET handle = socket(
 		family,
 		type,
 		0);
 
-	if (_socket == NULL ||
-		handle == INVALID_SOCKET)
+	if (handle == INVALID_SOCKET)
 	{
-		free(socket);
-
-		int result = closesocket(
-			handle);
-
-		if (result != 0)
-			abort();
-
+		free(_socket);
 		return NULL;
 	}
 
@@ -143,23 +141,47 @@ void destroySocket(
 	free(socket);
 }
 
-bool getSocketLocalAddress(
-	const struct Socket* socket,
-	struct SocketAddress** _address)
+enum SocketType getSocketType(
+	const struct Socket* socket)
 {
-	if (socket == NULL ||
-		_address == NULL)
-	{
-		return false;
-	}
+	assert(socket != NULL);
+
+	int type;
+
+	SOCKET_LENGTH length =
+		sizeof(int);
+
+	int result = getsockopt(
+		socket->handle,
+		SOL_SOCKET,
+		SO_TYPE,
+		(char*)&type,
+		&length);
+
+	if (result != 0)
+		abort();
+
+	if (type == SOCK_STREAM)
+		return STREAM_SOCKET_TYPE;
+	else if (type == SOCK_DGRAM)
+		return DATAGRAM_SOCKET_TYPE;
+	else
+		abort();
+}
+
+struct SocketAddress* getSocketLocalAddress(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
 
-	struct sockaddr_storage handle;
+	if (address == NULL)
+		return NULL;
 
 	memset(
-		&handle,
+		&address->handle,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -168,38 +190,28 @@ bool getSocketLocalAddress(
 
 	int result = getsockname(
 		socket->handle,
-		(struct sockaddr*)&handle,
+		(struct sockaddr*)&address->handle,
 		&length);
 
-	if (address == NULL ||
-		result != 0)
-	{
-		free(address);
-		return false;
-	}
+	if (result != 0)
+		abort();
 
-	address->handle = handle;
-	*_address = address;
-	return true;
+	return address;
 }
 
-bool getSocketRemoteAddress(
-	const struct Socket* socket,
-	struct SocketAddress** _address)
+struct SocketAddress* getSocketRemoteAddress(
+	const struct Socket* socket)
 {
-	if (socket == NULL ||
-		_address == NULL)
-	{
-		return false;
-	}
+	assert(socket != NULL);
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
 
-	struct sockaddr_storage handle;
+	if (address == NULL)
+		return NULL;
 
 	memset(
-		&handle,
+		&address->handle,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -208,30 +220,21 @@ bool getSocketRemoteAddress(
 
 	int result = getpeername(
 		socket->handle,
-		(struct sockaddr*)&handle,
+		(struct sockaddr*)&address->handle,
 		&length);
 
-	if (address == NULL ||
-		result != 0)
-	{
-		free(address);
-		return false;
-	}
+	if (result != 0)
+		abort();
 
-	address->handle = handle;
-	*_address = address;
-	return true;
+	return address;
 }
 
 bool bindSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address)
 {
-	if (socket == NULL ||
-		address == NULL)
-	{
-		return false;
-	}
+	assert(socket != NULL);
+	assert(address != NULL);
 
 	int family = address->handle.ss_family;
 
@@ -242,7 +245,7 @@ bool bindSocket(
 	else if (family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
-		return false;
+		abort();
 
 	return bind(
 		socket->handle,
@@ -253,8 +256,7 @@ bool bindSocket(
 bool listenSocket(
 	struct Socket* socket)
 {
-	if (socket == NULL)
-		return false;
+	assert(socket != NULL);
 
 	return listen(
 		socket->handle,
@@ -265,11 +267,8 @@ bool acceptSocket(
 	struct Socket* socket,
 	struct Socket** _acceptedSocket)
 {
-	if (socket == NULL ||
-		_acceptedSocket == NULL)
-	{
-		return false;
-	}
+	assert(socket != NULL);
+	assert(_acceptedSocket != NULL);
 
 	struct Socket* acceptedSocket =
 		malloc(sizeof(struct Socket));
@@ -282,17 +281,9 @@ bool acceptSocket(
 		NULL,
 		0);
 
-	if (acceptedSocket == NULL ||
-		handle == INVALID_SOCKET)
+	if (handle == INVALID_SOCKET)
 	{
 		free(acceptedSocket);
-
-		int result = closesocket(
-			handle);
-
-		if (result != 0)
-			abort();
-
 		return false;
 	}
 
@@ -305,11 +296,8 @@ bool connectSocket(
 	struct Socket* socket,
 	const struct SocketAddress* address)
 {
-	if (socket == NULL ||
-		address == NULL)
-	{
-		return false;
-	}
+	assert(socket != NULL);
+	assert(address != NULL);
 
 	int family = address->handle.ss_family;
 
@@ -320,7 +308,7 @@ bool connectSocket(
 	else if (family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
-		return false;
+		abort();
 
 	return connect(
 		socket->handle,
@@ -332,8 +320,7 @@ bool shutdownSocket(
 	struct Socket* socket,
 	enum SocketShutdown _type)
 {
-	if (socket == NULL)
-		return false;
+	assert(socket != NULL);
 
 	int type;
 
@@ -345,7 +332,7 @@ bool shutdownSocket(
 	else if (_type == SHUTDOWN_RECEIVE_SEND)
 		type = SHUT_RDWR;
 	else
-		return false;
+		abort();
 #elif _WIN32
 	if (_type == SHUTDOWN_RECEIVE_ONLY)
 		type = SD_RECEIVE;
@@ -354,7 +341,7 @@ bool shutdownSocket(
 	else if (_type == SHUTDOWN_RECEIVE_SEND)
 		type = SD_BOTH;
 	else
-		return false;
+		abort();
 #endif
 
 	return shutdown(
@@ -368,13 +355,10 @@ bool socketReceive(
 	size_t size,
 	size_t* _count)
 {
-	if (socket == NULL ||
-		buffer == NULL ||
-		size == 0 ||
-		_count == NULL)
-	{
-		return false;
-	}
+	assert(socket != NULL);
+	assert(buffer != NULL);
+	assert(size != 0);
+	assert(_count != NULL);
 
 	int count = recv(
 		socket->handle,
@@ -382,7 +366,7 @@ bool socketReceive(
 		(int)size,
 		0);
 
-	if (count < 1)
+	if (count < 0)
 		return false;
 
 	*_count = (size_t)count;
@@ -394,12 +378,8 @@ bool socketSend(
 	const void* buffer,
 	size_t count)
 {
-	if (socket == NULL ||
-		buffer == NULL ||
-		count == 0)
-	{
-		return false;
-	}
+	assert(socket != NULL);
+	assert(buffer != NULL);
 
 	return send(
 		socket->handle,
@@ -415,22 +395,20 @@ bool socketReceiveFrom(
 	struct SocketAddress** _address,
 	size_t* _count)
 {
-	if (socket == NULL ||
-		buffer == NULL ||
-		size == 0 ||
-		_address == NULL ||
-		_count == NULL)
-	{
-		return false;
-	}
+	assert(socket != NULL);
+	assert(buffer != NULL);
+	assert(size != 0);
+	assert(_address != NULL);
+	assert(_count != NULL);
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
 
-	struct sockaddr_storage handle;
+	if (address == NULL)
+		return false;
 
 	memset(
-		&handle,
+		&address->handle,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -442,17 +420,14 @@ bool socketReceiveFrom(
 		(char*)buffer,
 		(int)size,
 		0,
-		(struct sockaddr*)&handle,
+		(struct sockaddr*)&address->handle,
 		&length);
 
-	if (address == NULL ||
-		count < 1)
+	if (count < 0)
 	{
 		free(address);
 		return false;
 	}
-
-	address->handle = handle;
 
 	*_address = address;
 	*_count = (size_t)count;
@@ -465,13 +440,9 @@ bool socketSendTo(
 	size_t count,
 	const struct SocketAddress* address)
 {
-	if (socket == NULL ||
-		buffer == NULL ||
-		count == 0 ||
-		address == NULL)
-	{
-		return false;
-	}
+	assert(socket != NULL);
+	assert(buffer != NULL);
+	assert(address != NULL);
 
 	SOCKET_LENGTH length;
 
@@ -480,7 +451,7 @@ bool socketSendTo(
 	else if(address->handle.ss_family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
-		return false;
+		abort();
 
 	return sendto(
 		socket->handle,
@@ -495,13 +466,16 @@ struct SocketAddress* createSocketAddress(
 	const char* host,
 	const char* service)
 {
-	if (host == NULL ||
-		service == NULL ||
-		networkInitialized == false)
-	{
-		return false;
-	}
-	
+	assert(host != NULL);
+	assert(service != NULL);
+	assert(networkInitialized == true);
+
+	struct SocketAddress* address =
+		malloc(sizeof(struct SocketAddress));
+
+	if (address == NULL)
+		return NULL;
+
 	struct addrinfo hints;
 
 	memset(
@@ -513,9 +487,6 @@ struct SocketAddress* createSocketAddress(
 		AI_NUMERICHOST |
 		AI_NUMERICSERV;
 
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
 	struct addrinfo* addressInfos;
 
 	int result = getaddrinfo(
@@ -524,8 +495,7 @@ struct SocketAddress* createSocketAddress(
 		&hints,
 		&addressInfos);
 
-	if (address == NULL ||
-		result != 0)
+	if (result != 0)
 	{
 		free(address);
 		return NULL;
@@ -550,12 +520,15 @@ struct SocketAddress* resolveSocketAddress(
 	enum AddressFamily family,
 	enum SocketType type)
 {
-	if (host == NULL ||
-		service == NULL ||
-		networkInitialized == false)
-	{
+	assert(host != NULL);
+	assert(service != NULL);
+	assert(networkInitialized == true);
+
+	struct SocketAddress* address =
+		malloc(sizeof(struct SocketAddress));
+
+	if (address == NULL)
 		return NULL;
-	}
 
 	struct addrinfo hints;
 
@@ -573,17 +546,14 @@ struct SocketAddress* resolveSocketAddress(
 	else if(family == IP_V6_ADDRESS_FAMILY)
 		hints.ai_family = AF_INET6;
 	else
-		return NULL;
+		abort();
 
 	if(type == STREAM_SOCKET_TYPE)
 		hints.ai_socktype = SOCK_STREAM;
 	else if(type == DATAGRAM_SOCKET_TYPE)
 		hints.ai_socktype = SOCK_DGRAM;
 	else
-		return NULL;
-
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
+		abort();
 
 	struct addrinfo* addressInfos;
 
@@ -593,8 +563,7 @@ struct SocketAddress* resolveSocketAddress(
 		&hints,
 		&addressInfos);
 
-	if (address == NULL ||
-		result != 0)
+	if (result != 0)
 	{
 		free(address);
 		return NULL;
@@ -622,8 +591,7 @@ void destroySocketAddress(
 struct SocketAddress* copySocketAddress(
 	const struct SocketAddress* address)
 {
-	if (address == NULL)
-		return NULL;
+	assert(address != NULL);
 
 	struct SocketAddress* _address =
 		malloc(sizeof(struct SocketAddress));
@@ -643,11 +611,8 @@ int compareSocketAddress(
 	const struct SocketAddress* a,
 	const struct SocketAddress* b)
 {
-	if (a == NULL ||
-		b == NULL)
-	{
-		abort();
-	}
+	assert(a != NULL);
+	assert(b != NULL);
 
 	return memcmp(
 		&a->handle,
@@ -655,45 +620,27 @@ int compareSocketAddress(
 		sizeof(struct sockaddr_storage));
 }
 
-bool getSocketAddressFamily(
-	const struct SocketAddress* address,
-	enum AddressFamily* _family)
+enum AddressFamily getSocketAddressFamily(
+	const struct SocketAddress* address)
 {
-	if (address == NULL ||
-		_family == NULL)
-	{
-		return false;
-	}
+	assert(address != NULL);
 
 	int family = address->handle.ss_family;
 
 	if (family == AF_INET)
-	{
-		*_family = IP_V4_ADDRESS_FAMILY;
-		return true;
-	}
+		return IP_V4_ADDRESS_FAMILY;
 	else if (family == AF_INET6)
-	{
-		*_family = IP_V6_ADDRESS_FAMILY;
-		return true;
-	}
+		return IP_V6_ADDRESS_FAMILY;
 	else
-	{
-		return false;
-	}
+		abort();
 }
 
-bool getSocketAddressIP(
+uint8_t* getSocketAddressIP(
 	const struct SocketAddress* address,
-	uint8_t** _ip,
 	size_t* size)
 {
-	if (address == NULL ||
-		_ip == NULL ||
-		size == NULL)
-	{
-		return false;
-	}
+	assert(address != NULL);
+	assert(size != NULL);
 
 	int family = address->handle.ss_family;
 
@@ -703,7 +650,7 @@ bool getSocketAddressIP(
 			sizeof(struct sockaddr_in));
 
 		if (ip == NULL)
-			return false;
+			return NULL;
 
 		const struct sockaddr_in* address4 =
 			(const struct sockaddr_in*)&address->handle;
@@ -713,9 +660,8 @@ bool getSocketAddressIP(
 			address4,
 			sizeof(struct sockaddr_in));
 
-		*_ip = ip;
 		*size = sizeof(struct sockaddr_in);
-		return true;
+		return ip;
 	}
 	else if (family == AF_INET6)
 	{
@@ -723,7 +669,7 @@ bool getSocketAddressIP(
 			sizeof(struct sockaddr_in6));
 
 		if (ip == NULL)
-			return false;
+			return NULL;
 
 		const struct sockaddr_in6* address6 =
 			(const struct sockaddr_in6*)&address->handle;
@@ -733,25 +679,19 @@ bool getSocketAddressIP(
 			address6,
 			sizeof(struct sockaddr_in6));
 
-		*_ip = ip;
 		*size = sizeof(struct sockaddr_in6);
-		return true;
+		return ip;
 	}
 	else
 	{
-		return false;
+		abort();
 	}
 }
 
-bool getSocketAddressPort(
-	const struct SocketAddress* address,
-	uint16_t* portNumber)
+uint16_t getSocketAddressPort(
+	const struct SocketAddress* address)
 {
-	if (address == NULL ||
-		portNumber == NULL)
-	{
-		return false;
-	}
+	assert(address != NULL);
 
 	int family = address->handle.ss_family;
 
@@ -759,31 +699,24 @@ bool getSocketAddressPort(
 	{
 		struct sockaddr_in* address4 =
 			(struct sockaddr_in*)&address->handle;
-		*portNumber = (uint16_t)address4->sin_port;
-		return true;
+		return (uint16_t)address4->sin_port;
 	}
 	else if (family == AF_INET6)
 	{
 		struct sockaddr_in6* address6 =
 			(struct sockaddr_in6*)&address->handle;
-		*portNumber = (uint16_t)address6->sin6_port;
-		return true;
+		return (uint16_t)address6->sin6_port;
 	}
 	else
 	{
-		return false;
+		abort();
 	}
 }
 
-bool getSocketAddressHost(
-	const struct SocketAddress* address,
-	char** _host)
+char* getSocketAddressHost(
+	const struct SocketAddress* address)
 {
-	if (address == NULL ||
-		_host == NULL)
-	{
-		return false;
-	}
+	assert(address != NULL);
 
 	char buffer[NI_MAXHOST];
 	int flags = NI_NUMERICHOST;
@@ -798,7 +731,7 @@ bool getSocketAddressHost(
 		flags);
 
 	if (result != 0)
-		return false;
+		return NULL;
 
 	size_t hostLength =
 		strlen(buffer) * sizeof(char);
@@ -806,26 +739,20 @@ bool getSocketAddressHost(
 		hostLength);
 
 	if (host == NULL)
-		return false;
+		return NULL;
 
 	memcpy(
 		host,
 		buffer,
 		hostLength);
 
-	*_host = host;
 	return host;
 }
 
-bool getSocketAddressService(
-	const struct SocketAddress* address,
-	char** _service)
+char* getSocketAddressService(
+	const struct SocketAddress* address)
 {
-	if (address == NULL ||
-		_service == NULL)
-	{
-		return false;
-	}
+	assert(address != NULL);
 
 	char buffer[NI_MAXSERV];
 	int flags = NI_NUMERICSERV;
@@ -840,7 +767,7 @@ bool getSocketAddressService(
 		flags);
 
 	if (result != 0)
-		return false;
+		return NULL;
 
 	size_t serviceLength =
 		strlen(buffer) * sizeof(char);
@@ -848,15 +775,14 @@ bool getSocketAddressService(
 		serviceLength);
 
 	if (service == NULL)
-		return false;
+		return NULL;
 
 	memcpy(
 		service,
 		buffer,
 		serviceLength);
 
-	*_service = service;
-	return true;
+	return service;
 }
 
 bool getSocketAddressHostService(
@@ -864,12 +790,9 @@ bool getSocketAddressHostService(
 	char** _host,
 	char** _service)
 {
-	if (address == NULL ||
-		_host == NULL ||
-		_service == NULL)
-	{
-		return false;
-	}
+	assert(address != NULL);
+	assert(_host != NULL);
+	assert(_service != NULL);
 
 	char hostBuffer[NI_MAXHOST];
 	char serviceBuffer[NI_MAXSERV];

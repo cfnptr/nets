@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <string.h>
+#include <assert.h>
 
 struct StreamServer
 {
@@ -181,27 +182,53 @@ struct StreamServer* createStreamServer(
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
-	if (sessionBufferSize == 0 ||
-		_receiveFunctions == NULL ||
-		receiveFunctionCount == 0 ||
-		receiveFunctionCount > 256 ||
-		receiveBufferSize == 0)
-	{
-		return NULL;
-	}
+	assert(port != NULL);
+	assert(sessionBufferSize != 0);
+	assert(_receiveFunctions != NULL);
+	assert(receiveFunctionCount != 0);
+	assert(receiveFunctionCount <= 256);
+	assert(receiveTimeoutTime != 0);
+	assert(receiveBufferSize != 0);
 
 	struct StreamServer* server =
 		malloc(sizeof(struct StreamServer));
+
+	if (server == NULL)
+		return NULL;
+
 	struct StreamSession* sessionBuffer = malloc(
 		sessionBufferSize * sizeof(struct StreamSession));
+
+	if (sessionBuffer == NULL)
+	{
+		free(server);
+		return NULL;
+	}
+
 	size_t receiveFunctionSize =
 		receiveFunctionCount * sizeof(StreamSessionReceive);
 	StreamSessionReceive* receiveFunctions = malloc(
 		receiveFunctionSize);
+
+	if (receiveFunctions == NULL)
+	{
+		free(sessionBuffer);
+		free(server);
+		return NULL;
+	}
+
 	uint8_t* receiveBuffer = malloc(sizeof(uint8_t) *
 		sessionBufferSize * receiveBufferSize);
 
-	struct SocketAddress* localAddress = NULL;
+	if (receiveBuffer == NULL)
+	{
+		free(receiveFunctions);
+		free(sessionBuffer);
+		free(server);
+		return NULL;
+	}
+
+	struct SocketAddress* localAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -215,31 +242,60 @@ struct StreamServer* createStreamServer(
 			ANY_IP_ADDRESS_V6,
 			port);
 	}
+	else
+	{
+		abort();
+	}
+
+	if (localAddress == NULL)
+	{
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(sessionBuffer);
+		free(server);
+		return NULL;
+	}
 
 	struct Socket* receiveSocket = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily);
 
+	if (receiveSocket == NULL)
+	{
+		destroySocketAddress(localAddress);
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(sessionBuffer);
+		free(server);
+		return NULL;
+	}
+
 	bool result = bindSocket(
 		receiveSocket,
 		localAddress);
-	result &= listenSocket(
+
+	if (result == false)
+	{
+		destroySocket(receiveSocket);
+		destroySocketAddress(localAddress);
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(sessionBuffer);
+		free(server);
+		return NULL;
+	}
+
+	result = listenSocket(
 		receiveSocket);
 
-	if (server == NULL ||
-		sessionBuffer == NULL ||
-		receiveFunctions == NULL ||
-		receiveBuffer == NULL ||
-		localAddress == NULL ||
-		receiveSocket == NULL ||
-		result == false)
+	if (result == false)
 	{
-		free(server);
-		free(sessionBuffer);
-		free(receiveFunctions);
-		free(receiveBuffer);
-		destroySocketAddress(localAddress);
 		destroySocket(receiveSocket);
+		destroySocketAddress(localAddress);
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(sessionBuffer);
+		free(server);
 		return NULL;
 	}
 
@@ -277,12 +333,12 @@ struct StreamServer* createStreamServer(
 
 	if (receiveThread == NULL)
 	{
-		free(server);
-		free(sessionBuffer);
-		free(receiveFunctions);
-		free(receiveBuffer);
-		destroySocketAddress(localAddress);
 		destroySocket(receiveSocket);
+		destroySocketAddress(localAddress);
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(sessionBuffer);
+		free(server);
 		return NULL;
 	}
 
@@ -331,8 +387,8 @@ bool streamSessionSend(
 	const void* buffer,
 	size_t count)
 {
-	if (session == NULL)
-		return false;
+	assert(session != NULL);
+	assert(buffer != NULL);
 
 	return socketSend(
 		session->receiveSocket,

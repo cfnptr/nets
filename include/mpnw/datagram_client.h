@@ -39,15 +39,11 @@ void destroyDatagramClient(
 	struct DatagramClient* client);
 
 /*
- * Gets current datagram client running state
- * Returns true on successful get.
- *
+ * Gets current datagram client running state.
  * client - pointer to the valid datagram client.
- * running - pointer to the valid running value.
  */
 bool getDatagramClientRunning(
-	const struct DatagramClient* client,
-	bool* running);
+	const struct DatagramClient* client);
 
 /*
  * Sends datagram to the server.
