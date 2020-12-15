@@ -114,6 +114,18 @@ struct DatagramServer* createDatagramServer(
 		return NULL;
 	}
 
+	struct Socket* receiveSocket = createSocket(
+		DATAGRAM_SOCKET_TYPE,
+		addressFamily);
+
+	if (receiveSocket == NULL)
+	{
+		free(receiveBuffer);
+		free(receiveFunctions);
+		free(server);
+		return NULL;
+	}
+
 	struct SocketAddress* localAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
@@ -135,19 +147,7 @@ struct DatagramServer* createDatagramServer(
 
 	if (localAddress == NULL)
 	{
-		free(receiveBuffer);
-		free(receiveFunctions);
-		free(server);
-		return NULL;
-	}
-
-	struct Socket* receiveSocket = createSocket(
-		DATAGRAM_SOCKET_TYPE,
-		addressFamily);
-
-	if (receiveSocket == NULL)
-	{
-		destroySocketAddress(localAddress);
+		destroySocket(receiveSocket);
 		free(receiveBuffer);
 		free(receiveFunctions);
 		free(server);
@@ -158,10 +158,12 @@ struct DatagramServer* createDatagramServer(
 		receiveSocket,
 		localAddress);
 
+	destroySocketAddress(
+		localAddress);
+
 	if (result == false)
 	{
 		destroySocket(receiveSocket);
-		destroySocketAddress(localAddress);
 		free(receiveBuffer);
 		free(receiveFunctions);
 		free(server);
@@ -188,7 +190,6 @@ struct DatagramServer* createDatagramServer(
 	if (receiveThread == NULL)
 	{
 		destroySocket(receiveSocket);
-		destroySocketAddress(localAddress);
 		free(receiveBuffer);
 		free(receiveFunctions);
 		free(server);

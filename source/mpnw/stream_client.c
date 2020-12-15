@@ -107,6 +107,15 @@ struct StreamClient* createStreamClient(
 	if (client == NULL)
 		return NULL;
 
+	struct SocketAddress* remoteAddress =
+		copySocketAddress(_remoteAddress);
+
+	if (remoteAddress == NULL)
+	{
+		free(client);
+		return NULL;
+	}
+
 	size_t receiveFunctionSize =
 		receiveFunctionCount * sizeof(StreamClientReceive);
 	StreamClientReceive* receiveFunctions = malloc(
@@ -114,6 +123,7 @@ struct StreamClient* createStreamClient(
 
 	if (receiveFunctions == NULL)
 	{
+		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
@@ -124,17 +134,20 @@ struct StreamClient* createStreamClient(
 	if (receiveBuffer == NULL)
 	{
 		free(receiveFunctions);
+		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
 
-	struct SocketAddress* remoteAddress =
-		copySocketAddress(_remoteAddress);
+	struct Socket* receiveSocket = createSocket(
+		STREAM_SOCKET_TYPE,
+		addressFamily);
 
-	if (remoteAddress == NULL)
+	if (receiveSocket == NULL)
 	{
 		free(receiveBuffer);
 		free(receiveFunctions);
+		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
@@ -160,23 +173,10 @@ struct StreamClient* createStreamClient(
 
 	if (localAddress == NULL)
 	{
-		destroySocketAddress(remoteAddress);
+		destroySocket(receiveSocket);
 		free(receiveBuffer);
 		free(receiveFunctions);
-		free(client);
-		return NULL;
-	}
-
-	struct Socket* receiveSocket = createSocket(
-		STREAM_SOCKET_TYPE,
-		addressFamily);
-
-	if (receiveSocket == NULL)
-	{
-		destroySocketAddress(localAddress);
 		destroySocketAddress(remoteAddress);
-		free(receiveBuffer);
-		free(receiveFunctions);
 		free(client);
 		return NULL;
 	}
@@ -185,13 +185,15 @@ struct StreamClient* createStreamClient(
 		receiveSocket,
 		localAddress);
 
+	destroySocketAddress(
+		localAddress);
+
 	if (result == false)
 	{
 		destroySocket(receiveSocket);
-		destroySocketAddress(localAddress);
-		destroySocketAddress(remoteAddress);
 		free(receiveBuffer);
 		free(receiveFunctions);
+		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
@@ -217,10 +219,9 @@ struct StreamClient* createStreamClient(
 	if (receiveThread == NULL)
 	{
 		destroySocket(receiveSocket);
-		destroySocketAddress(localAddress);
-		destroySocketAddress(remoteAddress);
 		free(receiveBuffer);
 		free(receiveFunctions);
+		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
