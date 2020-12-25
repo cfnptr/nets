@@ -24,7 +24,7 @@ typedef void(*DatagramServerReceive)(
  * receiveBufferSize - socket datagram receive buffer size.
  */
 struct DatagramServer* createDatagramServer(
-	enum AddressFamily addressFamily,
+	uint8_t addressFamily,
 	const char* port,
 	const DatagramServerReceive* receiveFunctions,
 	size_t receiveFunctionCount,

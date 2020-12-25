@@ -24,7 +24,7 @@ typedef bool(*DatagramClientReceive)(
  * receiveBufferSize - socket datagram receive buffer size.
  */
 struct DatagramClient* createDatagramClient(
-	enum AddressFamily addressFamily,
+	uint8_t addressFamily,
 	const struct SocketAddress* remoteAddress,
 	const DatagramClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,

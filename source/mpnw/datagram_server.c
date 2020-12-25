@@ -74,7 +74,7 @@ static void datagramServerReceiveHandler(
 }
 
 struct DatagramServer* createDatagramServer(
-	enum AddressFamily addressFamily,
+	uint8_t addressFamily,
 	const char* port,
 	const DatagramServerReceive* _receiveFunctions,
 	size_t receiveFunctionCount,

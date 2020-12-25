@@ -84,8 +84,8 @@ bool getNetworkInitialized()
 }
 
 struct Socket* createSocket(
-	enum SocketType _type,
-	enum AddressFamily _family)
+	uint8_t _type,
+	uint8_t _family)
 {
 	assert(networkInitialized == true);
 
@@ -141,7 +141,7 @@ void destroySocket(
 	free(socket);
 }
 
-enum SocketType getSocketType(
+uint8_t getSocketType(
 	const struct Socket* socket)
 {
 	assert(socket != NULL);
@@ -318,7 +318,7 @@ bool connectSocket(
 
 bool shutdownSocket(
 	struct Socket* socket,
-	enum SocketShutdown _type)
+	uint8_t _type)
 {
 	assert(socket != NULL);
 
@@ -517,8 +517,8 @@ struct SocketAddress* createSocketAddress(
 struct SocketAddress* resolveSocketAddress(
 	const char* host,
 	const char* service,
-	enum AddressFamily family,
-	enum SocketType type)
+	uint8_t family,
+	uint8_t type)
 {
 	assert(host != NULL);
 	assert(service != NULL);

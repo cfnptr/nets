@@ -24,25 +24,25 @@ struct Socket;
 struct SocketAddress;
 
 /* Socket internet protocol address family */
-enum AddressFamily
+enum AddressFamily : uint8_t
 {
-	IP_V4_ADDRESS_FAMILY,
-	IP_V6_ADDRESS_FAMILY,
+	IP_V4_ADDRESS_FAMILY = 0,
+	IP_V6_ADDRESS_FAMILY = 1,
 };
 
 /* Socket communication type */
-enum SocketType
+enum SocketType : uint8_t
 {
-	STREAM_SOCKET_TYPE,
-	DATAGRAM_SOCKET_TYPE,
+	STREAM_SOCKET_TYPE = 0,
+	DATAGRAM_SOCKET_TYPE = 1,
 };
 
 /* Socket connection shutdown */
-enum SocketShutdown
+enum SocketShutdown : uint8_t
 {
-	SHUTDOWN_RECEIVE_ONLY,
-	SHUTDOWN_SEND_ONLY,
-	SHUTDOWN_RECEIVE_SEND,
+	SHUTDOWN_RECEIVE_ONLY = 0,
+	SHUTDOWN_SEND_ONLY = 1,
+	SHUTDOWN_RECEIVE_SEND = 2,
 };
 
 /* Returns true if network was initialized. */
@@ -60,8 +60,8 @@ bool getNetworkInitialized();
  * family - internet protocol address family.
  */
 struct Socket* createSocket(
-	enum SocketType type,
-	enum AddressFamily family);
+	uint8_t type,
+	uint8_t family);
 
 /*
  * Destroys specified socket.
@@ -74,7 +74,7 @@ void destroySocket(
  * Returns socket connection type.
  * socket - pointer to the valid socket.
  */
-enum SocketType getSocketType(
+uint8_t getSocketType(
 	const struct Socket* socket);
 
 /*
@@ -146,7 +146,7 @@ bool connectSocket(
  */
 bool shutdownSocket(
 	struct Socket* socket,
-	enum SocketShutdown type);
+	uint8_t type);
 
 /*
  * Receives socket message.
@@ -231,8 +231,8 @@ struct SocketAddress* createSocketAddress(
 struct SocketAddress* resolveSocketAddress(
 	const char* host,
 	const char* service,
-	enum AddressFamily family,
-	enum SocketType type);
+	uint8_t family,
+	uint8_t type);
 
 /*
  * Destroys specified socket endpoint address.
@@ -276,7 +276,7 @@ enum AddressFamily getSocketAddressFamily(
  */
 uint8_t* getSocketAddressIP(
 	const struct SocketAddress* address,
-	size_t * size);
+	size_t* size);
 
 /*
  * Returns socket address port number.

@@ -74,7 +74,7 @@ static void datagramClientReceiveHandler(
 }
 
 struct DatagramClient* createDatagramClient(
-	enum AddressFamily addressFamily,
+	uint8_t addressFamily,
 	const struct SocketAddress* remoteAddress,
 	const DatagramClientReceive* _receiveFunctions,
 	size_t receiveFunctionCount,

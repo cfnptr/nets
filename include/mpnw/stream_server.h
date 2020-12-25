@@ -27,7 +27,7 @@ typedef bool(*StreamSessionReceive)(
  * receiveBufferSize - socket datagram receive buffer size.
  */
 struct StreamServer* createStreamServer(
-	enum AddressFamily addressFamily,
+	uint8_t addressFamily,
 	const char* port,
 	size_t sessionBufferSize,
 	const StreamSessionReceive* receiveFunctions,

@@ -23,7 +23,7 @@ typedef bool(*StreamClientReceive)(
  * receiveBufferSize - socket message receive buffer size.
  */
 struct StreamClient* createStreamClient(
-	enum AddressFamily addressFamily,
+	uint8_t addressFamily,
 	const struct SocketAddress* remoteAddress,
 	const StreamClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,

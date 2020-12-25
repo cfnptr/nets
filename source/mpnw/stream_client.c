@@ -88,7 +88,7 @@ static void streamClientReceiveHandler(
 }
 
 struct StreamClient* createStreamClient(
-	enum AddressFamily addressFamily,
+	uint8_t addressFamily,
 	const struct SocketAddress* _remoteAddress,
 	const StreamClientReceive* _receiveFunctions,
 	size_t receiveFunctionCount,

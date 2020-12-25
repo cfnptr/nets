@@ -173,7 +173,7 @@ static void streamServerAcceptHandler(
 }
 
 struct StreamServer* createStreamServer(
-	enum AddressFamily addressFamily,
+	uint8_t addressFamily,
 	const char* port,
 	size_t sessionBufferSize,
 	const StreamSessionReceive* _receiveFunctions,
