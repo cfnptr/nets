@@ -24,21 +24,21 @@ struct Socket;
 struct SocketAddress;
 
 /* Socket internet protocol address family */
-enum AddressFamily : uint8_t
+enum AddressFamily
 {
 	IP_V4_ADDRESS_FAMILY = 0,
 	IP_V6_ADDRESS_FAMILY = 1,
 };
 
 /* Socket communication type */
-enum SocketType : uint8_t
+enum SocketType
 {
 	STREAM_SOCKET_TYPE = 0,
 	DATAGRAM_SOCKET_TYPE = 1,
 };
 
 /* Socket connection shutdown */
-enum SocketShutdown : uint8_t
+enum SocketShutdown
 {
 	SHUTDOWN_RECEIVE_ONLY = 0,
 	SHUTDOWN_SEND_ONLY = 1,
