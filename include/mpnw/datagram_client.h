@@ -25,6 +25,7 @@ typedef bool(*DatagramClientReceive)(
  */
 struct DatagramClient* createDatagramClient(
 	uint8_t addressFamily,
+	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	const DatagramClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
@@ -33,7 +34,7 @@ struct DatagramClient* createDatagramClient(
 
 /*
  * Destroys specified datagram client.
- * client - pointer to the valid datagram client.
+ * client - pointer to the datagram client or NULL.
  */
 void destroyDatagramClient(
 	struct DatagramClient* client);

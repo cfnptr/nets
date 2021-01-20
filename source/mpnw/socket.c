@@ -1,4 +1,5 @@
 #include "mpnw/socket.h"
+#include "mpnw/defines.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -6,16 +7,15 @@
 
 #if __linux__ || __APPLE__
 #include <netdb.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 #define SOCKET int
-#define INVALID_SOCKET -1
+#define INVALID_SOCKET (-1)
 #define SOCKET_LENGTH socklen_t
-#define closesocket(x) close(x)
+#define closesocket(socket) close(socket)
 #elif _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -31,14 +31,28 @@ static WSADATA wsaData;
 #error Unknown operating system
 #endif
 
+#if MPNW_HAS_OPENSSL
+#include "openssl/ssl.h"
+#include "openssl/err.h"
+#else
+#define SSL_CTX void
+#define SSL void
+#endif
+
 struct Socket
 {
 	SOCKET handle;
+	SSL* ssl;
 };
 
 struct SocketAddress
 {
 	struct sockaddr_storage handle;
+};
+
+struct SslContext
+{
+	SSL_CTX* handle;
 };
 
 static bool networkInitialized = false;
@@ -59,6 +73,11 @@ bool initializeNetwork()
 		return false;
 #endif
 
+#if MPNW_HAS_OPENSSL
+	SSL_load_error_strings();
+	OpenSSL_add_all_algorithms();
+#endif
+
 	networkInitialized = true;
 	return true;
 }
@@ -76,6 +95,10 @@ void terminateNetwork()
 		abort();
 #endif
 
+#if MPNW_HAS_OPENSSL
+	EVP_cleanup();
+#endif
+
 	networkInitialized = false;
 }
 bool getNetworkInitialized()
@@ -85,12 +108,37 @@ bool getNetworkInitialized()
 
 struct Socket* createSocket(
 	uint8_t _type,
-	uint8_t _family)
+	uint8_t _family,
+	struct SslContext* sslContext)
 {
 	assert(networkInitialized == true);
 
-	struct Socket* _socket =
-		malloc(sizeof(struct Socket));
+#if MPNW_HAS_OPENSSL
+#ifndef NDEBUG
+	if (sslContext != NULL)
+	{
+		if (_type == STREAM_SOCKET_TYPE)
+		{
+			assert(SSL_CTX_get_ssl_method(
+				sslContext->handle) == TLS_method());
+		}
+		else if (_type == DATAGRAM_SOCKET_TYPE)
+		{
+			assert(SSL_CTX_get_ssl_method(
+				sslContext->handle) == DTLS_method());
+		}
+		else
+		{
+			abort();
+		}
+	}
+#endif
+#else
+	assert(sslContext == NULL);
+#endif
+
+	struct Socket* _socket = malloc(
+		sizeof(struct Socket));
 
 	if (_socket == NULL)
 		return NULL;
@@ -122,7 +170,43 @@ struct Socket* createSocket(
 		return NULL;
 	}
 
+	SSL* ssl;
+
+#if MPNW_HAS_OPENSSL
+	if (sslContext != NULL)
+	{
+		ssl = SSL_new(
+			sslContext->handle);
+
+		if (ssl == NULL)
+		{
+			closesocket(handle);
+			free(_socket);
+			return NULL;
+		}
+
+		int result = SSL_set_fd(
+			ssl,
+			handle);
+
+		if (result != 1)
+		{
+			SSL_free(ssl);
+			closesocket(handle);
+			free(_socket);
+			return NULL;
+		}
+	}
+	else
+	{
+		ssl = NULL;
+	}
+#else
+	ssl = NULL;
+#endif
+
 	_socket->handle = handle;
+	_socket->ssl = ssl;
 	return _socket;
 }
 
@@ -131,6 +215,11 @@ void destroySocket(
 {
 	if (socket == NULL)
 		return;
+
+#if MPNW_HAS_OPENSSL
+	if (socket->ssl != NULL)
+		SSL_free(socket->ssl);
+#endif
 
 	int result = closesocket(
 		socket->handle);
@@ -167,6 +256,13 @@ uint8_t getSocketType(
 		return DATAGRAM_SOCKET_TYPE;
 	else
 		abort();
+}
+
+bool getSocketSSL(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
+	return socket->ssl == NULL;
 }
 
 struct SocketAddress* getSocketLocalAddress(
@@ -270,8 +366,8 @@ bool acceptSocket(
 	assert(socket != NULL);
 	assert(_acceptedSocket != NULL);
 
-	struct Socket* acceptedSocket =
-		malloc(sizeof(struct Socket));
+	struct Socket* acceptedSocket = malloc(
+		sizeof(struct Socket));
 
 	if (acceptedSocket == NULL)
 		return false;
@@ -287,7 +383,50 @@ bool acceptSocket(
 		return false;
 	}
 
+	SSL* ssl;
+
+#if MPNW_HAS_OPENSSL
+	if (socket->ssl != NULL)
+	{
+		SSL_CTX* context = SSL_get_SSL_CTX(
+			socket->ssl);
+
+		if (context == NULL)
+		{
+			closesocket(handle);
+			free(acceptedSocket);
+			return false;
+		}
+
+		ssl = SSL_new(context);
+
+		if (ssl == NULL)
+		{
+			closesocket(handle);
+			free(acceptedSocket);
+			return false;
+		}
+
+		int result = SSL_accept(ssl);
+
+		if (result != 1)
+		{
+			SSL_free(ssl);
+			closesocket(handle);
+			free(acceptedSocket);
+			return false;
+		}
+	}
+	else
+	{
+		ssl = NULL;
+	}
+#else
+	ssl = NULL;
+#endif
+
 	acceptedSocket->handle = handle;
+	acceptedSocket->ssl = NULL;
 	*_acceptedSocket = acceptedSocket;
 	return true;
 }
@@ -321,6 +460,17 @@ bool shutdownSocket(
 	uint8_t _type)
 {
 	assert(socket != NULL);
+
+#if MPNW_HAS_OPENSSL
+	if (socket->ssl != NULL)
+	{
+		int result = SSL_shutdown(
+			socket->ssl);
+
+		if (result == 0)
+			SSL_shutdown(socket->ssl);
+	}
+#endif
 
 	int type;
 
@@ -360,11 +510,31 @@ bool socketReceive(
 	assert(size != 0);
 	assert(_count != NULL);
 
-	int count = recv(
+	int count;
+
+#if MPNW_HAS_OPENSSL
+	if (socket->ssl != NULL)
+	{
+		count = SSL_read(
+			socket->ssl,
+			buffer,
+			size);
+	}
+	else
+	{
+		count = recv(
+			socket->handle,
+			(char*)buffer,
+			(int)size,
+			0);
+	}
+#else
+	count = recv(
 		socket->handle,
 		(char*)buffer,
 		(int)size,
 		0);
+#endif
 
 	if (count < 0)
 		return false;
@@ -380,12 +550,20 @@ bool socketSend(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
+	assert(count != 0);
 
+#if MPNW_HAS_OPENSSL
+	return SSL_write(
+		socket->ssl,
+		buffer,
+		count) == count;
+#else
 	return send(
 		socket->handle,
 		(const char*)buffer,
 		(int)count,
 		0) == count;
+#endif
 }
 
 bool socketReceiveFrom(
@@ -400,6 +578,7 @@ bool socketReceiveFrom(
 	assert(size != 0);
 	assert(_address != NULL);
 	assert(_count != NULL);
+	assert(socket->ssl == NULL);
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
@@ -442,7 +621,9 @@ bool socketSendTo(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
+	assert(count != 0);
 	assert(address != NULL);
+	assert(socket->ssl == NULL);
 
 	SOCKET_LENGTH length;
 
@@ -470,8 +651,8 @@ struct SocketAddress* createSocketAddress(
 	assert(service != NULL);
 	assert(networkInitialized == true);
 
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
+	struct SocketAddress* address = malloc(
+		sizeof(struct SocketAddress));
 
 	if (address == NULL)
 		return NULL;
@@ -524,8 +705,8 @@ struct SocketAddress* resolveSocketAddress(
 	assert(service != NULL);
 	assert(networkInitialized == true);
 
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
+	struct SocketAddress* address = malloc(
+		sizeof(struct SocketAddress));
 
 	if (address == NULL)
 		return NULL;
@@ -593,8 +774,8 @@ struct SocketAddress* copySocketAddress(
 {
 	assert(address != NULL);
 
-	struct SocketAddress* _address =
-		malloc(sizeof(struct SocketAddress));
+	struct SocketAddress* _address = malloc(
+		sizeof(struct SocketAddress));
 
 	if (_address == NULL)
 		return NULL;
@@ -844,4 +1025,90 @@ bool getSocketAddressHostService(
 	*_host = host;
 	*_service = service;
 	return true;
+}
+
+struct SslContext* createSslContextFromFile(
+	uint8_t socketType,
+	const char* certificateFilePath,
+	const char* privateKeyFilePath)
+{
+#if MPNW_HAS_OPENSSL
+	assert(networkInitialized == true);
+	assert(certificateFilePath != NULL);
+	assert(privateKeyFilePath != NULL);
+
+	struct SslContext* context = malloc(
+		sizeof(struct SslContext));
+
+	if (context == NULL)
+		return NULL;
+
+	SSL_CTX* handle;
+
+	if (socketType == STREAM_SOCKET_TYPE)
+		handle = SSL_CTX_new(TLS_method());
+	else if (socketType == DATAGRAM_SOCKET_TYPE)
+		handle = SSL_CTX_new(DTLS_method());
+	else
+		abort();
+
+	if (handle == NULL)
+	{
+		free(context);
+		return NULL;
+	}
+
+	int result = SSL_CTX_use_certificate_file(
+		handle,
+		certificateFilePath,
+		SSL_FILETYPE_PEM);
+
+	if (result != 1)
+	{
+		SSL_CTX_free(handle);
+		free(context);
+		return NULL;
+	}
+
+	result = SSL_CTX_use_PrivateKey_file(
+		handle,
+		privateKeyFilePath,
+		SSL_FILETYPE_PEM);
+
+	if (result != 1)
+	{
+		SSL_CTX_free(handle);
+		free(context);
+		return NULL;
+	}
+
+	result = SSL_CTX_check_private_key(
+		handle);
+
+	if (result != 1)
+	{
+		SSL_CTX_free(handle);
+		free(context);
+		return NULL;
+	}
+
+	context->handle = handle;
+	return context;
+#else
+	abort();
+#endif
+}
+
+void destroySslContext(
+	struct SslContext* context)
+{
+#if MPNW_HAS_OPENSSL
+	if (context == NULL)
+		return;
+
+	SSL_CTX_free(context->handle);
+	free(context);
+#else
+	abort();
+#endif
 }

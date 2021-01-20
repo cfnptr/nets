@@ -24,6 +24,7 @@ typedef bool(*StreamClientReceive)(
  */
 struct StreamClient* createStreamClient(
 	uint8_t addressFamily,
+	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	const StreamClientReceive* receiveFunctions,
 	size_t receiveFunctionCount,
@@ -32,7 +33,7 @@ struct StreamClient* createStreamClient(
 
 /*
  * Destroys specified stream client.
- * client - pointer to the valid stream client.
+ * client - pointer to the stream client or NULL.
  */
 void destroyStreamClient(
 	struct StreamClient* client);

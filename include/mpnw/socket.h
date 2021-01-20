@@ -22,6 +22,8 @@
 struct Socket;
 /* Socket address instance handle */
 struct SocketAddress;
+/* Secure socket layer context handle */
+struct SslContext;
 
 /* Socket internet protocol address family */
 enum AddressFamily
@@ -61,11 +63,12 @@ bool getNetworkInitialized();
  */
 struct Socket* createSocket(
 	uint8_t type,
-	uint8_t family);
+	uint8_t family,
+	struct SslContext* sslContext);
 
 /*
  * Destroys specified socket.
- * socket - pointer to the valid socket.
+ * socket - pointer to the socket or NULL.
  */
 void destroySocket(
 	struct Socket* socket);
@@ -75,6 +78,13 @@ void destroySocket(
  * socket - pointer to the valid socket.
  */
 uint8_t getSocketType(
+	const struct Socket* socket);
+
+/*
+ * Returns true if socket uses SSL.
+ * socket - pointer to the valid socket.
+ */
+bool getSocketSSL(
 	const struct Socket* socket);
 
 /*
@@ -236,7 +246,7 @@ struct SocketAddress* resolveSocketAddress(
 
 /*
  * Destroys specified socket endpoint address.
- * address - pointer to the valid socket address.
+ * address - pointer to the socket address or NULL.
  */
 void destroySocketAddress(
 	struct SocketAddress* address);
@@ -317,3 +327,23 @@ bool getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char** host,
 	char** service);
+
+/*
+ * Creates a new SSL context.
+ * Returns SSL context on success, otherwise null.
+ *
+ * socketType - target socket type value.
+ * certificateFilePath - valid certificate file path string.
+ * privateKeyFilePath - valid private key file path string.
+ */
+struct SslContext* createSslContextFromFile(
+	uint8_t socketType,
+	const char* certificateFilePath,
+	const char* privateKeyFilePath);
+
+/*
+ * Destroys specified SSL context.
+ * context - pointer to the SSL context or NULL.
+ */
+void destroySslContext(
+	struct SslContext* context);

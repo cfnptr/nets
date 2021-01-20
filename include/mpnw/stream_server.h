@@ -28,6 +28,7 @@ typedef bool(*StreamSessionReceive)(
  */
 struct StreamServer* createStreamServer(
 	uint8_t addressFamily,
+	struct SslContext* sslContext,
 	const char* port,
 	size_t sessionBufferSize,
 	const StreamSessionReceive* receiveFunctions,
@@ -38,7 +39,7 @@ struct StreamServer* createStreamServer(
 
 /*
  * Destroys specified stream server.
- * server - pointer to the valid stream server.
+ * server - pointer to the stream server or NULL.
  */
 void destroyStreamServer(
 	struct StreamServer* server);

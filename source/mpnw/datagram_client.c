@@ -75,6 +75,7 @@ static void datagramClientReceiveHandler(
 
 struct DatagramClient* createDatagramClient(
 	uint8_t addressFamily,
+	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	const DatagramClientReceive* _receiveFunctions,
 	size_t receiveFunctionCount,
@@ -87,8 +88,8 @@ struct DatagramClient* createDatagramClient(
 	assert(receiveFunctionCount <= 256);
 	assert(receiveBufferSize != 0);
 
-	struct DatagramClient* client =
-		malloc(sizeof(struct DatagramClient));
+	struct DatagramClient* client = malloc(
+		sizeof(struct DatagramClient));
 
 	if (client == NULL)
 		return NULL;
@@ -116,7 +117,8 @@ struct DatagramClient* createDatagramClient(
 
 	struct Socket* receiveSocket = createSocket(
 		DATAGRAM_SOCKET_TYPE,
-		addressFamily);
+		addressFamily,
+		sslContext);
 
 	if (receiveSocket == NULL)
 	{

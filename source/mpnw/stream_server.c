@@ -174,6 +174,7 @@ static void streamServerAcceptHandler(
 
 struct StreamServer* createStreamServer(
 	uint8_t addressFamily,
+	struct SslContext* sslContext,
 	const char* port,
 	size_t sessionBufferSize,
 	const StreamSessionReceive* _receiveFunctions,
@@ -190,8 +191,8 @@ struct StreamServer* createStreamServer(
 	assert(receiveTimeoutTime != 0);
 	assert(receiveBufferSize != 0);
 
-	struct StreamServer* server =
-		malloc(sizeof(struct StreamServer));
+	struct StreamServer* server = malloc(
+		sizeof(struct StreamServer));
 
 	if (server == NULL)
 		return NULL;
@@ -230,7 +231,8 @@ struct StreamServer* createStreamServer(
 
 	struct Socket* receiveSocket = createSocket(
 		STREAM_SOCKET_TYPE,
-		addressFamily);
+		addressFamily,
+		sslContext);
 
 	if (receiveSocket == NULL)
 	{

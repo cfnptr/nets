@@ -89,6 +89,7 @@ static void streamClientReceiveHandler(
 
 struct StreamClient* createStreamClient(
 	uint8_t addressFamily,
+	struct SslContext* sslContext,
 	const struct SocketAddress* _remoteAddress,
 	const StreamClientReceive* _receiveFunctions,
 	size_t receiveFunctionCount,
@@ -101,8 +102,8 @@ struct StreamClient* createStreamClient(
 	assert(receiveFunctionCount <= 256);
 	assert(receiveBufferSize != 0);
 
-	struct StreamClient* client =
-		malloc(sizeof(struct StreamClient));
+	struct StreamClient* client = malloc(
+		sizeof(struct StreamClient));
 
 	if (client == NULL)
 		return NULL;
@@ -141,7 +142,8 @@ struct StreamClient* createStreamClient(
 
 	struct Socket* receiveSocket = createSocket(
 		STREAM_SOCKET_TYPE,
-		addressFamily);
+		addressFamily,
+		sslContext);
 
 	if (receiveSocket == NULL)
 	{

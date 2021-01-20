@@ -25,6 +25,7 @@ typedef void(*DatagramServerReceive)(
  */
 struct DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
+	struct SslContext* sslContext,
 	const char* port,
 	const DatagramServerReceive* receiveFunctions,
 	size_t receiveFunctionCount,
@@ -33,7 +34,7 @@ struct DatagramServer* createDatagramServer(
 
 /*
  * Destroys specified datagram server.
- * server - pointer to the valid datagram server.
+ * server - pointer to the datagram server or NULL.
  */
 void destroyDatagramServer(
 	struct DatagramServer* server);
