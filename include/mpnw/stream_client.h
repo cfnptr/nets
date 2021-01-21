@@ -16,9 +16,9 @@ typedef bool(*StreamClientReceive)(
  * Returns stream client on success, otherwise null.
  *
  * addressFamily - local stream socket address family.
+ * sslContext - pointer to the SSL context or NULL.
  * remoteAddress - pointer to the valid server address.
- * receiveFunctions - pointer to the valid receive functions.
- * receiveFunctionCount - receive function array item count.
+ * receiveFunction - pointer to the valid receive function.
  * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket message receive buffer size.
  */
@@ -26,8 +26,7 @@ struct StreamClient* createStreamClient(
 	uint8_t addressFamily,
 	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
-	const StreamClientReceive* receiveFunctions,
-	size_t receiveFunctionCount,
+	StreamClientReceive receiveFunction,
 	void* functionArgument,
 	size_t receiveBufferSize);
 
@@ -39,14 +38,14 @@ void destroyStreamClient(
 	struct StreamClient* client);
 
 /*
- * Gets current stream client running state
+ * Returns current stream client running state
  * client - pointer to the valid stream client.
  */
 bool getStreamClientRunning(
 	const struct StreamClient* client);
 
 /*
- * Sends message to the server.
+ * Sends message to the stream server.
  * Returns true on success.
  *
  * client - pointer to the valid stream client.

@@ -2,15 +2,13 @@
 #include "mpmt/thread.h"
 
 #include <time.h>
-#include <string.h>
 #include <assert.h>
 
 struct StreamServer
 {
 	struct StreamSession* sessionBuffer;
 	size_t sessionBufferSize;
-	StreamSessionReceive* receiveFunctions;
-	size_t receiveFunctionCount;
+	StreamSessionReceive receiveFunction;
 	size_t receiveTimeoutTime;
 	void* functionArgument;
 	size_t receiveBufferSize;
@@ -24,8 +22,8 @@ struct StreamSession
 {
 	struct StreamServer* server;
 	size_t receiveBufferOffset;
-	bool hasRunningSocket;
 	volatile size_t lastMessageTime;
+	volatile bool threadRunning;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
 };
@@ -38,10 +36,8 @@ static void streamSessionReceiveHandler(
 	struct StreamServer* server =
 		session->server;
 
-	StreamSessionReceive* receiveFunctions =
-		server->receiveFunctions;
-	size_t receiveFunctionCount =
-		server->receiveFunctionCount;
+	StreamSessionReceive receiveFunction =
+		server->receiveFunction;
 	size_t receiveBufferSize =
 		server->receiveBufferSize;
 	void* functionArgument =
@@ -53,49 +49,38 @@ static void streamSessionReceiveHandler(
 		server->receiveBuffer +
 		session->receiveBufferOffset;
 
+	bool result;
 	size_t byteCount;
+
+	session->threadRunning = true;
 
 	while (true)
 	{
-		bool result = socketReceive(
+		result = socketReceive(
 			receiveSocket,
 			receiveBuffer,
 			receiveBufferSize,
 			&byteCount);
 
 		if (result == false || byteCount == 0)
-		{
-			shutdownSocket(
-				receiveSocket,
-				SHUTDOWN_RECEIVE_SEND);
-			session->lastMessageTime = 0;
-			return;
-		}
+			break;
 
-		size_t functionIndex =
-			(size_t)receiveBuffer[0];
+		result = receiveFunction(
+			session,
+			receiveBuffer,
+			byteCount,
+			functionArgument);
 
-		if (functionIndex < receiveFunctionCount)
-		{
-			StreamSessionReceive receiveFunction =
-				receiveFunctions[functionIndex];
-
-			result = receiveFunction(
-				session,
-				receiveBuffer,
-				byteCount,
-				functionArgument);
-
-			if (result == false)
-			{
-				shutdownSocket(
-					receiveSocket,
-					SHUTDOWN_RECEIVE_SEND);
-				session->lastMessageTime = 0;
-				return;
-			}
-		}
+		if (result == false)
+			break;
 	}
+
+	shutdownSocket(
+		receiveSocket,
+		SHUTDOWN_RECEIVE_SEND);
+
+	session->lastMessageTime = 0;
+	session->threadRunning = false;
 }
 
 static void streamServerAcceptHandler(
@@ -139,16 +124,15 @@ static void streamServerAcceptHandler(
 			size_t deltaMessageTime =
 				currentTime - session->lastMessageTime;
 
-			if (session->hasRunningSocket == true &&
+			if (session->threadRunning == true &&
 				deltaMessageTime > receiveTimeoutTime)
 			{
 				destroySocket(session->receiveSocket);
 				joinThread(session->receiveThread);
 				destroyThread(session->receiveThread);
-				session->hasRunningSocket = false;
 			}
 
-			if (session->hasRunningSocket == false)
+			if (session->threadRunning == false)
 			{
 				session->receiveSocket = acceptedSocket;
 
@@ -159,8 +143,9 @@ static void streamServerAcceptHandler(
 				if (receiveThread == NULL)
 					break;
 
+				session->lastMessageTime = currentTime;
 				session->receiveThread = receiveThread;
-				session->hasRunningSocket = true;
+				session->threadRunning = true;
 
 				result = true;
 				break;
@@ -177,17 +162,14 @@ struct StreamServer* createStreamServer(
 	struct SslContext* sslContext,
 	const char* port,
 	size_t sessionBufferSize,
-	const StreamSessionReceive* _receiveFunctions,
-	size_t receiveFunctionCount,
+	StreamSessionReceive receiveFunction,
 	size_t receiveTimeoutTime,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
 	assert(port != NULL);
 	assert(sessionBufferSize != 0);
-	assert(_receiveFunctions != NULL);
-	assert(receiveFunctionCount != 0);
-	assert(receiveFunctionCount <= 256);
+	assert(receiveFunction != NULL);
 	assert(receiveTimeoutTime != 0);
 	assert(receiveBufferSize != 0);
 
@@ -206,24 +188,11 @@ struct StreamServer* createStreamServer(
 		return NULL;
 	}
 
-	size_t receiveFunctionSize =
-		receiveFunctionCount * sizeof(StreamSessionReceive);
-	StreamSessionReceive* receiveFunctions = malloc(
-		receiveFunctionSize);
-
-	if (receiveFunctions == NULL)
-	{
-		free(sessionBuffer);
-		free(server);
-		return NULL;
-	}
-
 	uint8_t* receiveBuffer = malloc(sizeof(uint8_t) *
 		sessionBufferSize * receiveBufferSize);
 
 	if (receiveBuffer == NULL)
 	{
-		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -237,7 +206,6 @@ struct StreamServer* createStreamServer(
 	if (receiveSocket == NULL)
 	{
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -266,7 +234,6 @@ struct StreamServer* createStreamServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -283,7 +250,6 @@ struct StreamServer* createStreamServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -296,7 +262,6 @@ struct StreamServer* createStreamServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -307,22 +272,16 @@ struct StreamServer* createStreamServer(
 		struct StreamSession session;
 		session.server = server;
 		session.receiveBufferOffset = receiveBufferSize * i;
-		session.hasRunningSocket = false;
+		session.threadRunning = false;
 		session.lastMessageTime = 0;
 		session.receiveSocket = NULL;
 		session.receiveThread = NULL;
 		sessionBuffer[i] = session;
 	}
 
-	memcpy(
-		receiveFunctions,
-		_receiveFunctions,
-		receiveFunctionSize);
-
 	server->sessionBuffer = sessionBuffer;
 	server->sessionBufferSize = sessionBufferSize;
-	server->receiveFunctions = receiveFunctions;
-	server->receiveFunctionCount = receiveFunctionCount;
+	server->receiveFunction = receiveFunction;
 	server->receiveTimeoutTime = receiveTimeoutTime;
 	server->functionArgument = functionArgument;
 	server->receiveBufferSize = receiveBufferSize;
@@ -338,7 +297,6 @@ struct StreamServer* createStreamServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(sessionBuffer);
 		free(server);
 		return NULL;
@@ -370,7 +328,7 @@ void destroyStreamServer(
 		struct StreamSession session =
 			sessionBuffer[i];
 
-		if (session.hasRunningSocket == true)
+		if (session.threadRunning == true)
 		{
 			destroySocket(session.receiveSocket);
 			joinThread(session.receiveThread);
@@ -379,7 +337,6 @@ void destroyStreamServer(
 	}
 
 	free(server->receiveBuffer);
-	free(server->receiveFunctions);
 	free(server->sessionBuffer);
 	free(server);
 }
@@ -391,6 +348,7 @@ bool streamSessionSend(
 {
 	assert(session != NULL);
 	assert(buffer != NULL);
+	assert(count != 0);
 
 	return socketSend(
 		session->receiveSocket,

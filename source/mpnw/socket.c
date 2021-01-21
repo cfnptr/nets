@@ -75,7 +75,7 @@ bool initializeNetwork()
 
 #if MPNW_HAS_OPENSSL
 	SSL_load_error_strings();
-	OpenSSL_add_all_algorithms();
+	OpenSSL_add_ssl_algorithms();
 #endif
 
 	networkInitialized = true;
@@ -407,7 +407,19 @@ bool acceptSocket(
 			return false;
 		}
 
-		int result = SSL_accept(ssl);
+		int result = SSL_set_fd(
+			ssl,
+			handle);
+
+		if (result != 1)
+		{
+			SSL_free(ssl);
+			closesocket(handle);
+			free(acceptedSocket);
+			return false;
+		}
+
+		result = SSL_accept(ssl);
 
 		if (result != 1)
 		{
@@ -449,10 +461,20 @@ bool connectSocket(
 	else
 		abort();
 
-	return connect(
+	int result = connect(
 		socket->handle,
 		(const struct sockaddr*)&address->handle,
-		length) == 0;
+		length);
+
+#if MPNW_HAS_OPENSSL
+	if (result != 0)
+		return false;
+
+	return SSL_connect(
+		socket->ssl) == 1;
+#else
+	return resul == 0;
+#endif
 }
 
 bool shutdownSocket(
@@ -553,10 +575,21 @@ bool socketSend(
 	assert(count != 0);
 
 #if MPNW_HAS_OPENSSL
-	return SSL_write(
-		socket->ssl,
-		buffer,
-		count) == count;
+	if (socket->ssl != NULL)
+	{
+		return SSL_write(
+			socket->ssl,
+			buffer,
+			count) == count;
+	}
+	else
+	{
+		return send(
+			socket->handle,
+			(const char*)buffer,
+			(int)count,
+			0) == count;
+	}
 #else
 	return send(
 		socket->handle,
@@ -880,13 +913,13 @@ uint16_t getSocketAddressPort(
 	{
 		struct sockaddr_in* address4 =
 			(struct sockaddr_in*)&address->handle;
-		return (uint16_t)address4->sin_port;
+		return ntohs(address4->sin_port);
 	}
 	else if (family == AF_INET6)
 	{
 		struct sockaddr_in6* address6 =
 			(struct sockaddr_in6*)&address->handle;
-		return (uint16_t)address6->sin6_port;
+		return ntohs(address6->sin6_port);
 	}
 	else
 	{
@@ -1025,6 +1058,63 @@ bool getSocketAddressHostService(
 	*_host = host;
 	*_service = service;
 	return true;
+}
+
+struct SslContext* createSslContext(
+	uint8_t socketType,
+	const char* certificateVerifyPath)
+{
+#if MPNW_HAS_OPENSSL
+	assert(networkInitialized == true);
+
+	struct SslContext* context = malloc(
+		sizeof(struct SslContext));
+
+	if (context == NULL)
+		return NULL;
+
+	SSL_CTX* handle;
+
+	if (socketType == STREAM_SOCKET_TYPE)
+		handle = SSL_CTX_new(TLS_method());
+	else if (socketType == DATAGRAM_SOCKET_TYPE)
+		handle = SSL_CTX_new(DTLS_method());
+	else
+		abort();
+
+	if (handle == NULL)
+	{
+		free(context);
+		return NULL;
+	}
+
+	int result;
+
+	if (certificateVerifyPath != NULL)
+	{
+		result = SSL_CTX_load_verify_locations(
+			handle,
+			NULL,
+			certificateVerifyPath);
+	}
+	else
+	{
+		result = SSL_CTX_set_default_verify_paths(
+			handle);
+	}
+
+	if (result != 1)
+	{
+		SSL_CTX_free(handle);
+		free(context);
+		return NULL;
+	}
+
+	context->handle = handle;
+	return context;
+#else
+	abort();
+#endif
 }
 
 struct SslContext* createSslContextFromFile(

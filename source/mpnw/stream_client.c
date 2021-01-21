@@ -6,8 +6,7 @@
 
 struct StreamClient
 {
-	StreamClientReceive* receiveFunctions;
-	size_t receiveFunctionCount;
+	StreamClientReceive receiveFunction;
 	void* functionArgument;
 	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
@@ -24,10 +23,8 @@ static void streamClientReceiveHandler(
 		(struct StreamClient*)argument;
 	struct SocketAddress* remoteAddress =
 		client->remoteAddress;
-	StreamClientReceive* receiveFunctions =
-		client->receiveFunctions;
-	size_t receiveFunctionCount =
-		client->receiveFunctionCount;
+	StreamClientReceive receiveFunction =
+		client->receiveFunction;
 	void* functionArgument =
 		client->functionArgument;
 	size_t receiveBufferSize =
@@ -42,12 +39,11 @@ static void streamClientReceiveHandler(
 		remoteAddress);
 
 	if (result == false)
-	{
-		client->threadRunning = false;
 		return;
-	}
 
 	size_t byteCount;
+
+	client->threadRunning = true;
 
 	while (true)
 	{
@@ -57,49 +53,32 @@ static void streamClientReceiveHandler(
 			receiveBufferSize,
 			&byteCount);
 
-		if (result == false ||
-			byteCount == 0)
-		{
-			client->threadRunning = false;
-			return;
-		}
+		if (result == false || byteCount == 0)
+			break;
 
-		size_t functionIndex =
-			(size_t)receiveBuffer[0];
+		result = receiveFunction(
+			client,
+			receiveBuffer,
+			byteCount,
+			functionArgument);
 
-		if (functionIndex < receiveFunctionCount)
-		{
-			StreamClientReceive receiveFunction =
-				receiveFunctions[functionIndex];
-
-			result = receiveFunction(
-				client,
-				receiveBuffer,
-				byteCount,
-				functionArgument);
-
-			if (result == false)
-			{
-				client->threadRunning = false;
-				return;
-			}
-		}
+		if (result == false)
+			break;
 	}
+
+	client->threadRunning = false;
 }
 
 struct StreamClient* createStreamClient(
 	uint8_t addressFamily,
 	struct SslContext* sslContext,
 	const struct SocketAddress* _remoteAddress,
-	const StreamClientReceive* _receiveFunctions,
-	size_t receiveFunctionCount,
+	StreamClientReceive receiveFunction,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
 	assert(_remoteAddress != NULL);
-	assert(_receiveFunctions != NULL);
-	assert(receiveFunctionCount != 0);
-	assert(receiveFunctionCount <= 256);
+	assert(receiveFunction != NULL);
 	assert(receiveBufferSize != 0);
 
 	struct StreamClient* client = malloc(
@@ -117,24 +96,11 @@ struct StreamClient* createStreamClient(
 		return NULL;
 	}
 
-	size_t receiveFunctionSize =
-		receiveFunctionCount * sizeof(StreamClientReceive);
-	StreamClientReceive* receiveFunctions = malloc(
-		receiveFunctionSize);
-
-	if (receiveFunctions == NULL)
-	{
-		destroySocketAddress(remoteAddress);
-		free(client);
-		return NULL;
-	}
-
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
 	if (receiveBuffer == NULL)
 	{
-		free(receiveFunctions);
 		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
@@ -148,7 +114,6 @@ struct StreamClient* createStreamClient(
 	if (receiveSocket == NULL)
 	{
 		free(receiveBuffer);
-		free(receiveFunctions);
 		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
@@ -177,7 +142,6 @@ struct StreamClient* createStreamClient(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
@@ -194,24 +158,17 @@ struct StreamClient* createStreamClient(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
 
-	memcpy(
-		receiveFunctions,
-		_receiveFunctions,
-		receiveFunctionSize);
-
 	client->remoteAddress = remoteAddress;
-	client->receiveFunctions = receiveFunctions;
-	client->receiveFunctionCount = receiveFunctionCount;
+	client->receiveFunction = receiveFunction;
 	client->functionArgument = functionArgument;
 	client->receiveBufferSize = receiveBufferSize;
 	client->receiveBuffer = receiveBuffer;
-	client->threadRunning = true;
+	client->threadRunning = false;
 	client->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
@@ -222,7 +179,6 @@ struct StreamClient* createStreamClient(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
@@ -244,7 +200,6 @@ void destroyStreamClient(
 
 	free(client->receiveBuffer);
 	destroySocketAddress(client->remoteAddress);
-	free(client->receiveFunctions);
 	free(client);
 }
 
@@ -252,7 +207,7 @@ bool getStreamClientRunning(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
-	return client;
+	return client->threadRunning;
 }
 
 bool streamClientSend(
@@ -262,6 +217,7 @@ bool streamClientSend(
 {
 	assert(client != NULL);
 	assert(buffer != NULL);
+	assert(count != 0);
 
 	return socketSend(
 		client->receiveSocket,

@@ -6,8 +6,7 @@
 
 struct DatagramServer
 {
-	DatagramServerReceive* receiveFunctions;
-	size_t receiveFunctionCount;
+	DatagramServerReceive receiveFunction;
 	void* functionArgument;
 	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
@@ -21,10 +20,8 @@ static void datagramServerReceiveHandler(
 {
 	struct DatagramServer* server =
 		(struct DatagramServer*)argument;
-	DatagramServerReceive* receiveFunctions =
-		server->receiveFunctions;
-	size_t receiveFunctionCount =
-		server->receiveFunctionCount;
+	DatagramServerReceive receiveFunction =
+		server->receiveFunction;
 	void* functionArgument =
 		server->functionArgument;
 	size_t receiveBufferSize =
@@ -34,12 +31,13 @@ static void datagramServerReceiveHandler(
 	struct Socket* receiveSocket =
 		server->receiveSocket;
 
+	bool result;
 	size_t byteCount;
 	struct SocketAddress* remoteAddress;
 
 	while (server->threadRunning == true)
 	{
-		bool result = socketReceiveFrom(
+		result = socketReceiveFrom(
 			receiveSocket,
 			receiveBuffer,
 			receiveBufferSize,
@@ -52,21 +50,12 @@ static void datagramServerReceiveHandler(
 			continue;
 		}
 
-		size_t functionIndex =
-			(size_t)receiveBuffer[0];
-
-		if (functionIndex < receiveFunctionCount)
-		{
-			DatagramServerReceive receiveFunction =
-				receiveFunctions[functionIndex];
-
-			receiveFunction(
-				server,
-				remoteAddress,
-				receiveBuffer,
-				byteCount,
-				functionArgument);
-		}
+		receiveFunction(
+			server,
+			remoteAddress,
+			receiveBuffer,
+			byteCount,
+			functionArgument);
 
 		destroySocketAddress(
 			remoteAddress);
@@ -77,15 +66,12 @@ struct DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
 	struct SslContext* sslContext,
 	const char* port,
-	const DatagramServerReceive* _receiveFunctions,
-	size_t receiveFunctionCount,
+	DatagramServerReceive receiveFunction,
 	void* functionArgument,
 	size_t receiveBufferSize)
 {
 	assert(port != NULL);
-	assert(_receiveFunctions != NULL);
-	assert(receiveFunctionCount != 0);
-	assert(receiveFunctionCount <= 256);
+	assert(receiveFunction != NULL);
 	assert(receiveBufferSize != 0);
 
 	struct DatagramServer* server = malloc(
@@ -94,23 +80,11 @@ struct DatagramServer* createDatagramServer(
 	if (server == NULL)
 		return NULL;
 
-	size_t receiveFunctionSize =
-		receiveFunctionCount * sizeof(DatagramServerReceive);
-	DatagramServerReceive* receiveFunctions = malloc(
-		receiveFunctionSize);
-
-	if (receiveFunctions == NULL)
-	{
-		free(server);
-		return NULL;
-	}
-
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
 	if (receiveBuffer == NULL)
 	{
-		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -123,7 +97,6 @@ struct DatagramServer* createDatagramServer(
 	if (receiveSocket == NULL)
 	{
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -151,7 +124,6 @@ struct DatagramServer* createDatagramServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -167,18 +139,11 @@ struct DatagramServer* createDatagramServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
 
-	memcpy(
-		receiveFunctions,
-		_receiveFunctions,
-		receiveFunctionSize);
-
-	server->receiveFunctions = receiveFunctions;
-	server->receiveFunctionCount = receiveFunctionCount;
+	server->receiveFunction = receiveFunction;
 	server->functionArgument = functionArgument;
 	server->receiveBufferSize = receiveBufferSize;
 	server->receiveBuffer = receiveBuffer;
@@ -193,7 +158,6 @@ struct DatagramServer* createDatagramServer(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		free(receiveFunctions);
 		free(server);
 		return NULL;
 	}
@@ -215,7 +179,6 @@ void destroyDatagramServer(
 	destroyThread(server->receiveThread);
 
 	free(server->receiveBuffer);
-	free(server->receiveFunctions);
 	free(server);
 }
 
@@ -227,6 +190,7 @@ bool datagramServerSend(
 {
 	assert(server != NULL);
 	assert(buffer != NULL);
+	assert(count != 0);
 	assert(address != NULL);
 
 	return socketSendTo(

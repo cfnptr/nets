@@ -47,6 +47,8 @@ enum SocketShutdown
 	SHUTDOWN_RECEIVE_SEND = 2,
 };
 
+// TODO: add getSslContext method
+
 /* Returns true if network was initialized. */
 bool initializeNetwork();
 /* Terminates network. */
@@ -327,6 +329,17 @@ bool getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char** host,
 	char** service);
+
+/*
+ * Creates a new SSL context.
+ * Returns SSL context on success, otherwise null.
+ *
+ * socketType - target socket type value.
+ * certificateVerifyPath - valid trusted certificates location.
+ */
+struct SslContext* createSslContext(
+	uint8_t socketType,
+	const char* certificateVerifyPath);
 
 /*
  * Creates a new SSL context.
