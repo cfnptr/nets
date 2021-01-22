@@ -460,7 +460,7 @@ bool connectSocket(
 	return SSL_connect(
 		socket->ssl) == 1;
 #else
-	return resul == 0;
+	return result == 0;
 #endif
 }
 
