@@ -70,12 +70,11 @@ static void streamClientReceiveHandler(
 }
 
 struct StreamClient* createStreamClient(
-	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const struct SocketAddress* _remoteAddress,
 	StreamClientReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize)
+	size_t receiveBufferSize,
+	struct SslContext* sslContext)
 {
 	assert(_remoteAddress != NULL);
 	assert(receiveFunction != NULL);
@@ -106,6 +105,8 @@ struct StreamClient* createStreamClient(
 		return NULL;
 	}
 
+	uint8_t addressFamily = getSocketAddressFamily(
+		_remoteAddress);
 	struct Socket* receiveSocket = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
@@ -203,11 +204,18 @@ void destroyStreamClient(
 	free(client);
 }
 
-bool getStreamClientRunning(
+bool isStreamClientRunning(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
 	return client->threadRunning;
+}
+
+const struct Socket* getStreamClientSocket(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->receiveSocket;
 }
 
 bool streamClientSend(

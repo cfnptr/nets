@@ -1,6 +1,6 @@
 #pragma once
 #include "mpnw/http.h"
-#include "mpnw/socket.h"
+#include "mpnw/stream_client.h"
 
 /* HTTP client instance handle */
 struct HttpClient;
@@ -8,27 +8,25 @@ struct HttpClient;
 /* HTTP client response receive function */
 typedef bool(*HttpClientReceive)(
 	struct HttpClient* client,
-	const char* response,
-	size_t count,
+	const struct HttpResponse* response,
 	void* argument);
 
 /*
  * Creates a new HTTP client.
  * Returns HTTP client on success, otherwise null.
  *
- * addressFamily - local stream socket address family.
- * sslContext - pointer to the SSL context or NULL.
+ * addressFamily - local HTTP socket address family.
  * remoteAddress - pointer to the valid server address.
  * receiveFunction - pointer to the valid receive function.
  * functionArgument - pointer to the server function argument.
+ * sslContext - pointer to the SSL context or NULL.
  */
 struct HttpClient* createHttpClient(
-	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	HttpClientReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize);
+	size_t receiveBufferSize,
+	struct SslContext* sslContext);
 
 /*
  * Destroys specified HTTP client.
@@ -38,10 +36,10 @@ void destroyHttpClient(
 	struct HttpClient* client);
 
 /*
- * Returns current HTTP client running state.
+ * Returns HTTP client stream.
  * client - pointer to the valid HTTP client.
  */
-bool getHttpClientRunning(
+const struct StreamClient* getHttpClientStream(
 	const struct HttpClient* client);
 
 /*
@@ -49,8 +47,12 @@ bool getHttpClientRunning(
  * Returns true on success.
  *
  * client - pointer to the valid HTTP client.
- * request - valid HTTP server request.
+ * type - HTTP request type.
+ * uri - pointer to the valid HTTP URI.
+ * version - HTTP protocol version.
  */
 bool httpClientSend(
 	struct HttpClient* client,
-	struct HttpRequest request);
+	uint8_t type,
+	const char* uri,
+	uint8_t version);

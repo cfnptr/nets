@@ -18,23 +18,23 @@ typedef bool(*StreamSessionReceive)(
  * Returns stream server on success, otherwise null.
  *
  * addressFamily - local stream socket address family.
- * sslContext - pointer to the SSL context or NULL.
  * port - pointer to the valid local address port string.
  * sessionBufferSize - socket session buffer size.
  * receiveFunction - pointer to the valid receive function.
  * receiveTimeoutTime - socket message receive timeout time.
  * functionArgument - pointer to the server function argument.
- * receiveBufferSize - socket datagram receive buffer size.
+ * receiveBufferSize - socket message receive buffer size.
+ * sslContext - pointer to the SSL context or NULL.
  */
 struct StreamServer* createStreamServer(
 	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const char* port,
 	size_t sessionBufferSize,
 	StreamSessionReceive receiveFunction,
 	size_t receiveTimeoutTime,
 	void* functionArgument,
-	size_t receiveBufferSize);
+	size_t receiveBufferSize,
+	struct SslContext* sslContext);
 
 /*
  * Destroys specified stream server.
@@ -42,6 +42,13 @@ struct StreamServer* createStreamServer(
  */
 void destroyStreamServer(
 	struct StreamServer* server);
+
+/*
+ * Returns stream server socket.
+ * client - pointer to the valid stream server.
+ */
+const struct Socket* getStreamServerSocket(
+	const struct StreamServer* server);
 
 /*
  * Sends datagram to the specified session.

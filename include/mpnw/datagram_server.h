@@ -17,19 +17,19 @@ typedef void(*DatagramServerReceive)(
  * Returns datagram server on success, otherwise null.
  *
  * addressFamily - local datagram socket address family.
- * sslContext - pointer to the SSL context or NULL.
  * port - pointer to the valid local address port string.
  * receiveFunction - pointer to the valid receive function.
  * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket datagram receive buffer size.
+ * sslContext - pointer to the SSL context or NULL.
  */
 struct DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const char* port,
 	DatagramServerReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize);
+	size_t receiveBufferSize,
+	struct SslContext* sslContext);
 
 /*
  * Destroys specified datagram server.
@@ -37,6 +37,13 @@ struct DatagramServer* createDatagramServer(
  */
 void destroyDatagramServer(
 	struct DatagramServer* server);
+
+/*
+ * Returns datagram server socket.
+ * server - pointer to the valid datagram server.
+ */
+const struct Socket* getDatagramServerSocket(
+	const struct DatagramServer* server);
 
 /*
  * Sends message to the specified address.

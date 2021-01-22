@@ -1,6 +1,4 @@
 #include "mpnw/http_client.h"
-#include "mpnw/stream_client.h"
-
 #include <assert.h>
 
 struct HttpClient
@@ -19,22 +17,28 @@ bool httpClientReceive(
 	struct HttpClient* httpClient =
 		(struct HttpClient*)argument;
 
-	// TODO: parse http response
-
-	return httpClient->receiveFunction(
-		httpClient,
+	struct HttpResponse* response = deserializeHttpResponse(
 		(const char*)buffer,
-		count,
+		count);
+
+	if (response == NULL)
+		return false;
+
+	bool result = httpClient->receiveFunction(
+		httpClient,
+		response,
 		httpClient->functionArgument);
+
+	destroyHttpResponse(response);
+	return result;
 }
 
 struct HttpClient* createHttpClient(
-	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	HttpClientReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize)
+	size_t receiveBufferSize,
+	struct SslContext* sslContext)
 {
 	assert(remoteAddress != NULL);
 	assert(receiveFunction != NULL);
@@ -46,12 +50,11 @@ struct HttpClient* createHttpClient(
 		return NULL;
 
 	struct StreamClient* handle = createStreamClient(
-		addressFamily,
-		sslContext,
 		remoteAddress,
 		httpClientReceive,
 		client,
-		receiveBufferSize);
+		receiveBufferSize,
+		sslContext);
 
 	if (handle == NULL)
 	{
@@ -76,33 +79,34 @@ void destroyHttpClient(
 	free(client);
 }
 
-bool getHttpClientRunning(
+const struct StreamClient* getHttpClientStream(
 	const struct HttpClient* client)
 {
 	assert(client != NULL);
-
-	return getStreamClientRunning(
-		client->handle);
+	return client->handle;
 }
 
 bool httpClientSend(
 	struct HttpClient* client,
-	struct HttpRequest request)
+	uint8_t type,
+	const char* uri,
+	uint8_t version)
 {
 	assert(client != NULL);
+	assert(uri != NULL);
 
-	char* data;
 	size_t size;
 
-	bool result = serializeHttpRequest(
-		request,
-		&data,
+	char* data = serializeHttpRequest(
+		type,
+		uri,
+		version,
 		&size);
 
-	if (result == false)
+	if (data == NULL)
 		return false;
 
-	result = streamClientSend(
+	bool result = streamClientSend(
 		client->handle,
 		data,
 		size);

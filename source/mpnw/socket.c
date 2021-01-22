@@ -36,13 +36,16 @@ static WSADATA wsaData;
 #include "openssl/err.h"
 #else
 #define SSL_CTX void
-#define SSL void
 #endif
 
 struct Socket
 {
 	SOCKET handle;
+
+#if MPNW_HAS_OPENSSL
+	struct SslContext* sslContext;
 	SSL* ssl;
+#endif
 };
 
 struct SocketAddress
@@ -101,7 +104,7 @@ void terminateNetwork()
 
 	networkInitialized = false;
 }
-bool getNetworkInitialized()
+bool isNetworkInitialized()
 {
 	return networkInitialized;
 }
@@ -113,27 +116,7 @@ struct Socket* createSocket(
 {
 	assert(networkInitialized == true);
 
-#if MPNW_HAS_OPENSSL
-#ifndef NDEBUG
-	if (sslContext != NULL)
-	{
-		if (_type == STREAM_SOCKET_TYPE)
-		{
-			assert(SSL_CTX_get_ssl_method(
-				sslContext->handle) == TLS_method());
-		}
-		else if (_type == DATAGRAM_SOCKET_TYPE)
-		{
-			assert(SSL_CTX_get_ssl_method(
-				sslContext->handle) == DTLS_method());
-		}
-		else
-		{
-			abort();
-		}
-	}
-#endif
-#else
+#if !MPNW_HAS_OPENSSL
 	assert(sslContext == NULL);
 #endif
 
@@ -170,12 +153,12 @@ struct Socket* createSocket(
 		return NULL;
 	}
 
-	SSL* ssl;
+	_socket->handle = handle;
 
 #if MPNW_HAS_OPENSSL
 	if (sslContext != NULL)
 	{
-		ssl = SSL_new(
+		SSL* ssl = SSL_new(
 			sslContext->handle);
 
 		if (ssl == NULL)
@@ -196,17 +179,17 @@ struct Socket* createSocket(
 			free(_socket);
 			return NULL;
 		}
+
+		_socket->sslContext = sslContext;
+		_socket->ssl = ssl;
 	}
 	else
 	{
-		ssl = NULL;
+		_socket->sslContext = NULL;
+		_socket->ssl = NULL;
 	}
-#else
-	ssl = NULL;
 #endif
 
-	_socket->handle = handle;
-	_socket->ssl = ssl;
 	return _socket;
 }
 
@@ -217,7 +200,7 @@ void destroySocket(
 		return;
 
 #if MPNW_HAS_OPENSSL
-	if (socket->ssl != NULL)
+	if (socket->sslContext != NULL)
 		SSL_free(socket->ssl);
 #endif
 
@@ -258,20 +241,13 @@ uint8_t getSocketType(
 		abort();
 }
 
-bool getSocketSSL(
-	const struct Socket* socket)
-{
-	assert(socket != NULL);
-	return socket->ssl == NULL;
-}
-
 struct SocketAddress* getSocketLocalAddress(
 	const struct Socket* socket)
 {
 	assert(socket != NULL);
 
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
+	struct SocketAddress* address = malloc(
+		sizeof(struct SocketAddress));
 
 	if (address == NULL)
 		return NULL;
@@ -300,8 +276,8 @@ struct SocketAddress* getSocketRemoteAddress(
 {
 	assert(socket != NULL);
 
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
+	struct SocketAddress* address = malloc(
+		sizeof(struct SocketAddress));
 
 	if (address == NULL)
 		return NULL;
@@ -323,6 +299,25 @@ struct SocketAddress* getSocketRemoteAddress(
 		abort();
 
 	return address;
+}
+
+bool isSocketSsl(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
+
+#if MPNW_HAS_OPENSSL
+	return socket->sslContext == NULL;
+#else
+	abort();
+#endif
+}
+
+struct SslContext* getSocketSslContext(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
+	return socket->sslContext;
 }
 
 bool bindSocket(
@@ -383,22 +378,13 @@ bool acceptSocket(
 		return false;
 	}
 
-	SSL* ssl;
+	acceptedSocket->handle = handle;
 
 #if MPNW_HAS_OPENSSL
-	if (socket->ssl != NULL)
+	if (socket->sslContext != NULL)
 	{
-		SSL_CTX* context = SSL_get_SSL_CTX(
-			socket->ssl);
-
-		if (context == NULL)
-		{
-			closesocket(handle);
-			free(acceptedSocket);
-			return false;
-		}
-
-		ssl = SSL_new(context);
+		SSL* ssl = SSL_new(
+			socket->sslContext->handle);
 
 		if (ssl == NULL)
 		{
@@ -428,17 +414,18 @@ bool acceptSocket(
 			free(acceptedSocket);
 			return false;
 		}
+
+		acceptedSocket->sslContext =
+			socket->sslContext;
+		acceptedSocket->ssl = NULL;
 	}
 	else
 	{
-		ssl = NULL;
+		acceptedSocket->sslContext = NULL;
+		acceptedSocket->ssl = NULL;
 	}
-#else
-	ssl = NULL;
 #endif
 
-	acceptedSocket->handle = handle;
-	acceptedSocket->ssl = NULL;
 	*_acceptedSocket = acceptedSocket;
 	return true;
 }
@@ -484,14 +471,8 @@ bool shutdownSocket(
 	assert(socket != NULL);
 
 #if MPNW_HAS_OPENSSL
-	if (socket->ssl != NULL)
-	{
-		int result = SSL_shutdown(
-			socket->ssl);
-
-		if (result == 0)
-			SSL_shutdown(socket->ssl);
-	}
+	if (socket->sslContext != NULL)
+		SSL_shutdown(socket->ssl);
 #endif
 
 	int type;
@@ -535,7 +516,7 @@ bool socketReceive(
 	int count;
 
 #if MPNW_HAS_OPENSSL
-	if (socket->ssl != NULL)
+	if (socket->sslContext != NULL)
 	{
 		count = SSL_read(
 			socket->ssl,
@@ -575,7 +556,7 @@ bool socketSend(
 	assert(count != 0);
 
 #if MPNW_HAS_OPENSSL
-	if (socket->ssl != NULL)
+	if (socket->sslContext != NULL)
 	{
 		return SSL_write(
 			socket->ssl,
@@ -611,7 +592,10 @@ bool socketReceiveFrom(
 	assert(size != 0);
 	assert(_address != NULL);
 	assert(_count != NULL);
-	assert(socket->ssl == NULL);
+
+#if MPNW_HAS_OPENSSL
+	assert(socket->sslContext == NULL);
+#endif
 
 	struct SocketAddress* address =
 		malloc(sizeof(struct SocketAddress));
@@ -656,7 +640,10 @@ bool socketSendTo(
 	assert(buffer != NULL);
 	assert(count != 0);
 	assert(address != NULL);
-	assert(socket->ssl == NULL);
+
+#if MPNW_HAS_OPENSSL
+	assert(socket->sslContext == NULL);
+#endif
 
 	SOCKET_LENGTH length;
 
@@ -834,7 +821,7 @@ int compareSocketAddress(
 		sizeof(struct sockaddr_storage));
 }
 
-enum AddressFamily getSocketAddressFamily(
+uint8_t getSocketAddressFamily(
 	const struct SocketAddress* address)
 {
 	assert(address != NULL);

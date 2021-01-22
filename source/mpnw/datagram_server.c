@@ -64,11 +64,11 @@ static void datagramServerReceiveHandler(
 
 struct DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const char* port,
 	DatagramServerReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize)
+	size_t receiveBufferSize,
+	struct SslContext* sslContext)
 {
 	assert(port != NULL);
 	assert(receiveFunction != NULL);
@@ -180,6 +180,13 @@ void destroyDatagramServer(
 
 	free(server->receiveBuffer);
 	free(server);
+}
+
+const struct Socket* getDatagramServerSocket(
+	const struct DatagramServer* server)
+{
+	assert(server != NULL);
+	return server->receiveSocket;
 }
 
 bool datagramServerSend(

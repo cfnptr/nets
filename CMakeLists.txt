@@ -47,6 +47,7 @@ endif()
 add_library(mpnw STATIC
 	source/mpnw/datagram_client.c
 	source/mpnw/datagram_server.c
+	source/mpnw/http.c
 	source/mpnw/http_client.c
 	source/mpnw/http_server.c
 	source/mpnw/socket.c

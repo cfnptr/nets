@@ -47,14 +47,12 @@ enum SocketShutdown
 	SHUTDOWN_RECEIVE_SEND = 2,
 };
 
-// TODO: add getSslContext method
-
 /* Returns true if network was initialized. */
 bool initializeNetwork();
 /* Terminates network. */
 void terminateNetwork();
 /* Returns true if network is initialized */
-bool getNetworkInitialized();
+bool isNetworkInitialized();
 
 /*
  * Creates a new socket.
@@ -83,14 +81,7 @@ uint8_t getSocketType(
 	const struct Socket* socket);
 
 /*
- * Returns true if socket uses SSL.
- * socket - pointer to the valid socket.
- */
-bool getSocketSSL(
-	const struct Socket* socket);
-
-/*
- * Gets a new local socket address.
+ * Returns a new local socket address.
  * Returns address on success, otherwise null.
  *
  * socket - pointer to the valid socket.
@@ -99,12 +90,26 @@ struct SocketAddress* getSocketLocalAddress(
 	const struct Socket* socket);
 
 /*
- * Gets a new remote socket address.
+ * Returns a new remote socket address.
  * Returns address on success, otherwise null.
  *
  * socket - pointer to the valid socket.
  */
 struct SocketAddress* getSocketRemoteAddress(
+	const struct Socket* socket);
+
+/*
+ * Returns true if socket uses SSL.
+ * socket - pointer to the valid socket.
+ */
+bool isSocketSsl(
+	const struct Socket* socket);
+
+/*
+ * Returns socket SSL context.
+ * socket - pointer to the valid socket.
+ */
+struct SslContext* getSocketSslContext(
 	const struct Socket* socket);
 
 /*
@@ -276,7 +281,7 @@ int compareSocketAddress(
  * Returns socket address family.
  * address - pointer to the valid socket address.
  */
-enum AddressFamily getSocketAddressFamily(
+uint8_t getSocketAddressFamily(
 	const struct SocketAddress* address);
 
 /*

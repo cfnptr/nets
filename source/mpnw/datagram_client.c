@@ -61,12 +61,11 @@ static void datagramClientReceiveHandler(
 }
 
 struct DatagramClient* createDatagramClient(
-	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	DatagramClientReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize)
+	size_t receiveBufferSize,
+	struct SslContext* sslContext)
 {
 	assert(remoteAddress != NULL);
 	assert(receiveFunction != NULL);
@@ -87,6 +86,8 @@ struct DatagramClient* createDatagramClient(
 		return NULL;
 	}
 
+	uint8_t addressFamily = getSocketAddressFamily(
+		remoteAddress);
 	struct Socket* receiveSocket = createSocket(
 		DATAGRAM_SOCKET_TYPE,
 		addressFamily,
@@ -190,11 +191,18 @@ void destroyDatagramClient(
 	free(client);
 }
 
-bool getDatagramClientRunning(
+bool isDatagramClientRunning(
 	const struct DatagramClient* client)
 {
 	assert(client != NULL);
 	return client->threadRunning;
+}
+
+const struct Socket* getDatagramClientSocket(
+	const struct DatagramClient* client)
+{
+	assert(client != NULL);
+	return client->receiveSocket;
 }
 
 bool datagramClientSend(

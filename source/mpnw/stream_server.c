@@ -159,13 +159,13 @@ static void streamServerAcceptHandler(
 
 struct StreamServer* createStreamServer(
 	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const char* port,
 	size_t sessionBufferSize,
 	StreamSessionReceive receiveFunction,
 	size_t receiveTimeoutTime,
 	void* functionArgument,
-	size_t receiveBufferSize)
+	size_t receiveBufferSize,
+	struct SslContext* sslContext)
 {
 	assert(port != NULL);
 	assert(sessionBufferSize != 0);
@@ -339,6 +339,13 @@ void destroyStreamServer(
 	free(server->receiveBuffer);
 	free(server->sessionBuffer);
 	free(server);
+}
+
+const struct Socket* getStreamServerSocket(
+	const struct StreamServer* server)
+{
+	assert(server != NULL);
+	return server->receiveSocket;
 }
 
 bool streamSessionSend(

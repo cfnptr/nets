@@ -16,20 +16,19 @@ typedef bool(*DatagramClientReceive)(
  * Returns datagram client on success, otherwise null.
  *
  * addressFamily - local datagram socket address family.
- * sslContext - pointer to the SSL context or NULL.
  * remoteAddress - pointer to the valid server address.
  * receiveFunction - pointer to the valid receive function.
  * stopFunction - pointer to the valid stop function.
  * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket datagram receive buffer size.
+ * sslContext - pointer to the SSL context or NULL.
  */
 struct DatagramClient* createDatagramClient(
-	uint8_t addressFamily,
-	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	DatagramClientReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize);
+	size_t receiveBufferSize,
+	struct SslContext* sslContext);
 
 /*
  * Destroys specified datagram client.
@@ -42,7 +41,14 @@ void destroyDatagramClient(
  * Returns current datagram client running state.
  * client - pointer to the valid datagram client.
  */
-bool getDatagramClientRunning(
+bool isDatagramClientRunning(
+	const struct DatagramClient* client);
+
+/*
+ * Returns datagram client socket.
+ * client - pointer to the valid datagram client.
+ */
+const struct Socket* getDatagramClientSocket(
 	const struct DatagramClient* client);
 
 /*
