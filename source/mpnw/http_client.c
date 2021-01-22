@@ -33,7 +33,8 @@ struct HttpClient* createHttpClient(
 	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	HttpClientReceive receiveFunction,
-	void* functionArgument)
+	void* functionArgument,
+	size_t receiveBufferSize)
 {
 	assert(remoteAddress != NULL);
 	assert(receiveFunction != NULL);
@@ -50,9 +51,7 @@ struct HttpClient* createHttpClient(
 		remoteAddress,
 		httpClientReceive,
 		client,
-		65536);
-
-	// TODO: select best receive buffer size
+		receiveBufferSize);
 
 	if (handle == NULL)
 	{
@@ -88,17 +87,26 @@ bool getHttpClientRunning(
 
 bool httpClientSend(
 	struct HttpClient* client,
-	const char* request,
-	size_t count)
+	struct HttpRequest request)
 {
 	assert(client != NULL);
-	assert(request != NULL);
-	assert(count != 0);
 
-	// TODO: parse response
+	char* data;
+	size_t size;
 
-	return streamClientSend(
-		client->handle,
+	bool result = serializeHttpRequest(
 		request,
-		count);
+		&data,
+		&size);
+
+	if (result == false)
+		return false;
+
+	result = streamClientSend(
+		client->handle,
+		data,
+		size);
+
+	free(data);
+	return result;
 }

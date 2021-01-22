@@ -1,4 +1,5 @@
 #pragma once
+#include "mpnw/http.h"
 #include "mpnw/socket.h"
 
 /* HTTP client instance handle */
@@ -26,7 +27,8 @@ struct HttpClient* createHttpClient(
 	struct SslContext* sslContext,
 	const struct SocketAddress* remoteAddress,
 	HttpClientReceive receiveFunction,
-	void* functionArgument);
+	void* functionArgument,
+	size_t receiveBufferSize);
 
 /*
  * Destroys specified HTTP client.
@@ -46,9 +48,9 @@ bool getHttpClientRunning(
  * Sends request to the HTTP server.
  * Returns true on success.
  *
- * TODO: description
+ * client - pointer to the valid HTTP client.
+ * request - valid HTTP server request.
  */
 bool httpClientSend(
 	struct HttpClient* client,
-	const char* request,
-	size_t count);
+	struct HttpRequest request);

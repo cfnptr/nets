@@ -15,8 +15,9 @@ struct HttpServer* createHttpServer(
 	struct SslContext* sslContext,
 	const char* port,
 	size_t sessionBufferSize,
-	StreamSessionReceive receiveFunction,
+	HttpSessionReceive receiveFunction,
 	size_t receiveTimeoutTime,
 	void* functionArgument,
 	size_t receiveBufferSize);
-void destroyHttpServer();
+void destroyHttpServer(
+	struct HttpServer* server);
