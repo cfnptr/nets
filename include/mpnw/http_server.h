@@ -6,14 +6,14 @@
 struct HttpServer;
 
 /* HTTP session request receive function */
-typedef const char*(*HttpSessionReceive)(
+typedef bool(*HttpSessionReceive)(
 	struct StreamSession* session,
 	const struct HttpRequest* request,
 	void* argument);
 
 /*
  * Creates a new HTTP server.
- * Returns HTTP server on success, otherwise null.
+ * Returns HTTP server on success, otherwise NULL.
  *
  * addressFamily - local HTTP socket address family.
  * port - pointer to the valid local address port string.
@@ -59,5 +59,6 @@ const struct StreamServer* getHttpClientStream(
 bool httpSessionSend(
 	struct StreamSession* session,
 	uint8_t version,
-	uint16_t status);
+	uint16_t status,
+	const char* body);
 

@@ -15,7 +15,7 @@ typedef bool(*StreamSessionReceive)(
 
 /*
  * Creates a new stream server.
- * Returns stream server on success, otherwise null.
+ * Returns stream server on success, otherwise NULL.
  *
  * addressFamily - local stream socket address family.
  * port - pointer to the valid local address port string.

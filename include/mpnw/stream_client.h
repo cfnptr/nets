@@ -13,7 +13,7 @@ typedef bool(*StreamClientReceive)(
 
 /*
  * Creates a new stream client.
- * Returns stream client on success, otherwise null.
+ * Returns stream client on success, otherwise NULL.
  *
  * addressFamily - local stream socket address family.
  * remoteAddress - pointer to the valid server address.

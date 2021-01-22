@@ -13,7 +13,7 @@ typedef bool(*DatagramClientReceive)(
 
 /*
  * Creates a new datagram client.
- * Returns datagram client on success, otherwise null.
+ * Returns datagram client on success, otherwise NULL.
  *
  * addressFamily - local datagram socket address family.
  * remoteAddress - pointer to the valid server address.

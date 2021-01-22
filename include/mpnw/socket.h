@@ -56,7 +56,7 @@ bool isNetworkInitialized();
 
 /*
  * Creates a new socket.
- * Returns socket on success, otherwise null.
+ * Returns socket on success, otherwise NULL.
  *
  * type - socket communication type.
  * family - internet protocol address family.
@@ -82,7 +82,7 @@ uint8_t getSocketType(
 
 /*
  * Returns a new local socket address.
- * Returns address on success, otherwise null.
+ * Returns address on success, otherwise NULL.
  *
  * socket - pointer to the valid socket.
  */
@@ -91,7 +91,7 @@ struct SocketAddress* getSocketLocalAddress(
 
 /*
  * Returns a new remote socket address.
- * Returns address on success, otherwise null.
+ * Returns address on success, otherwise NULL.
  *
  * socket - pointer to the valid socket.
  */
@@ -227,7 +227,7 @@ bool socketSendTo(
 
 /*
  * Creates a new socket address.
- * Returns address on success, otherwise null.
+ * Returns address on success, otherwise NULL.
  *
  * host - pointer to the valid host name.
  * service - pointer to the valid service name.
@@ -238,7 +238,7 @@ struct SocketAddress* createSocketAddress(
 
 /*
  * Resolves a new socket addresses.
- * Returns address on success, otherwise null.
+ * Returns address on success, otherwise NULL.
  *
  * host - pointer to the valid host name.
  * service - pointer to the valid service name.
@@ -260,7 +260,7 @@ void destroySocketAddress(
 
 /*
  * Creates a new socket address copy.
- * Returns address on success, otherwise null.
+ * Returns address on success, otherwise NULL.
  *
  * address - pointer to the valid socket address.
  */
@@ -286,7 +286,7 @@ uint8_t getSocketAddressFamily(
 
 /*
  * Returns a new socket IP address byte array.
- * Returns IP address on success, otherwise null.
+ * Returns IP address on success, otherwise NULL.
  *
  * address - pointer to the valid socket address.
  * size - pointer to the valid byte array size.
@@ -304,7 +304,7 @@ uint16_t getSocketAddressPort(
 
 /*
  * Returns a new socket address host name.
- * Returns host on success, otherwise null.
+ * Returns host on success, otherwise NULL.
  *
  * address - pointer to the valid socket address.
  * host - pointer to the valid socket host name.
@@ -337,7 +337,7 @@ bool getSocketAddressHostService(
 
 /*
  * Creates a new SSL context.
- * Returns SSL context on success, otherwise null.
+ * Returns SSL context on success, otherwise NULL.
  *
  * socketType - target socket type value.
  * certificateVerifyPath - valid trusted certificates location.
@@ -348,7 +348,7 @@ struct SslContext* createSslContext(
 
 /*
  * Creates a new SSL context.
- * Returns SSL context on success, otherwise null.
+ * Returns SSL context on success, otherwise NULL.
  *
  * socketType - target socket type value.
  * certificateFilePath - valid certificate file path string.

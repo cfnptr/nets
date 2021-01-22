@@ -13,7 +13,7 @@ typedef bool(*HttpClientReceive)(
 
 /*
  * Creates a new HTTP client.
- * Returns HTTP client on success, otherwise null.
+ * Returns HTTP client on success, otherwise NULL.
  *
  * addressFamily - local HTTP socket address family.
  * remoteAddress - pointer to the valid server address.

@@ -61,7 +61,7 @@ struct HttpServer* createHttpServer(
 		sessionBufferSize,
 		httpSessionReceive,
 		receiveTimeoutTime,
-		functionArgument,
+		server,
 		receiveBufferSize,
 		sslContext);
 
@@ -98,15 +98,21 @@ const struct StreamServer* getHttpClientStream(
 bool httpSessionSend(
 	struct StreamSession* session,
 	uint8_t version,
-	uint16_t status)
+	uint16_t status,
+	const char* body)
 {
 	assert(session != NULL);
+	assert(body != NULL);
 
 	size_t size;
 
+	// TODO:
 	char* data = serializeHttpResponse(
 		version,
 		status,
+		0,
+		body,
+		0,
 		&size);
 
 	if (data == NULL)

@@ -14,7 +14,7 @@ typedef void(*DatagramServerReceive)(
 
 /*
  * Creates a new datagram server.
- * Returns datagram server on success, otherwise null.
+ * Returns datagram server on success, otherwise NULL.
  *
  * addressFamily - local datagram socket address family.
  * port - pointer to the valid local address port string.

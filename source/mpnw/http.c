@@ -10,6 +10,9 @@ struct HttpResponse
 {
 	uint8_t version;
 	uint16_t status;
+	uint8_t contentType;
+	char* content;
+	size_t contentLength;
 };
 
 char* serializeHttpRequest(
@@ -41,10 +44,18 @@ char* serializeHttpRequest(
 
 	size_t uriSize = strlen(_uri);
 
+	if (uriSize == 0)
+		return  NULL;
+
 	const char* version;
 	size_t versionSize;
 
-	if (_version == HTTP11_VERSION)
+	if (_version == HTTP_10_VERSION)
+	{
+		version = " HTTP/1.0\r\n";
+		versionSize = 11;
+	}
+	else if (_version == HTTP_11_VERSION)
 	{
 		version = " HTTP/1.1\r\n";
 		versionSize = 11;
@@ -101,7 +112,7 @@ struct HttpRequest* deserializeHttpRequest(
 	assert(data != NULL);
 	assert(size != 0);
 
-	if (size < 18)
+	if (size < 16)
 		return NULL;
 
 	struct HttpRequest* request = malloc(
@@ -113,12 +124,12 @@ struct HttpRequest* deserializeHttpRequest(
 	size_t index = 0;
 	uint8_t type;
 
-	if (memcmp(data, "GET", 3) == 0)
+	if (memcmp(data, "GET ", 4) == 0)
 	{
 		type = GET_HTTP_REQUEST;
 		index += 4;
 	}
-	else if (memcmp(data, "POST", 4) == 0)
+	else if (memcmp(data, "POST ", 5) == 0)
 	{
 		type = POST_HTTP_REQUEST;
 		index += 5;
@@ -161,9 +172,15 @@ struct HttpRequest* deserializeHttpRequest(
 	uint8_t version;
 
 	if (size - index >= 10 &&
+		memcmp(data + index, "HTTP/1.0\r\n", 10) == 0)
+	{
+		version = HTTP_10_VERSION;
+		index += 10;
+	}
+	else if (size - index >= 10 &&
 		memcmp(data + index, "HTTP/1.1\r\n", 10) == 0)
 	{
-		version = HTTP11_VERSION;
+		version = HTTP_11_VERSION;
 		index += 10;
 	}
 	else
@@ -173,7 +190,8 @@ struct HttpRequest* deserializeHttpRequest(
 		return NULL;
 	}
 
-	if (size - index == 2 &&
+	if (type != HTTP_10_VERSION &&
+		size - index == 2 &&
 		memcmp(data + index, "\r\n", 2) == 0)
 	{
 		free(uri);
@@ -197,9 +215,33 @@ void destroyHttpRequest(
 	free(request);
 }
 
+uint8_t getHttpRequestType(
+	const struct HttpRequest* request)
+{
+	assert(request != NULL);
+	return request->type;
+}
+
+const char* getHttpRequestUri(
+	const struct HttpRequest* request)
+{
+	assert(request != NULL);
+	return request->uri;
+}
+
+uint8_t getHttpRequestVersion(
+	const struct HttpRequest* request)
+{
+	assert(request != NULL);
+	return request->version;
+}
+
 char* serializeHttpResponse(
 	uint8_t _version,
 	uint16_t _status,
+	uint8_t _contentType,
+	const char* content,
+	size_t contentLength,
 	size_t* _size)
 {
 	assert(_size != NULL);
@@ -207,7 +249,12 @@ char* serializeHttpResponse(
 	const char* version;
 	size_t versionSize;
 
-	if (_version == HTTP11_VERSION)
+	if (_version == HTTP_10_VERSION)
+	{
+		version = "HTTP/1.0 ";
+		versionSize = 9;
+	}
+	else if (_version == HTTP_11_VERSION)
 	{
 		version = "HTTP/1.1 ";
 		versionSize = 9;
@@ -240,15 +287,56 @@ char* serializeHttpResponse(
 		status = "400 Bad Request\r\n";
 		statusSize = 17;
 		break;
+	case UNAUTHORIZED_HTTP_STATUS:
+		status = "401 Unauthorized\r\n";
+		statusSize = 18;
+		break;
+	case FORBIDDEN_HTTP_STATUS:
+		status = "403 Forbidden\r\n";
+		statusSize = 15;
+		break;
+	case NOT_FOUND_HTTP_STATUS:
+		status = "404 Not Found\r\n";
+		statusSize = 15;
+		break;
 	case INTERNAL_SERVER_ERROR_HTTP_STATUS:
 		status = "500 Internal Server Error\r\n";
 		statusSize = 27;
 		break;
+	case NOT_IMPLEMENTED_HTTP_STATUS:
+		status = "501 Not Implemented\r\n";
+		statusSize = 21;
+		break;
+	}
+
+	const char* contentType;
+	size_t contentSize;
+
+	if (content != NULL)
+	{
+		if (contentLength == 0)
+			return NULL;
+
+		if (_contentType == TEXT_HTML_HTTP_CONTENT)
+		{
+			contentType = "Content-Type: text/html; charset=UTF-8\r\n";
+			contentSize = 40;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	else
+	{
+		contentSize = 0;
 	}
 
 	size_t size =
 		versionSize +
-		statusSize + 2;
+		statusSize +
+		contentSize +
+		contentLength + 2;
 
 	char* data = malloc(
 		size * sizeof(char));
@@ -270,10 +358,28 @@ char* serializeHttpResponse(
 		statusSize * sizeof(char));
 	index += statusSize;
 
+	if (content != NULL)
+	{
+		memcpy(
+			data + index,
+			contentType,
+			contentSize * sizeof(char));
+		index += contentSize;
+	}
+
 	memcpy(
 		data + index,
 		"\r\n",
 		2 * sizeof(char));
+	index += 2;
+
+	if (content != NULL)
+	{
+		memcpy(
+			data + index,
+			content,
+			contentLength * sizeof(char));
+	}
 
 	*_size = size;
 	return data;
@@ -298,9 +404,14 @@ struct HttpResponse* deserializeHttpResponse(
 	size_t index = 0;
 	uint8_t version;
 
-	if (memcmp(data, "HTTP/1.1", 8) == 0)
+	if (memcmp(data, "HTTP/1.0", 8) == 0)
 	{
-		version = HTTP11_VERSION;
+		version = HTTP_10_VERSION;
+		index += 9;
+	}
+	else if (memcmp(data, "HTTP/1.1", 8) == 0)
+	{
+		version = HTTP_11_VERSION;
 		index += 9;
 	}
 	else
@@ -335,17 +446,82 @@ struct HttpResponse* deserializeHttpResponse(
 		status = BAD_REQUEST_HTTP_STATUS;
 		index += 17;
 	}
+	else if (size - index >= 18 &&
+		memcmp(data + index, "401 Unauthorized\r\n", 18) == 0)
+	{
+		status = UNAUTHORIZED_HTTP_STATUS;
+		index += 18;
+	}
+	else if (size - index >= 15 &&
+		memcmp(data + index, "403 Forbidden\r\n", 15) == 0)
+	{
+		status = FORBIDDEN_HTTP_STATUS;
+		index += 15;
+	}
+	else if (size - index >= 15 &&
+		memcmp(data + index, "404 Not Found\r\n", 15) == 0)
+	{
+		status = NOT_FOUND_HTTP_STATUS;
+		index += 15;
+	}
 	else if (size - index >= 27 &&
 		memcmp(data + index, "500 Internal Server Error\r\n", 27) == 0)
 	{
 		status = INTERNAL_SERVER_ERROR_HTTP_STATUS;
 		index += 27;
 	}
+	else if (size - index >= 21 &&
+		memcmp(data + index, "501 Not Implemented\r\n", 21) == 0)
+	{
+		status = NOT_IMPLEMENTED_HTTP_STATUS;
+		index += 21;
+	}
 	else
 	{
 		free(response);
 		return NULL;
 	}
+
+	uint16_t contentType = NONE_HTTP_CONTENT;
+
+	while (true)
+	{
+		if (size - index >= 14 &&
+			memcmp(data + index, "Content-Type: ", 14) == 0)
+		{
+			index += 14;
+
+			if (size - index >= 26 &&
+				memcmp(data + index, "text/html; charset=UTF-8\r\n", 26) == 0)
+			{
+				contentType = TEXT_HTML_HTTP_CONTENT;
+				index += 26;
+			}
+		}
+		else if (size - index >= 16 &&
+			memcmp(data + index, "Transfer-Encoding: ", 16) == 0)
+		{
+			index += 16;
+
+			// TODO: get content length
+		}
+		else
+		{
+			for (; index < size; index++)
+			{
+				if(data[index] == '\n' && data[index - 1] == '\r')
+				{
+					index++;
+					goto END_HEADER;
+				}
+			}
+
+			free(response);
+			return NULL;
+		}
+	}
+	
+END_HEADER:
 
 	if (size - index == 2 &&
 		memcmp(data + index, "\r\n", 2) == 0)
@@ -354,8 +530,11 @@ struct HttpResponse* deserializeHttpResponse(
 		return NULL;
 	}
 
+	// TODO: read data.
+
 	response->version = version;
 	response->status = status;
+	response->contentType = contentType;
 	return response;
 }
 
@@ -366,4 +545,39 @@ void destroyHttpResponse(
 		return;
 
 	free(response);
+}
+
+uint8_t getHttpResponseVersion(
+	struct HttpResponse* response)
+{
+	assert(response != NULL);
+	return response->version;
+}
+
+uint16_t getHttpResponseStatus(
+	struct HttpResponse* response)
+{
+	assert(response != NULL);
+	return response->status;
+}
+
+uint8_t getHttpResponseContentType(
+	struct HttpResponse* response)
+{
+	assert(response != NULL);
+	return response->contentType;
+}
+
+const char* getHttpResponseContent(
+	struct HttpResponse* response)
+{
+	assert(response != NULL);
+	return response->content;
+}
+
+size_t getHttpResponseContentLength(
+	struct HttpResponse* response)
+{
+	assert(response != NULL);
+	return response->contentLength;
 }
