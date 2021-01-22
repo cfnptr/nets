@@ -304,9 +304,10 @@ struct SocketAddress* getSocketRemoteAddress(
 bool isSocketSsl(
 	const struct Socket* socket)
 {
-	assert(socket != NULL);
+
 
 #if MPNW_HAS_OPENSSL
+	assert(socket != NULL);
 	return socket->sslContext == NULL;
 #else
 	abort();
@@ -316,8 +317,12 @@ bool isSocketSsl(
 struct SslContext* getSocketSslContext(
 	const struct Socket* socket)
 {
+#if MPNW_HAS_OPENSSL
 	assert(socket != NULL);
 	return socket->sslContext;
+#else
+	abort();
+#endif
 }
 
 bool bindSocket(
