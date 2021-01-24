@@ -13,6 +13,11 @@ typedef bool(*StreamSessionReceive)(
 	size_t count,
 	void* argument);
 
+/* Stream session receive timeout function */
+typedef void(*StreamSessionTimeout)(
+	struct StreamSession* session,
+	void* argument);
+
 /*
  * Creates a new stream server.
  * Returns stream server on success, otherwise NULL.
@@ -21,6 +26,7 @@ typedef bool(*StreamSessionReceive)(
  * port - pointer to the valid local address port string.
  * sessionBufferSize - socket session buffer size.
  * receiveFunction - pointer to the valid receive function.
+ * timeoutFunction - pointer to the valid timeout function.
  * receiveTimeoutTime - socket message receive timeout time.
  * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket message receive buffer size.
@@ -31,6 +37,7 @@ struct StreamServer* createStreamServer(
 	const char* port,
 	size_t sessionBufferSize,
 	StreamSessionReceive receiveFunction,
+	StreamSessionTimeout timeoutFunction,
 	size_t receiveTimeoutTime,
 	void* functionArgument,
 	size_t receiveBufferSize,

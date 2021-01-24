@@ -9,6 +9,7 @@ struct StreamServer
 	struct StreamSession* sessionBuffer;
 	size_t sessionBufferSize;
 	StreamSessionReceive receiveFunction;
+	StreamSessionTimeout timeoutFunction;
 	size_t receiveTimeoutTime;
 	void* functionArgument;
 	size_t receiveBufferSize;
@@ -38,6 +39,8 @@ void streamSessionReceiveHandler(
 
 	StreamSessionReceive receiveFunction =
 		server->receiveFunction;
+	StreamSessionTimeout timeoutFunction =
+		server->timeoutFunction;
 	size_t receiveTimeoutTime =
 		server->receiveTimeoutTime;
 	size_t receiveBufferSize =
@@ -65,6 +68,10 @@ void streamSessionReceiveHandler(
 		if (currentTime - session->lastMessageTime >
 			receiveTimeoutTime)
 		{
+			timeoutFunction(
+				session,
+				functionArgument);
+
 			break;
 		}
 
@@ -170,6 +177,7 @@ struct StreamServer* createStreamServer(
 	const char* port,
 	size_t sessionBufferSize,
 	StreamSessionReceive receiveFunction,
+	StreamSessionTimeout timeoutFunction,
 	size_t receiveTimeoutTime,
 	void* functionArgument,
 	size_t receiveBufferSize,
@@ -178,6 +186,7 @@ struct StreamServer* createStreamServer(
 	assert(port != NULL);
 	assert(sessionBufferSize != 0);
 	assert(receiveFunction != NULL);
+	assert(timeoutFunction != NULL);
 	assert(receiveTimeoutTime != 0);
 	assert(receiveBufferSize != 0);
 
@@ -267,6 +276,7 @@ struct StreamServer* createStreamServer(
 	server->sessionBuffer = sessionBuffer;
 	server->sessionBufferSize = sessionBufferSize;
 	server->receiveFunction = receiveFunction;
+	server->timeoutFunction = timeoutFunction;
 	server->receiveTimeoutTime = receiveTimeoutTime;
 	server->functionArgument = functionArgument;
 	server->receiveBufferSize = receiveBufferSize;
@@ -313,11 +323,14 @@ void destroyStreamServer(
 		struct StreamSession session =
 			sessionBuffer[i];
 
-		session.threadRunning = false;
+		if (session.receiveSocket != NULL)
+		{
+			session.threadRunning = false;
 
-		joinThread(session.receiveThread);
-		destroyThread(session.receiveThread);
-		destroySocket(session.receiveSocket);
+			joinThread(session.receiveThread);
+			destroyThread(session.receiveThread);
+			destroySocket(session.receiveSocket);
+		}
 	}
 
 	free(server->receiveBuffer);
