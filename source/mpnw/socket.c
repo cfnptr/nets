@@ -7,6 +7,7 @@
 
 #if __linux__ || __APPLE__
 #include <netdb.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/socket.h>
@@ -41,6 +42,8 @@ static WSADATA wsaData;
 struct Socket
 {
 	SOCKET handle;
+	bool listening;
+	bool blocking;
 
 #if MPNW_HAS_OPENSSL
 	struct SslContext* sslContext;
@@ -112,6 +115,9 @@ bool isNetworkInitialized()
 struct Socket* createSocket(
 	uint8_t _type,
 	uint8_t _family,
+	const struct SocketAddress* address,
+	bool listening,
+	bool blocking,
 	struct SslContext* sslContext)
 {
 	assert(networkInitialized == true);
@@ -127,13 +133,22 @@ struct Socket* createSocket(
 		return NULL;
 
 	int type, family;
+	SOCKET_LENGTH length;
 
 	if (_type == STREAM_SOCKET_TYPE)
+	{
 		type = SOCK_STREAM;
+		length = sizeof(struct sockaddr_in);
+	}
 	else if (_type == DATAGRAM_SOCKET_TYPE)
+	{
 		type = SOCK_DGRAM;
+		length = sizeof(struct sockaddr_in6);
+	}
 	else
+	{
 		abort();
+	}
 
 	if (_family == IP_V4_ADDRESS_FAMILY)
 		family = AF_INET;
@@ -153,7 +168,73 @@ struct Socket* createSocket(
 		return NULL;
 	}
 
+	int result = bind(
+		handle,
+		(const struct sockaddr*)&address->handle,
+		length);
+
+	if (result != 0)
+	{
+		closesocket(handle);
+		free(_socket);
+		return NULL;
+	}
+
+	if (listening == true)
+	{
+		assert(_type == STREAM_SOCKET_TYPE);
+
+		result = listen(
+			handle,
+			SOMAXCONN);
+
+		if (result != 0)
+		{
+			closesocket(handle);
+			free(_socket);
+			return NULL;
+		}
+	}
+
+	if (blocking == false)
+	{
+#if __linux__ || __APPLE__
+		int flags = fcntl(
+			handle,
+			F_GETFL,
+			0);
+
+		if (flags == -1)
+		{
+			closesocket(handle);
+			free(_socket);
+			return NULL;
+		}
+
+		result = fcntl(
+			handle,
+			F_SETFL,
+			flags | O_NONBLOCK);
+#elif _WIN32
+		u_long flags = 1;
+
+		result = ioctlsocket(
+    		handle,
+    		FIONBIO,
+    		&flags);
+#endif
+
+		if (result != 0)
+		{
+			closesocket(handle);
+			free(_socket);
+			return NULL;
+		}
+	}
+
 	_socket->handle = handle;
+	_socket->listening = listening;
+	_socket->blocking = blocking;
 
 #if MPNW_HAS_OPENSSL
 	if (sslContext != NULL)
@@ -168,7 +249,7 @@ struct Socket* createSocket(
 			return NULL;
 		}
 
-		int result = SSL_set_fd(
+		result = SSL_set_fd(
 			ssl,
 			handle);
 
@@ -241,19 +322,31 @@ uint8_t getSocketType(
 		abort();
 }
 
-struct SocketAddress* getSocketLocalAddress(
+bool isSocketListening(
 	const struct Socket* socket)
 {
 	assert(socket != NULL);
+	return socket->listening;
+}
 
-	struct SocketAddress* address = malloc(
-		sizeof(struct SocketAddress));
+bool isSocketBlocking(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
+	return socket->blocking;
+}
 
-	if (address == NULL)
-		return NULL;
+bool getSocketLocalAddress(
+	const struct Socket* socket,
+	struct SocketAddress* address)
+{
+	assert(socket != NULL);
+	assert(address != NULL);
+
+	struct sockaddr_storage socketAddress;
 
 	memset(
-		&address->handle,
+		&socketAddress,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -262,28 +355,31 @@ struct SocketAddress* getSocketLocalAddress(
 
 	int result = getsockname(
 		socket->handle,
-		(struct sockaddr*)&address->handle,
+		(struct sockaddr*)&socketAddress,
 		&length);
 
-	if (result != 0)
-		abort();
-
-	return address;
+	if (result == 0)
+	{
+		address->handle = socketAddress;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
-struct SocketAddress* getSocketRemoteAddress(
-	const struct Socket* socket)
+bool getSocketRemoteAddress(
+	const struct Socket* socket,
+	struct SocketAddress* address)
 {
 	assert(socket != NULL);
+	assert(address != NULL);
 
-	struct SocketAddress* address = malloc(
-		sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		return NULL;
+	struct sockaddr_storage socketAddress;
 
 	memset(
-		&address->handle,
+		&socketAddress,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -292,13 +388,18 @@ struct SocketAddress* getSocketRemoteAddress(
 
 	int result = getpeername(
 		socket->handle,
-		(struct sockaddr*)&address->handle,
+		(struct sockaddr*)&socketAddress,
 		&length);
 
-	if (result != 0)
-		abort();
-
-	return address;
+	if (result == 0)
+	{
+		address->handle = socketAddress;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 bool isSocketSsl(
@@ -325,46 +426,14 @@ struct SslContext* getSocketSslContext(
 #endif
 }
 
-bool bindSocket(
-	struct Socket* socket,
-	const struct SocketAddress* address)
-{
-	assert(socket != NULL);
-	assert(address != NULL);
-
-	int family = address->handle.ss_family;
-
-	SOCKET_LENGTH length;
-
-	if (family == AF_INET)
-		length = sizeof(struct sockaddr_in);
-	else if (family == AF_INET6)
-		length = sizeof(struct sockaddr_in6);
-	else
-		abort();
-
-	return bind(
-		socket->handle,
-		(const struct sockaddr*)&address->handle,
-		length) == 0;
-}
-
-bool listenSocket(
-	struct Socket* socket)
-{
-	assert(socket != NULL);
-
-	return listen(
-		socket->handle,
-		SOMAXCONN) == 0;
-}
-
 bool acceptSocket(
 	struct Socket* socket,
 	struct Socket** _acceptedSocket)
 {
 	assert(socket != NULL);
 	assert(_acceptedSocket != NULL);
+	assert(socket->listening == true);
+	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
 
 	struct Socket* acceptedSocket = malloc(
 		sizeof(struct Socket));
@@ -422,7 +491,7 @@ bool acceptSocket(
 
 		acceptedSocket->sslContext =
 			socket->sslContext;
-		acceptedSocket->ssl = NULL;
+		acceptedSocket->ssl = ssl;
 	}
 	else
 	{
@@ -589,27 +658,23 @@ bool socketReceiveFrom(
 	struct Socket* socket,
 	void* buffer,
 	size_t size,
-	struct SocketAddress** _address,
+	struct SocketAddress* address,
 	size_t* _count)
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
 	assert(size != 0);
-	assert(_address != NULL);
+	assert(address != NULL);
 	assert(_count != NULL);
 
 #if MPNW_HAS_OPENSSL
 	assert(socket->sslContext == NULL);
 #endif
 
-	struct SocketAddress* address =
-		malloc(sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		return false;
+	struct sockaddr_storage socketAddress;
 
 	memset(
-		&address->handle,
+		&socketAddress,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -621,7 +686,7 @@ bool socketReceiveFrom(
 		(char*)buffer,
 		(int)size,
 		0,
-		(struct sockaddr*)&address->handle,
+		(struct sockaddr*)&socketAddress,
 		&length);
 
 	if (count < 0)
@@ -630,7 +695,7 @@ bool socketReceiveFrom(
 		return false;
 	}
 
-	*_address = address;
+	address->handle = socketAddress;
 	*_count = (size_t)count;
 	return true;
 }

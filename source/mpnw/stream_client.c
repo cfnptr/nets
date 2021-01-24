@@ -1,6 +1,7 @@
 #include "mpnw/stream_client.h"
 #include "mpmt/thread.h"
 
+#include <time.h>
 #include <string.h>
 #include <assert.h>
 
@@ -10,19 +11,16 @@ struct StreamClient
 	void* functionArgument;
 	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
-	struct SocketAddress* remoteAddress;
 	volatile bool threadRunning;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
 };
 
-static void streamClientReceiveHandler(
+void streamClientReceiveHandler(
 	void* argument)
 {
 	struct StreamClient* client =
 		(struct StreamClient*)argument;
-	struct SocketAddress* remoteAddress =
-		client->remoteAddress;
 	StreamClientReceive receiveFunction =
 		client->receiveFunction;
 	void* functionArgument =
@@ -34,18 +32,10 @@ static void streamClientReceiveHandler(
 	struct Socket* receiveSocket =
 		client->receiveSocket;
 
-	bool result = connectSocket(
-		receiveSocket,
-		remoteAddress);
-
-	if (result == false)
-		return;
-
+	bool result;
 	size_t byteCount;
 
-	client->threadRunning = true;
-
-	while (true)
+	while (client->threadRunning == true)
 	{
 		result = socketReceive(
 			receiveSocket,
@@ -54,7 +44,10 @@ static void streamClientReceiveHandler(
 			&byteCount);
 
 		if (result == false || byteCount == 0)
-			break;
+		{
+			sleepThread(1);
+			continue;
+		}
 
 		result = receiveFunction(
 			client,
@@ -70,13 +63,12 @@ static void streamClientReceiveHandler(
 }
 
 struct StreamClient* createStreamClient(
-	const struct SocketAddress* _remoteAddress,
+	uint8_t addressFamily,
 	StreamClientReceive receiveFunction,
 	void* functionArgument,
 	size_t receiveBufferSize,
 	struct SslContext* sslContext)
 {
-	assert(_remoteAddress != NULL);
 	assert(receiveFunction != NULL);
 	assert(receiveBufferSize != 0);
 
@@ -86,36 +78,11 @@ struct StreamClient* createStreamClient(
 	if (client == NULL)
 		return NULL;
 
-	struct SocketAddress* remoteAddress =
-		copySocketAddress(_remoteAddress);
-
-	if (remoteAddress == NULL)
-	{
-		free(client);
-		return NULL;
-	}
-
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
 	if (receiveBuffer == NULL)
 	{
-		destroySocketAddress(remoteAddress);
-		free(client);
-		return NULL;
-	}
-
-	uint8_t addressFamily = getSocketAddressFamily(
-		_remoteAddress);
-	struct Socket* receiveSocket = createSocket(
-		STREAM_SOCKET_TYPE,
-		addressFamily,
-		sslContext);
-
-	if (receiveSocket == NULL)
-	{
-		free(receiveBuffer);
-		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
@@ -141,35 +108,34 @@ struct StreamClient* createStreamClient(
 
 	if (localAddress == NULL)
 	{
-		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
 
-	bool result = bindSocket(
-		receiveSocket,
-		localAddress);
+	struct Socket* receiveSocket = createSocket(
+		STREAM_SOCKET_TYPE,
+		addressFamily,
+		localAddress,
+		false,
+		false,
+		sslContext);
 
 	destroySocketAddress(
 		localAddress);
 
-	if (result == false)
+	if (receiveSocket == NULL)
 	{
-		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
 
-	client->remoteAddress = remoteAddress;
 	client->receiveFunction = receiveFunction;
 	client->functionArgument = functionArgument;
 	client->receiveBufferSize = receiveBufferSize;
 	client->receiveBuffer = receiveBuffer;
-	client->threadRunning = false;
+	client->threadRunning = true;
 	client->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
@@ -180,7 +146,6 @@ struct StreamClient* createStreamClient(
 	{
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
-		destroySocketAddress(remoteAddress);
 		free(client);
 		return NULL;
 	}
@@ -195,12 +160,13 @@ void destroyStreamClient(
 	if (client == NULL)
 		return;
 
-	destroySocket(client->receiveSocket);
+	client->threadRunning = false;
+
 	joinThread(client->receiveThread);
 	destroyThread(client->receiveThread);
+	destroySocket(client->receiveSocket);
 
 	free(client->receiveBuffer);
-	destroySocketAddress(client->remoteAddress);
 	free(client);
 }
 
@@ -216,6 +182,35 @@ const struct Socket* getStreamClientSocket(
 {
 	assert(client != NULL);
 	return client->receiveSocket;
+}
+
+bool tryConnectStreamClient(
+	struct Socket* socket,
+	const struct SocketAddress* address,
+	size_t timeoutTime)
+{
+	assert(socket != NULL);
+	assert(address != NULL);
+
+	size_t currentTime = clock() /
+		(CLOCKS_PER_SEC * 1000);
+	size_t lastTime = currentTime;
+
+	while (true)
+	{
+		currentTime = clock() /
+			(CLOCKS_PER_SEC * 1000);
+
+		if (currentTime - lastTime > timeoutTime)
+			return false;
+
+		bool result = connectSocket(
+			socket,
+			address);
+
+		if (result == true)
+			return true;
+	}
 }
 
 bool streamClientSend(

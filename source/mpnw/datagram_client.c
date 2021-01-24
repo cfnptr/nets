@@ -15,7 +15,7 @@ struct DatagramClient
 	struct Thread* receiveThread;
 };
 
-static void datagramClientReceiveHandler(
+void datagramClientReceiveHandler(
 	void* argument)
 {
 	struct DatagramClient* client =
@@ -34,9 +34,7 @@ static void datagramClientReceiveHandler(
 	bool result;
 	size_t byteCount;
 
-	client->threadRunning = true;
-
-	while (true)
+	while (client->threadRunning == true)
 	{
 		result = socketReceive(
 			receiveSocket,
@@ -45,7 +43,10 @@ static void datagramClientReceiveHandler(
 			&byteCount);
 
 		if (result == false || byteCount == 0)
-			break;
+		{
+			sleepThread(1);
+			continue;
+		}
 
 		result = receiveFunction(
 			client,
@@ -88,17 +89,6 @@ struct DatagramClient* createDatagramClient(
 
 	uint8_t addressFamily = getSocketAddressFamily(
 		remoteAddress);
-	struct Socket* receiveSocket = createSocket(
-		DATAGRAM_SOCKET_TYPE,
-		addressFamily,
-		sslContext);
-
-	if (receiveSocket == NULL)
-	{
-		free(receiveBuffer);
-		free(client);
-		return NULL;
-	}
 
 	struct SocketAddress* localAddress;
 
@@ -121,28 +111,30 @@ struct DatagramClient* createDatagramClient(
 
 	if (localAddress == NULL)
 	{
-		destroySocket(receiveSocket);
 		free(receiveBuffer);
 		free(client);
 		return NULL;
 	}
 
-	bool result = bindSocket(
-		receiveSocket,
-		localAddress);
+	struct Socket* receiveSocket = createSocket(
+		DATAGRAM_SOCKET_TYPE,
+		addressFamily,
+		localAddress,
+		false,
+		false,
+		sslContext);
 
 	destroySocketAddress(
 		localAddress);
 
-	if (result == false)
+	if (receiveSocket == NULL)
 	{
-		destroySocket(receiveSocket);
 		free(receiveBuffer);
 		free(client);
 		return NULL;
 	}
 
-	result = connectSocket(
+	bool result = connectSocket(
 		receiveSocket,
 		remoteAddress);
 
@@ -158,7 +150,7 @@ struct DatagramClient* createDatagramClient(
 	client->functionArgument = functionArgument;
 	client->receiveBufferSize = receiveBufferSize;
 	client->receiveBuffer = receiveBuffer;
-	client->threadRunning = false;
+	client->threadRunning = true;
 	client->receiveSocket = receiveSocket;
 
 	struct Thread* receiveThread = createThread(
@@ -183,9 +175,11 @@ void destroyDatagramClient(
 	if (client == NULL)
 		return;
 
-	destroySocket(client->receiveSocket);
+	client->threadRunning = false;
+
 	joinThread(client->receiveThread);
 	destroyThread(client->receiveThread);
+	destroySocket(client->receiveSocket);
 
 	free(client->receiveBuffer);
 	free(client);

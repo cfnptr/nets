@@ -5,7 +5,7 @@
 struct DatagramServer;
 
 /* Datagram server datagram receive function */
-typedef void(*DatagramServerReceive)(
+typedef bool(*DatagramServerReceive)(
 	struct DatagramServer* server,
 	const struct SocketAddress* address,
 	const uint8_t* buffer,
@@ -37,6 +37,13 @@ struct DatagramServer* createDatagramServer(
  */
 void destroyDatagramServer(
 	struct DatagramServer* server);
+
+/*
+ * Returns current datagram server running state.
+ * server - pointer to the valid datagram server.
+ */
+bool isDatagramServerRunning(
+	const struct DatagramServer* server);
 
 /*
  * Returns datagram server socket.

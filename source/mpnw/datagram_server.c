@@ -15,7 +15,7 @@ struct DatagramServer
 	struct Thread* receiveThread;
 };
 
-static void datagramServerReceiveHandler(
+void datagramServerReceiveHandler(
 	void* argument)
 {
 	struct DatagramServer* server =
@@ -33,7 +33,13 @@ static void datagramServerReceiveHandler(
 
 	bool result;
 	size_t byteCount;
-	struct SocketAddress* remoteAddress;
+
+	struct SocketAddress* remoteAddress = createSocketAddress(
+		ANY_IP_ADDRESS_V4,
+		ANY_IP_ADDRESS_PORT);
+
+	if (remoteAddress == NULL)
+		return;
 
 	while (server->threadRunning == true)
 	{
@@ -41,7 +47,7 @@ static void datagramServerReceiveHandler(
 			receiveSocket,
 			receiveBuffer,
 			receiveBufferSize,
-			&remoteAddress,
+			remoteAddress,
 			&byteCount);
 
 		if (result == false || byteCount == 0)
@@ -50,16 +56,18 @@ static void datagramServerReceiveHandler(
 			continue;
 		}
 
-		receiveFunction(
+		result = receiveFunction(
 			server,
 			remoteAddress,
 			receiveBuffer,
 			byteCount,
 			functionArgument);
 
-		destroySocketAddress(
-			remoteAddress);
+		if (result == false)
+			break;
 	}
+
+	server->threadRunning = false;
 }
 
 struct DatagramServer* createDatagramServer(
@@ -89,18 +97,6 @@ struct DatagramServer* createDatagramServer(
 		return NULL;
 	}
 
-	struct Socket* receiveSocket = createSocket(
-		DATAGRAM_SOCKET_TYPE,
-		addressFamily,
-		sslContext);
-
-	if (receiveSocket == NULL)
-	{
-		free(receiveBuffer);
-		free(server);
-		return NULL;
-	}
-
 	struct SocketAddress* localAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
@@ -122,22 +118,24 @@ struct DatagramServer* createDatagramServer(
 
 	if (localAddress == NULL)
 	{
-		destroySocket(receiveSocket);
 		free(receiveBuffer);
 		free(server);
 		return NULL;
 	}
 
-	bool result = bindSocket(
-		receiveSocket,
-		localAddress);
+	struct Socket* receiveSocket = createSocket(
+		DATAGRAM_SOCKET_TYPE,
+		addressFamily,
+		localAddress,
+		false,
+		false,
+		sslContext);
 
 	destroySocketAddress(
 		localAddress);
 
-	if (result == false)
+	if (receiveSocket == NULL)
 	{
-		destroySocket(receiveSocket);
 		free(receiveBuffer);
 		free(server);
 		return NULL;
@@ -174,12 +172,19 @@ void destroyDatagramServer(
 
 	server->threadRunning = false;
 
-	destroySocket(server->receiveSocket);
 	joinThread(server->receiveThread);
 	destroyThread(server->receiveThread);
+	destroySocket(server->receiveSocket);
 
 	free(server->receiveBuffer);
 	free(server);
+}
+
+bool isDatagramServerRunning(
+	const struct DatagramServer* server)
+{
+	assert(server != NULL);
+	return server->threadRunning;
 }
 
 const struct Socket* getDatagramServerSocket(

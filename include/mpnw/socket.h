@@ -60,10 +60,17 @@ bool isNetworkInitialized();
  *
  * type - socket communication type.
  * family - internet protocol address family.
+ * address - socket local bind address.
+ * listening - socket listening state.
+ * blocking - socket blocking mode.
+ * sslContext - pointer to the SSL context or NULL.
  */
 struct Socket* createSocket(
 	uint8_t type,
 	uint8_t family,
+	const struct SocketAddress* address,
+	bool listening,
+	bool blocking,
 	struct SslContext* sslContext);
 
 /*
@@ -81,22 +88,40 @@ uint8_t getSocketType(
 	const struct Socket* socket);
 
 /*
- * Returns a new local socket address.
- * Returns address on success, otherwise NULL.
- *
+ * Returns true if socket is in listening state.
  * socket - pointer to the valid socket.
  */
-struct SocketAddress* getSocketLocalAddress(
+bool isSocketListening(
 	const struct Socket* socket);
 
 /*
- * Returns a new remote socket address.
- * Returns address on success, otherwise NULL.
- *
+ * Returns true if socket blocking mode.
  * socket - pointer to the valid socket.
  */
-struct SocketAddress* getSocketRemoteAddress(
+bool isSocketBlocking(
 	const struct Socket* socket);
+
+/*
+ * Returns local socket address.
+ * Returns true on success
+ *
+ * socket - pointer to the valid socket.
+ * address - pointer to the valid socket address.
+ */
+bool getSocketLocalAddress(
+	const struct Socket* socket,
+	struct SocketAddress* address);
+
+/*
+ * Returns remote socket address.
+ * Returns true on success
+ *
+ * socket - pointer to the valid socket.
+ * address - pointer to the valid socket address.
+ */
+bool getSocketRemoteAddress(
+	const struct Socket* socket,
+	struct SocketAddress* address);
 
 /*
  * Returns true if socket uses SSL.
@@ -111,26 +136,6 @@ bool isSocketSsl(
  */
 struct SslContext* getSocketSslContext(
 	const struct Socket* socket);
-
-/*
- * Binds specified address to the socket.
- * Returns true on success.
- *
- * socket - pointer to the valid socket.
- * address - pointer to the valid socket address.
- */
-bool bindSocket(
-	struct Socket* socket,
-	const struct SocketAddress* address);
-
-/*
- * Starts socket listening for a new connections.
- * Returns true on success.
- *
- * socket - pointer to the valid socket.
- */
-bool listenSocket(
-	struct Socket* socket);
 
 /*
  * Accepts a new socket connection.
@@ -194,20 +199,20 @@ bool socketSend(
 	size_t count);
 
 /*
- * Receives socket message from a new address.
+ * Receives socket message.
  * Returns true on success.
  *
  * socket - pointer to the valid socket.
  * buffer - pointer to the valid receive buffer.
  * size - message receive buffer size.
- * address - pointer to the valid sender address.
+ * address - pointer to the valid address.
  * count - pointer to the valid receive byte count.
  */
 bool socketReceiveFrom(
 	struct Socket* socket,
 	void* buffer,
 	size_t size,
-	struct SocketAddress** address,
+	struct SocketAddress* address,
 	size_t* count);
 
 /*

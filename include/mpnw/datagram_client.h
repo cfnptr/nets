@@ -15,10 +15,8 @@ typedef bool(*DatagramClientReceive)(
  * Creates a new datagram client.
  * Returns datagram client on success, otherwise NULL.
  *
- * addressFamily - local datagram socket address family.
  * remoteAddress - pointer to the valid server address.
  * receiveFunction - pointer to the valid receive function.
- * stopFunction - pointer to the valid stop function.
  * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket datagram receive buffer size.
  * sslContext - pointer to the SSL context or NULL.
