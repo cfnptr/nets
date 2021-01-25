@@ -18,17 +18,17 @@ typedef bool(*DatagramServerReceive)(
  *
  * addressFamily - local datagram socket address family.
  * port - pointer to the valid local address port string.
- * receiveFunction - pointer to the valid receive function.
- * functionArgument - pointer to the server function argument.
  * receiveBufferSize - socket datagram receive buffer size.
+ * receiveFunction - pointer to the valid receive function.
+ * functionArgument - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
 struct DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
 	const char* port,
+	size_t receiveBufferSize,
 	DatagramServerReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize,
 	struct SslContext* sslContext);
 
 /*
@@ -39,10 +39,24 @@ void destroyDatagramServer(
 	struct DatagramServer* server);
 
 /*
- * Returns current datagram server running state.
+ * Returns datagram server receive buffer size.
  * server - pointer to the valid datagram server.
  */
-bool isDatagramServerRunning(
+size_t getDatagramServerReceiveBufferSize(
+	const struct DatagramServer* server);
+
+/*
+* Returns datagram server receive function.
+* server - pointer to the valid datagram server.
+*/
+DatagramServerReceive getDatagramServerReceiveFunction(
+	const struct DatagramServer* server);
+
+/*
+ * Returns datagram server receive function argument.
+ * server - pointer to the valid datagram server.
+ */
+void* getDatagramServerFunctionArgument(
 	const struct DatagramServer* server);
 
 /*
@@ -50,6 +64,13 @@ bool isDatagramServerRunning(
  * server - pointer to the valid datagram server.
  */
 const struct Socket* getDatagramServerSocket(
+	const struct DatagramServer* server);
+
+/*
+ * Returns current datagram server running state.
+ * server - pointer to the valid datagram server.
+ */
+bool isDatagramServerRunning(
 	const struct DatagramServer* server);
 
 /*

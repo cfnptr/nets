@@ -6,13 +6,13 @@
 
 struct DatagramServer
 {
+	size_t receiveBufferSize;
 	DatagramServerReceive receiveFunction;
 	void* functionArgument;
-	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
-	volatile bool threadRunning;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
+	volatile bool threadRunning;
 };
 
 void datagramServerReceiveHandler(
@@ -73,14 +73,14 @@ void datagramServerReceiveHandler(
 struct DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
 	const char* port,
+	size_t receiveBufferSize,
 	DatagramServerReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize,
 	struct SslContext* sslContext)
 {
 	assert(port != NULL);
-	assert(receiveFunction != NULL);
 	assert(receiveBufferSize != 0);
+	assert(receiveFunction != NULL);
 
 	struct DatagramServer* server = malloc(
 		sizeof(struct DatagramServer));
@@ -141,12 +141,12 @@ struct DatagramServer* createDatagramServer(
 		return NULL;
 	}
 
+	server->receiveBufferSize = receiveBufferSize;
 	server->receiveFunction = receiveFunction;
 	server->functionArgument = functionArgument;
-	server->receiveBufferSize = receiveBufferSize;
 	server->receiveBuffer = receiveBuffer;
-	server->threadRunning = true;
 	server->receiveSocket = receiveSocket;
+	server->threadRunning = true;
 
 	struct Thread* receiveThread = createThread(
 		datagramServerReceiveHandler,
@@ -180,11 +180,25 @@ void destroyDatagramServer(
 	free(server);
 }
 
-bool isDatagramServerRunning(
+size_t getDatagramServerReceiveBufferSize(
 	const struct DatagramServer* server)
 {
 	assert(server != NULL);
-	return server->threadRunning;
+	return server->receiveBufferSize;
+}
+
+DatagramServerReceive getDatagramServerReceiveFunction(
+	const struct DatagramServer* server)
+{
+	assert(server != NULL);
+	return server->receiveFunction;
+}
+
+void* getDatagramServerFunctionArgument(
+	const struct DatagramServer* server)
+{
+	assert(server != NULL);
+	return server->functionArgument;
 }
 
 const struct Socket* getDatagramServerSocket(
@@ -192,6 +206,13 @@ const struct Socket* getDatagramServerSocket(
 {
 	assert(server != NULL);
 	return server->receiveSocket;
+}
+
+bool isDatagramServerRunning(
+	const struct DatagramServer* server)
+{
+	assert(server != NULL);
+	return server->threadRunning;
 }
 
 bool datagramServerSend(

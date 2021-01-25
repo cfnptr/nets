@@ -6,13 +6,13 @@
 
 struct DatagramClient
 {
+	size_t receiveBufferSize;
 	DatagramClientReceive receiveFunction;
 	void* functionArgument;
-	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
-	volatile bool threadRunning;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
+	volatile bool threadRunning;
 };
 
 void datagramClientReceiveHandler(
@@ -63,14 +63,14 @@ void datagramClientReceiveHandler(
 
 struct DatagramClient* createDatagramClient(
 	const struct SocketAddress* remoteAddress,
+	size_t receiveBufferSize,
 	DatagramClientReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize,
 	struct SslContext* sslContext)
 {
 	assert(remoteAddress != NULL);
-	assert(receiveFunction != NULL);
 	assert(receiveBufferSize != 0);
+	assert(receiveFunction != NULL);
 
 	struct DatagramClient* client = malloc(
 		sizeof(struct DatagramClient));
@@ -146,12 +146,12 @@ struct DatagramClient* createDatagramClient(
 		return NULL;
 	}
 
+	client->receiveBufferSize = receiveBufferSize;
 	client->receiveFunction = receiveFunction;
 	client->functionArgument = functionArgument;
-	client->receiveBufferSize = receiveBufferSize;
 	client->receiveBuffer = receiveBuffer;
-	client->threadRunning = true;
 	client->receiveSocket = receiveSocket;
+	client->threadRunning = true;
 
 	struct Thread* receiveThread = createThread(
 		datagramClientReceiveHandler,
@@ -185,11 +185,25 @@ void destroyDatagramClient(
 	free(client);
 }
 
-bool isDatagramClientRunning(
+size_t getDatagramClientReceiveBufferSize(
 	const struct DatagramClient* client)
 {
 	assert(client != NULL);
-	return client->threadRunning;
+	return client->receiveBufferSize;
+}
+
+DatagramClientReceive getDatagramClientReceiveFunction(
+	const struct DatagramClient* client)
+{
+	assert(client != NULL);
+	return client->receiveFunction;
+}
+
+void* getDatagramClientFunctionArgument(
+	const struct DatagramClient* client)
+{
+	assert(client != NULL);
+	return client->functionArgument;
 }
 
 const struct Socket* getDatagramClientSocket(
@@ -197,6 +211,13 @@ const struct Socket* getDatagramClientSocket(
 {
 	assert(client != NULL);
 	return client->receiveSocket;
+}
+
+bool isDatagramClientRunning(
+	const struct DatagramClient* client)
+{
+	assert(client != NULL);
+	return client->threadRunning;
 }
 
 bool datagramClientSend(

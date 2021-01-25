@@ -2,18 +2,17 @@
 #include "mpmt/thread.h"
 
 #include <time.h>
-#include <string.h>
 #include <assert.h>
 
 struct StreamClient
 {
+	size_t receiveBufferSize;
 	StreamClientReceive receiveFunction;
 	void* functionArgument;
-	size_t receiveBufferSize;
 	uint8_t* receiveBuffer;
-	volatile bool threadRunning;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
+	volatile bool threadRunning;
 };
 
 void streamClientReceiveHandler(
@@ -64,13 +63,13 @@ void streamClientReceiveHandler(
 
 struct StreamClient* createStreamClient(
 	uint8_t addressFamily,
+	size_t receiveBufferSize,
 	StreamClientReceive receiveFunction,
 	void* functionArgument,
-	size_t receiveBufferSize,
 	struct SslContext* sslContext)
 {
-	assert(receiveFunction != NULL);
 	assert(receiveBufferSize != 0);
+	assert(receiveFunction != NULL);
 
 	struct StreamClient* client = malloc(
 		sizeof(struct StreamClient));
@@ -135,8 +134,8 @@ struct StreamClient* createStreamClient(
 	client->functionArgument = functionArgument;
 	client->receiveBufferSize = receiveBufferSize;
 	client->receiveBuffer = receiveBuffer;
-	client->threadRunning = true;
 	client->receiveSocket = receiveSocket;
+	client->threadRunning = true;
 
 	struct Thread* receiveThread = createThread(
 		streamClientReceiveHandler,
@@ -170,11 +169,25 @@ void destroyStreamClient(
 	free(client);
 }
 
-bool isStreamClientRunning(
+size_t getStreamClientReceiveBufferSize(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
-	return client->threadRunning;
+	return client->receiveBufferSize;
+}
+
+StreamClientReceive getStreamClientReceiveFunction(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->receiveFunction;
+}
+
+void* getStreamClientFunctionArgument(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->functionArgument;
 }
 
 const struct Socket* getStreamClientSocket(
@@ -182,6 +195,13 @@ const struct Socket* getStreamClientSocket(
 {
 	assert(client != NULL);
 	return client->receiveSocket;
+}
+
+bool isStreamClientRunning(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->threadRunning;
 }
 
 bool tryConnectStreamClient(
