@@ -44,10 +44,6 @@ void streamSessionReceiveHandler(
 		server->receiveBufferSize;
 	StreamSessionReceive receiveFunction =
 		server->receiveFunction;
-	CreateStreamSession createFunction =
-		server->createFunction;
-	DestroyStreamSession destroyFunction =
-		server->destroyFunction;
 	void* functionArgument =
 		server->functionArgument;
 	struct Socket* receiveSocket =
@@ -57,10 +53,13 @@ void streamSessionReceiveHandler(
 		server->receiveBuffer +
 		session->receiveBufferOffset;
 
+	void* _session;
+
+	if (server->createFunction != NULL)
+		_session = server->createFunction(session);
+
 	bool result;
 	size_t byteCount;
-
-	void* _session = createFunction(session);
 
 	session->lastMessageTime = clock() /
 		(CLOCKS_PER_SEC * 1000);
@@ -100,7 +99,8 @@ void streamSessionReceiveHandler(
 		session->lastMessageTime = currentTime;
 	}
 
-	destroyFunction(_session);
+	if (server->destroyFunction != NULL)
+		server->destroyFunction(_session);
 
 	shutdownSocket(
 		receiveSocket,
@@ -193,8 +193,6 @@ struct StreamServer* createStreamServer(
 	assert(receiveBufferSize != 0);
 	assert(receiveTimeoutTime != 0);
 	assert(receiveFunction != NULL);
-	assert(createFunction != NULL);
-	assert(destroyFunction != NULL);
 
 	struct StreamServer* server = malloc(
 		sizeof(struct StreamServer));

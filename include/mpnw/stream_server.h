@@ -31,8 +31,8 @@ typedef void(*DestroyStreamSession)(
  * receiveBufferSize - socket message receive buffer size.
  * receiveTimeoutTime - socket message receive timeout time (ms).
  * receiveFunction - pointer to the valid receive function.
- * createFunction - pointer to the valid create function.
- * destroyFunction - pointer to the valid destroy function.
+ * createFunction - pointer to the create function or NULL.
+ * destroyFunction - pointer to the destroy function or NULL.
  * functionArgument - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
