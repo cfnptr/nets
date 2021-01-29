@@ -251,7 +251,7 @@ struct Socket* createSocket(
 
 		result = SSL_set_fd(
 			ssl,
-			handle);
+			(int)handle);
 
 		if (result != 1)
 		{
@@ -469,7 +469,7 @@ bool acceptSocket(
 
 		int result = SSL_set_fd(
 			ssl,
-			handle);
+			(int)handle);
 
 		if (result != 1)
 		{
@@ -595,7 +595,7 @@ bool socketReceive(
 		count = SSL_read(
 			socket->ssl,
 			buffer,
-			size);
+			(int)size);
 	}
 	else
 	{
@@ -635,7 +635,7 @@ bool socketSend(
 		return SSL_write(
 			socket->ssl,
 			buffer,
-			count) == count;
+			(int)count) == count;
 	}
 	else
 	{
