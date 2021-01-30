@@ -43,13 +43,6 @@ size_t getDatagramClientReceiveBufferSize(
 	const struct DatagramClient* client);
 
 /*
- * Returns datagram client receive function.
- * client - pointer to the valid datagram client.
- */
-DatagramClientReceive getDatagramClientReceiveFunction(
-	const struct DatagramClient* client);
-
-/*
  * Returns datagram client receive function argument.
  * client - pointer to the valid datagram client.
  */
@@ -60,7 +53,7 @@ void* getDatagramClientFunctionArgument(
  * Returns datagram client socket.
  * client - pointer to the valid datagram client.
  */
-const struct Socket* getDatagramClientSocket(
+struct Socket* getDatagramClientSocket(
 	const struct DatagramClient* client);
 
 /*

@@ -187,13 +187,6 @@ size_t getDatagramServerReceiveBufferSize(
 	return server->receiveBufferSize;
 }
 
-DatagramServerReceive getDatagramServerReceiveFunction(
-	const struct DatagramServer* server)
-{
-	assert(server != NULL);
-	return server->receiveFunction;
-}
-
 void* getDatagramServerFunctionArgument(
 	const struct DatagramServer* server)
 {
@@ -201,7 +194,7 @@ void* getDatagramServerFunctionArgument(
 	return server->functionArgument;
 }
 
-const struct Socket* getDatagramServerSocket(
+struct Socket* getDatagramServerSocket(
 	const struct DatagramServer* server)
 {
 	assert(server != NULL);

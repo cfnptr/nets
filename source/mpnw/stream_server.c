@@ -364,27 +364,6 @@ size_t getStreamServerReceiveTimeoutTime(
 	return server->receiveTimeoutTime;
 }
 
-StreamSessionReceive getStreamServerReceiveFunction(
-	const struct StreamServer* server)
-{
-	assert(server != NULL);
-	return server->receiveFunction;
-}
-
-CreateStreamSession getStreamServerCreateFunction(
-	const struct StreamServer* server)
-{
-	assert(server != NULL);
-	return server->createFunction;
-}
-
-DestroyStreamSession getStreamServerDestroyFunction(
-	const struct StreamServer* server)
-{
-	assert(server != NULL);
-	return server->destroyFunction;
-}
-
 void* getStreamServerFunctionArgument(
 	const struct StreamServer* server)
 {
@@ -392,7 +371,7 @@ void* getStreamServerFunctionArgument(
 	return server->functionArgument;
 }
 
-const struct Socket* getStreamServerSocket(
+struct Socket* getStreamServerSocket(
 	const struct StreamServer* server)
 {
 	assert(server != NULL);

@@ -77,27 +77,6 @@ size_t getStreamServerReceiveTimeoutTime(
 	const struct StreamServer* server);
 
 /*
-* Returns stream session receive function.
-* server - pointer to the valid stream server.
-*/
-StreamSessionReceive getStreamServerReceiveFunction(
-	const struct StreamServer* server);
-
-/*
-* Returns create stream session function.
-* server - pointer to the valid stream server.
-*/
-CreateStreamSession getStreamServerCreateFunction(
-	const struct StreamServer* server);
-
-/*
-* Returns destroy stream session function.
-* server - pointer to the valid stream server.
-*/
-DestroyStreamSession getStreamServerDestroyFunction(
-	const struct StreamServer* server);
-
-/*
  * Returns stream server receive function argument.
  * server - pointer to the valid stream server.
  */
@@ -108,7 +87,7 @@ void* getStreamServerFunctionArgument(
  * Returns stream server socket.
  * server - pointer to the valid stream server.
  */
-const struct Socket* getStreamServerSocket(
+struct Socket* getStreamServerSocket(
 	const struct StreamServer* server);
 
 /*

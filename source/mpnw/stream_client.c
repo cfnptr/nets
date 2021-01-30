@@ -176,13 +176,6 @@ size_t getStreamClientReceiveBufferSize(
 	return client->receiveBufferSize;
 }
 
-StreamClientReceive getStreamClientReceiveFunction(
-	const struct StreamClient* client)
-{
-	assert(client != NULL);
-	return client->receiveFunction;
-}
-
 void* getStreamClientFunctionArgument(
 	const struct StreamClient* client)
 {
@@ -190,7 +183,7 @@ void* getStreamClientFunctionArgument(
 	return client->functionArgument;
 }
 
-const struct Socket* getStreamClientSocket(
+struct Socket* getStreamClientSocket(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);

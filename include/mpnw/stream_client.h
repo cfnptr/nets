@@ -43,13 +43,6 @@ size_t getStreamClientReceiveBufferSize(
 	const struct StreamClient* client);
 
 /*
- * Returns stream client receive function.
- * client - pointer to the valid stream client.
- */
-StreamClientReceive getStreamClientReceiveFunction(
-	const struct StreamClient* client);
-
-/*
  * Returns stream client receive function argument.
  * client - pointer to the valid stream client.
  */
@@ -60,7 +53,7 @@ void* getStreamClientFunctionArgument(
  * Returns stream client socket.
  * client - pointer to the valid stream client.
  */
-const struct Socket* getStreamClientSocket(
+struct Socket* getStreamClientSocket(
 	const struct StreamClient* client);
 
 /*
