@@ -14,8 +14,9 @@ typedef bool(*StreamSessionReceive)(
 	void* argument);
 
 /* Create stream session function */
-typedef void*(*CreateStreamSession)(
-	struct StreamSession* session);
+typedef bool(*CreateStreamSession)(
+	struct StreamSession* session,
+	void** handle);
 
 /* Destroy stream session function */
 typedef void(*DestroyStreamSession)(
@@ -102,7 +103,14 @@ const struct StreamServer* getStreamSessionServer(
  * session - pointer to the valid stream session.
  */
 const struct Socket* getStreamSessionSocket(
-	const struct StreamServer* session);
+	const struct StreamSession* session);
+
+/*
+ * Returns stream session handle.
+ * session - pointer to the valid stream session.
+ */
+void* getStreamSessionHandle(
+	const struct StreamSession* session);
 
 /*
  * Sends datagram to the specified session.
