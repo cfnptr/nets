@@ -74,7 +74,7 @@ bool isStreamClientRunning(
 bool tryConnectStreamClient(
 	struct Socket* socket,
 	const struct SocketAddress* address,
-	size_t timeoutTime);
+	double timeoutTime);
 
 /*
  * Sends message to the stream server.

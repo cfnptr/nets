@@ -200,13 +200,13 @@ bool isStreamClientRunning(
 bool tryConnectStreamClient(
 	struct Socket* socket,
 	const struct SocketAddress* address,
-	size_t timeoutTime)
+	double timeoutTime)
 {
 	assert(socket != NULL);
 	assert(address != NULL);
 
-	uint64_t currentTime = getCurrentClock();
-	uint64_t lastTime = currentTime;
+	double currentTime = getCurrentClock();
+	double lastTime = currentTime;
 
 	while (true)
 	{

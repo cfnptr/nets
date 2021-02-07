@@ -30,7 +30,7 @@ typedef void(*DestroyStreamSession)(
  * port - pointer to the valid local address port string.
  * sessionBufferSize - socket session buffer size.
  * receiveBufferSize - socket message receive buffer size.
- * receiveTimeoutTime - socket message receive timeout time (ms).
+ * receiveTimeoutTime - socket message receive timeout time (s).
  * receiveFunction - pointer to the valid receive function.
  * createFunction - pointer to the create function or NULL.
  * destroyFunction - pointer to the destroy function or NULL.
@@ -42,7 +42,7 @@ struct StreamServer* createStreamServer(
 	const char* port,
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
-	size_t receiveTimeoutTime,
+	double receiveTimeoutTime,
 	StreamSessionReceive receiveFunction,
 	CreateStreamSession createFunction,
 	DestroyStreamSession destroyFunction,
@@ -71,10 +71,10 @@ size_t getStreamServerReceiveBufferSize(
 	const struct StreamServer* server);
 
 /*
- * Returns stream server receive timeout time (ms).
+ * Returns stream server receive timeout time (s).
  * server - pointer to the valid stream server.
  */
-size_t getStreamServerReceiveTimeoutTime(
+double getStreamServerReceiveTimeoutTime(
 	const struct StreamServer* server);
 
 /*

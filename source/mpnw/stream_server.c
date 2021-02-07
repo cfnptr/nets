@@ -8,7 +8,7 @@ struct StreamServer
 {
 	size_t sessionBufferSize;
 	size_t receiveBufferSize;
-	uint64_t receiveTimeoutTime;
+	double receiveTimeoutTime;
 	StreamSessionReceive receiveFunction;
 	CreateStreamSession createFunction;
 	DestroyStreamSession destroyFunction;
@@ -22,8 +22,8 @@ struct StreamServer
 
 struct StreamSession
 {
-	uint64_t receiveBufferOffset;
-	uint64_t lastMessageTime;
+	size_t receiveBufferOffset;
+	double lastMessageTime;
 	struct StreamServer* server;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
@@ -39,7 +39,7 @@ void streamSessionReceiveHandler(
 	struct StreamServer* server =
 		session->server;
 
-	uint64_t receiveTimeoutTime =
+	double receiveTimeoutTime =
 		server->receiveTimeoutTime;
 	size_t receiveBufferSize =
 		server->receiveBufferSize;
@@ -75,7 +75,7 @@ void streamSessionReceiveHandler(
 
 	while (session->threadRunning == true)
 	{
-		uint64_t currentTime =
+		double currentTime =
 			getCurrentClock();
 
 		if (currentTime - session->lastMessageTime >
@@ -92,7 +92,7 @@ void streamSessionReceiveHandler(
 
 		if (result == false || byteCount == 0)
 		{
-			sleepThread(500);
+			sleepThread(1);
 			continue;
 		}
 
@@ -161,7 +161,7 @@ static void streamServerAcceptHandler(
 				}
 
 				session->threadRunning = true;
-				session->lastMessageTime = 0;
+				session->lastMessageTime = 0.0;
 				session->receiveSocket = acceptedSocket;
 
 				struct Thread* receiveThread = createThread(
@@ -190,7 +190,7 @@ struct StreamServer* createStreamServer(
 	const char* port,
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
-	size_t receiveTimeoutTime,
+	double receiveTimeoutTime,
 	StreamSessionReceive receiveFunction,
 	CreateStreamSession createFunction,
 	DestroyStreamSession destroyFunction,
@@ -280,7 +280,7 @@ struct StreamServer* createStreamServer(
 	{
 		struct StreamSession session;
 		session.receiveBufferOffset = receiveBufferSize * i;
-		session.lastMessageTime = 0;
+		session.lastMessageTime = 0.0;
 		session.server = server;
 		session.receiveSocket = NULL;
 		session.receiveThread = NULL;
@@ -368,7 +368,7 @@ size_t getStreamServerReceiveBufferSize(
 	return server->receiveBufferSize;
 }
 
-size_t getStreamServerReceiveTimeoutTime(
+double getStreamServerReceiveTimeoutTime(
 	const struct StreamServer* server)
 {
 	assert(server != NULL);
