@@ -8,7 +8,7 @@ struct StreamServer
 {
 	size_t sessionBufferSize;
 	size_t receiveBufferSize;
-	size_t receiveTimeoutTime;
+	uint64_t receiveTimeoutTime;
 	StreamSessionReceive receiveFunction;
 	CreateStreamSession createFunction;
 	DestroyStreamSession destroyFunction;
@@ -22,8 +22,8 @@ struct StreamServer
 
 struct StreamSession
 {
-	size_t receiveBufferOffset;
-	size_t lastMessageTime;
+	uint64_t receiveBufferOffset;
+	uint64_t lastMessageTime;
 	struct StreamServer* server;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
@@ -39,7 +39,7 @@ void streamSessionReceiveHandler(
 	struct StreamServer* server =
 		session->server;
 
-	size_t receiveTimeoutTime =
+	uint64_t receiveTimeoutTime =
 		server->receiveTimeoutTime;
 	size_t receiveBufferSize =
 		server->receiveBufferSize;
@@ -68,15 +68,15 @@ void streamSessionReceiveHandler(
 		return;
 	}
 
-	size_t byteCount;
+	session->lastMessageTime =
+		getCurrentClock();
 
-	session->lastMessageTime = clock() /
-		(CLOCKS_PER_SEC * 1000);
+	size_t byteCount;
 
 	while (session->threadRunning == true)
 	{
-		size_t currentTime = clock() /
-			(CLOCKS_PER_SEC * 1000);
+		uint64_t currentTime =
+			getCurrentClock();
 
 		if (currentTime - session->lastMessageTime >
 			receiveTimeoutTime)
@@ -92,7 +92,7 @@ void streamSessionReceiveHandler(
 
 		if (result == false || byteCount == 0)
 		{
-			sleepThread(1);
+			sleepThread(500);
 			continue;
 		}
 

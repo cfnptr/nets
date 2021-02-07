@@ -205,14 +205,12 @@ bool tryConnectStreamClient(
 	assert(socket != NULL);
 	assert(address != NULL);
 
-	size_t currentTime = clock() /
-		(CLOCKS_PER_SEC * 1000);
-	size_t lastTime = currentTime;
+	uint64_t currentTime = getCurrentClock();
+	uint64_t lastTime = currentTime;
 
 	while (true)
 	{
-		currentTime = clock() /
-			(CLOCKS_PER_SEC * 1000);
+		currentTime = getCurrentClock();
 
 		if (currentTime - lastTime > timeoutTime)
 			return false;
@@ -223,6 +221,8 @@ bool tryConnectStreamClient(
 
 		if (result == true)
 			return true;
+
+		sleepThread(1);
 	}
 }
 
