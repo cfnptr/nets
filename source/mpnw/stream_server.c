@@ -92,7 +92,7 @@ void streamSessionReceiveHandler(
 
 		if (result == false || byteCount == 0)
 		{
-			sleepThread(1);
+			sleepThread(0.001);
 			continue;
 		}
 
@@ -140,7 +140,7 @@ static void streamServerAcceptHandler(
 
 		if (result == false)
 		{
-			sleepThread(1);
+			sleepThread(0.001);
 			continue;
 		}
 

@@ -44,7 +44,7 @@ void streamClientReceiveHandler(
 
 		if (result == false || byteCount == 0)
 		{
-			sleepThread(1);
+			sleepThread(0.001);
 			continue;
 		}
 
@@ -222,7 +222,7 @@ bool tryConnectStreamClient(
 		if (result == true)
 			return true;
 
-		sleepThread(1);
+		sleepThread(0.001);
 	}
 }
 

@@ -44,7 +44,7 @@ void datagramClientReceiveHandler(
 
 		if (result == false || byteCount == 0)
 		{
-			sleepThread(1);
+			sleepThread(0.001);
 			continue;
 		}
 
