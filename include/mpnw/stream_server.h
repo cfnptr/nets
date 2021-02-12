@@ -8,18 +8,19 @@ struct StreamSession;
 
 /* Stream session message receive function */
 typedef bool(*StreamSessionReceive)(
-	struct StreamSession* session,
+	struct StreamSession* streamSession,
 	const uint8_t* buffer,
 	size_t count,
 	void* argument);
 
 /* Create stream session function */
 typedef bool(*CreateStreamSession)(
-	struct StreamSession* session,
+	struct StreamSession* streamSession,
 	void** handle);
 
 /* Destroy stream session function */
 typedef void(*DestroyStreamSession)(
+	struct StreamSession* streamSession,
 	void* session);
 
 /*

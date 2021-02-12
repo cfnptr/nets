@@ -109,6 +109,7 @@ void streamSessionReceiveHandler(
 	}
 
 	server->destroyFunction(
+		session,
 		session->handle);
 
 	shutdownSocket(
