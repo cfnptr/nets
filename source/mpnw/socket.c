@@ -1005,9 +1005,9 @@ char* getSocketAddressHost(
 		return NULL;
 
 	size_t hostLength =
-		strlen(buffer) * sizeof(char);
+		strlen(buffer);
 	char* host = malloc(
-		hostLength);
+		(hostLength + 1) * sizeof(char));
 
 	if (host == NULL)
 		return NULL;
@@ -1017,6 +1017,7 @@ char* getSocketAddressHost(
 		buffer,
 		hostLength);
 
+	host[hostLength] = '\0';
 	return host;
 }
 
@@ -1041,9 +1042,9 @@ char* getSocketAddressService(
 		return NULL;
 
 	size_t serviceLength =
-		strlen(buffer) * sizeof(char);
+		strlen(buffer);
 	char* service = malloc(
-		serviceLength);
+		(serviceLength + 1) * sizeof(char));
 
 	if (service == NULL)
 		return NULL;
@@ -1053,6 +1054,7 @@ char* getSocketAddressService(
 		buffer,
 		serviceLength);
 
+	service[serviceLength] = '\0';
 	return service;
 }
 
