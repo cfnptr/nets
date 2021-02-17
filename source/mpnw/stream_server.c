@@ -337,16 +337,16 @@ void destroyStreamServer(
 
 	for (size_t i = 0; i < sessionBufferSize; i++)
 	{
-		struct StreamSession session =
-			sessionBuffer[i];
+		struct StreamSession* session =
+			&sessionBuffer[i];
 
-		if (session.receiveSocket != NULL)
+		if (session->receiveSocket != NULL)
 		{
-			session.threadRunning = false;
+			session->threadRunning = false;
 
-			joinThread(session.receiveThread);
-			destroyThread(session.receiveThread);
-			destroySocket(session.receiveSocket);
+			joinThread(session->receiveThread);
+			destroyThread(session->receiveThread);
+			destroySocket(session->receiveSocket);
 		}
 	}
 
