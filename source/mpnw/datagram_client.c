@@ -22,8 +22,6 @@ void datagramClientReceiveHandler(
 		(struct DatagramClient*)argument;
 	DatagramClientReceive receiveFunction =
 		client->receiveFunction;
-	void* functionArgument =
-		client->functionArgument;
 	size_t receiveBufferSize =
 		client->receiveBufferSize;
 	uint8_t* receiveBuffer =
@@ -51,8 +49,7 @@ void datagramClientReceiveHandler(
 		result = receiveFunction(
 			client,
 			receiveBuffer,
-			byteCount,
-			functionArgument);
+			byteCount);
 
 		if (result == false)
 			break;
@@ -71,6 +68,7 @@ struct DatagramClient* createDatagramClient(
 	assert(remoteAddress != NULL);
 	assert(receiveBufferSize != 0);
 	assert(receiveFunction != NULL);
+	assert(isNetworkInitialized() == true);
 
 	struct DatagramClient* client = malloc(
 		sizeof(struct DatagramClient));
@@ -172,6 +170,8 @@ struct DatagramClient* createDatagramClient(
 void destroyDatagramClient(
 	struct DatagramClient* client)
 {
+	assert(isNetworkInitialized() == true);
+
 	if (client == NULL)
 		return;
 
@@ -199,7 +199,7 @@ void* getDatagramClientFunctionArgument(
 	return client->functionArgument;
 }
 
-struct Socket* getDatagramClientSocket(
+const struct Socket* getDatagramClientSocket(
 	const struct DatagramClient* client)
 {
 	assert(client != NULL);

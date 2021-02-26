@@ -22,8 +22,6 @@ void datagramServerReceiveHandler(
 		(struct DatagramServer*)argument;
 	DatagramServerReceive receiveFunction =
 		server->receiveFunction;
-	void* functionArgument =
-		server->functionArgument;
 	size_t receiveBufferSize =
 		server->receiveBufferSize;
 	uint8_t* receiveBuffer =
@@ -60,8 +58,7 @@ void datagramServerReceiveHandler(
 			server,
 			remoteAddress,
 			receiveBuffer,
-			byteCount,
-			functionArgument);
+			byteCount);
 
 		if (result == false)
 			break;
@@ -81,6 +78,7 @@ struct DatagramServer* createDatagramServer(
 	assert(port != NULL);
 	assert(receiveBufferSize != 0);
 	assert(receiveFunction != NULL);
+	assert(isNetworkInitialized() == true);
 
 	struct DatagramServer* server = malloc(
 		sizeof(struct DatagramServer));
@@ -167,6 +165,8 @@ struct DatagramServer* createDatagramServer(
 void destroyDatagramServer(
 	struct DatagramServer* server)
 {
+	assert(isNetworkInitialized() == true);
+
 	if (server == NULL)
 		return;
 
@@ -194,7 +194,7 @@ void* getDatagramServerFunctionArgument(
 	return server->functionArgument;
 }
 
-struct Socket* getDatagramServerSocket(
+const struct Socket* getDatagramServerSocket(
 	const struct DatagramServer* server)
 {
 	assert(server != NULL);

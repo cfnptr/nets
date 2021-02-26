@@ -8,8 +8,7 @@ struct DatagramClient;
 typedef bool(*DatagramClientReceive)(
 	struct DatagramClient* client,
 	const uint8_t* buffer,
-	size_t count,
-	void* argument);
+	size_t count);
 
 /*
  * Creates a new datagram client.
@@ -53,7 +52,7 @@ void* getDatagramClientFunctionArgument(
  * Returns datagram client socket.
  * client - pointer to the valid datagram client.
  */
-struct Socket* getDatagramClientSocket(
+const struct Socket* getDatagramClientSocket(
 	const struct DatagramClient* client);
 
 /*

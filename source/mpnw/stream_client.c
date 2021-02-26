@@ -22,8 +22,6 @@ void streamClientReceiveHandler(
 		(struct StreamClient*)argument;
 	StreamClientReceive receiveFunction =
 		client->receiveFunction;
-	void* functionArgument =
-		client->functionArgument;
 	size_t receiveBufferSize =
 		client->receiveBufferSize;
 	uint8_t* receiveBuffer =
@@ -51,8 +49,7 @@ void streamClientReceiveHandler(
 		result = receiveFunction(
 			client,
 			receiveBuffer,
-			byteCount,
-			functionArgument);
+			byteCount);
 
 		if (result == false)
 			break;
@@ -70,6 +67,7 @@ struct StreamClient* createStreamClient(
 {
 	assert(receiveBufferSize != 0);
 	assert(receiveFunction != NULL);
+	assert(isNetworkInitialized() == true);
 
 	struct StreamClient* client = malloc(
 		sizeof(struct StreamClient));
@@ -156,6 +154,8 @@ struct StreamClient* createStreamClient(
 void destroyStreamClient(
 	struct StreamClient* client)
 {
+	assert(isNetworkInitialized() == true);
+
 	if (client == NULL)
 		return;
 
@@ -183,7 +183,7 @@ void* getStreamClientFunctionArgument(
 	return client->functionArgument;
 }
 
-struct Socket* getStreamClientSocket(
+const struct Socket* getStreamClientSocket(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);

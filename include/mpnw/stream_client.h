@@ -8,8 +8,7 @@ struct StreamClient;
 typedef bool(*StreamClientReceive)(
 	struct StreamClient* client,
 	const uint8_t* buffer,
-	size_t count,
-	void* argument);
+	size_t count);
 
 /*
  * Creates a new stream client.
@@ -53,7 +52,7 @@ void* getStreamClientFunctionArgument(
  * Returns stream client socket.
  * client - pointer to the valid stream client.
  */
-struct Socket* getStreamClientSocket(
+const struct Socket* getStreamClientSocket(
 	const struct StreamClient* client);
 
 /*

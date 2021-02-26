@@ -277,6 +277,8 @@ struct Socket* createSocket(
 void destroySocket(
 	struct Socket* socket)
 {
+	assert(isNetworkInitialized() == true);
+
 	if (socket == NULL)
 		return;
 

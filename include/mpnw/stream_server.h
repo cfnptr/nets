@@ -3,25 +3,25 @@
 
 /* Stream server instance handle */
 struct StreamServer;
-/* Stream session instance handle */
+/* Stream server session instance handle */
 struct StreamSession;
 
 /* Stream session message receive function */
 typedef bool(*StreamSessionReceive)(
+	struct StreamServer* streamServer,
 	struct StreamSession* streamSession,
 	const uint8_t* buffer,
-	size_t count,
-	void* argument);
+	size_t count);
 
 /* Create stream session function */
 typedef bool(*CreateStreamSession)(
-	struct StreamSession* streamSession,
+	struct StreamServer* streamServer,
 	void** handle);
 
 /* Destroy stream session function */
 typedef void(*DestroyStreamSession)(
-	struct StreamSession* streamSession,
-	void* session);
+	struct StreamServer* streamServer,
+	struct StreamSession* streamSession);
 
 /*
  * Creates a new stream server.
@@ -89,26 +89,19 @@ void* getStreamServerFunctionArgument(
  * Returns stream server socket.
  * server - pointer to the valid stream server.
  */
-struct Socket* getStreamServerSocket(
+const struct Socket* getStreamServerSocket(
 	const struct StreamServer* server);
 
 /*
- * Returns stream session server.
- * session - pointer to the valid stream session.
- */
-const struct StreamServer* getStreamSessionServer(
-	const struct StreamSession* session);
-
-/*
- * Returns stream session socket.
- * session - pointer to the valid stream session.
+ * Returns stream server session socket.
+ * session - pointer to the valid stream server session.
  */
 const struct Socket* getStreamSessionSocket(
 	const struct StreamSession* session);
 
 /*
- * Returns stream session handle.
- * session - pointer to the valid stream session.
+ * Returns stream server session handle.
+ * session - pointer to the valid stream server session.
  */
 void* getStreamSessionHandle(
 	const struct StreamSession* session);
@@ -122,6 +115,6 @@ void* getStreamSessionHandle(
  * count - data buffer send byte count.
  */
 bool streamSessionSend(
-	struct StreamSession* session,
+	struct StreamSession* streamSession,
 	const void* buffer,
 	size_t count);

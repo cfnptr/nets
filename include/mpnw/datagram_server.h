@@ -9,8 +9,7 @@ typedef bool(*DatagramServerReceive)(
 	struct DatagramServer* server,
 	const struct SocketAddress* address,
 	const uint8_t* buffer,
-	size_t count,
-	void* argument);
+	size_t count);
 
 /*
  * Creates a new datagram server.
@@ -56,7 +55,7 @@ void* getDatagramServerFunctionArgument(
  * Returns datagram server socket.
  * server - pointer to the valid datagram server.
  */
-struct Socket* getDatagramServerSocket(
+const struct Socket* getDatagramServerSocket(
 	const struct DatagramServer* server);
 
 /*
