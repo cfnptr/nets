@@ -1,7 +1,7 @@
 #pragma once
 #include "mpnw/socket.h"
 
-/* Datagram client instance handle */
+/* Datagram client instance handle (UDP) */
 struct DatagramClient;
 
 /* Datagram client datagram receive function */
@@ -11,7 +11,7 @@ typedef bool(*DatagramClientReceive)(
 	size_t count);
 
 /*
- * Creates a new datagram client.
+ * Creates a new datagram client (UDP).
  * Returns datagram client on success, otherwise NULL.
  *
  * remoteAddress - pointer to the valid server address.

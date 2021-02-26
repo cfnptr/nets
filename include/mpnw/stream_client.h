@@ -1,7 +1,7 @@
 #pragma once
 #include "mpnw/socket.h"
 
-/* Stream client instance handle */
+/* Stream client instance handle (TCP) */
 struct StreamClient;
 
 /* Stream client message receive function */
@@ -11,7 +11,7 @@ typedef bool(*StreamClientReceive)(
 	size_t count);
 
 /*
- * Creates a new stream client.
+ * Creates a new stream client (TCP).
  * Returns stream client on success, otherwise NULL.
  *
  * addressFamily - local stream socket address family.

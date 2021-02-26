@@ -132,17 +132,19 @@ struct Socket* createSocket(
 	if (_socket == NULL)
 		return NULL;
 
-	int type, family;
+	int type, protocol, family;
 	SOCKET_LENGTH length;
 
 	if (_type == STREAM_SOCKET_TYPE)
 	{
 		type = SOCK_STREAM;
+		protocol = IPPROTO_TCP;
 		length = sizeof(struct sockaddr_in);
 	}
 	else if (_type == DATAGRAM_SOCKET_TYPE)
 	{
 		type = SOCK_DGRAM;
+		protocol = IPPROTO_UDP;
 		length = sizeof(struct sockaddr_in6);
 	}
 	else
@@ -160,7 +162,7 @@ struct Socket* createSocket(
 	SOCKET handle = socket(
 		family,
 		type,
-		0);
+		protocol);
 
 	if (handle == INVALID_SOCKET)
 	{
@@ -1122,7 +1124,7 @@ bool getSocketAddressHostService(
 }
 
 struct SslContext* createSslContext(
-	uint8_t socketType,
+	uint8_t securityProtocol,
 	const char* certificateVerifyPath)
 {
 #if MPNW_HAS_OPENSSL
@@ -1136,12 +1138,19 @@ struct SslContext* createSslContext(
 
 	SSL_CTX* handle;
 
-	if (socketType == STREAM_SOCKET_TYPE)
-		handle = SSL_CTX_new(TLS_method());
-	else if (socketType == DATAGRAM_SOCKET_TYPE)
-		handle = SSL_CTX_new(DTLS_method());
-	else
+	switch (securityProtocol)
+	{
+	default:
 		abort();
+	case TLS_1_3_SECURITY_PROTOCOL:
+		handle = SSL_CTX_new(TLS_method());
+	case DTLS_1_3_SECURITY_PROTOCOL:
+		handle = SSL_CTX_new(DTLS_method());
+	case TLS_1_2_SECURITY_PROTOCOL:
+		handle = SSL_CTX_new(TLSv1_2_method());
+	case DTLS_1_2_SECURITY_PROTOCOL:
+		handle = SSL_CTX_new(DTLSv1_2_method());
+	}
 
 	if (handle == NULL)
 	{
@@ -1179,7 +1188,7 @@ struct SslContext* createSslContext(
 }
 
 struct SslContext* createSslContextFromFile(
-	uint8_t socketType,
+	uint8_t securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath)
 {
@@ -1196,12 +1205,19 @@ struct SslContext* createSslContextFromFile(
 
 	SSL_CTX* handle;
 
-	if (socketType == STREAM_SOCKET_TYPE)
-		handle = SSL_CTX_new(TLS_method());
-	else if (socketType == DATAGRAM_SOCKET_TYPE)
-		handle = SSL_CTX_new(DTLS_method());
-	else
+	switch (securityProtocol)
+	{
+	default:
 		abort();
+	case TLS_1_3_SECURITY_PROTOCOL:
+		handle = SSL_CTX_new(TLS_method());
+	case DTLS_1_3_SECURITY_PROTOCOL:
+		handle = SSL_CTX_new(DTLS_method());
+	case TLS_1_2_SECURITY_PROTOCOL:
+		handle = SSL_CTX_new(TLSv1_2_method());
+	case DTLS_1_2_SECURITY_PROTOCOL:
+		handle = SSL_CTX_new(DTLSv1_2_method());
+	}
 
 	if (handle == NULL)
 	{
@@ -1259,6 +1275,30 @@ void destroySslContext(
 
 	SSL_CTX_free(context->handle);
 	free(context);
+#else
+	abort();
+#endif
+}
+
+uint8_t getSslContextSecurityProtocol(
+	const struct SslContext* context)
+{
+#if MPNW_HAS_OPENSSL
+	assert(context != NULL);
+
+	const SSL_METHOD* method = SSL_CTX_get_ssl_method(
+		context->handle);
+
+	if (method == TLS_method())
+		return TLS_1_3_SECURITY_PROTOCOL;
+	else if (method == DTLS_method())
+		return DTLS_1_3_SECURITY_PROTOCOL;
+	else if (method == TLSv1_2_method())
+		return TLS_1_2_SECURITY_PROTOCOL;
+	else if (method == DTLSv1_2_method())
+		return DTLS_1_2_SECURITY_PROTOCOL;
+	else
+		abort();
 #else
 	abort();
 #endif

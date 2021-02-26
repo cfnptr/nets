@@ -1,7 +1,7 @@
 #pragma once
 #include "mpnw/socket.h"
 
-/* Datagram server instance handle */
+/* Datagram server instance handle (UDP) */
 struct DatagramServer;
 
 /* Datagram server datagram receive function */
@@ -12,7 +12,7 @@ typedef bool(*DatagramServerReceive)(
 	size_t count);
 
 /*
- * Creates a new datagram server.
+ * Creates a new datagram server (UDP).
  * Returns datagram server on success, otherwise NULL.
  *
  * addressFamily - local datagram socket address family.

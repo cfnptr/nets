@@ -47,6 +47,17 @@ enum SocketShutdown
 	SHUTDOWN_RECEIVE_SEND = 2,
 };
 
+/* Socket security protocol */
+enum SecurityProtocol
+{
+	TLS_1_3_SECURITY_PROTOCOL = 0,
+	DTLS_1_3_SECURITY_PROTOCOL = 1,
+	TLS_1_2_SECURITY_PROTOCOL = 2,
+	DTLS_1_2_SECURITY_PROTOCOL = 3,
+	TLS_SECURITY_PROTOCOL = TLS_1_3_SECURITY_PROTOCOL,
+	DTLS_SECURITY_PROTOCOL = DTLS_1_3_SECURITY_PROTOCOL,
+};
+
 /* Returns true if network was initialized. */
 bool initializeNetwork();
 /* Terminates network. */
@@ -348,7 +359,7 @@ bool getSocketAddressHostService(
  * certificateVerifyPath - valid trusted certificates location.
  */
 struct SslContext* createSslContext(
-	uint8_t socketType,
+	uint8_t securityProtocol,
 	const char* certificateVerifyPath);
 
 /*
@@ -360,7 +371,7 @@ struct SslContext* createSslContext(
  * privateKeyFilePath - valid private key file path string.
  */
 struct SslContext* createSslContextFromFile(
-	uint8_t socketType,
+	uint8_t securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath);
 
@@ -370,3 +381,10 @@ struct SslContext* createSslContextFromFile(
  */
 void destroySslContext(
 	struct SslContext* context);
+
+/*
+ * Destroys SSL context security protocol.
+ * context - pointer to the valid SSL context.
+ */
+uint8_t getSslContextSecurityProtocol(
+	const struct SslContext* context);

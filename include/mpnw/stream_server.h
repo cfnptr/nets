@@ -1,9 +1,9 @@
 #pragma once
 #include "mpnw/socket.h"
 
-/* Stream server instance handle */
+/* Stream server instance handle (TCP) */
 struct StreamServer;
-/* Stream server session instance handle */
+/* Stream server session instance handle (TCP) */
 struct StreamSession;
 
 /* Stream session message receive function */
@@ -24,7 +24,7 @@ typedef void(*DestroyStreamSession)(
 	struct StreamSession* streamSession);
 
 /*
- * Creates a new stream server.
+ * Creates a new stream server (TCP).
  * Returns stream server on success, otherwise NULL.
  *
  * addressFamily - local stream socket address family.
