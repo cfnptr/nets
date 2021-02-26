@@ -1,3 +1,12 @@
+## Features
+* Blocking socket
+* Non-blocking socket
+* Stream client (TCP)
+* Stream server (TCP)
+* Datagram client (UDP)
+* Datagram server (UDP)
+* Secure socket layer (OpenSSL)
+
 ## Supported operating systems
 * Linux
 * MacOS
@@ -16,3 +25,5 @@
 ## Third-party
 * [mpmt](https://github.com/cfnptr/mpmt/) (BSD-3-Clause License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache 2.0 License)
+
+### Special thanks to Gigaflops.
