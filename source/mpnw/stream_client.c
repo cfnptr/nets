@@ -163,6 +163,10 @@ void destroyStreamClient(
 
 	joinThread(client->receiveThread);
 	destroyThread(client->receiveThread);
+
+	shutdownSocket(
+		client->receiveSocket,
+		SHUTDOWN_RECEIVE_SEND);
 	destroySocket(client->receiveSocket);
 
 	free(client->receiveBuffer);

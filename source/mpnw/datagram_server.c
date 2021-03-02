@@ -174,6 +174,10 @@ void destroyDatagramServer(
 
 	joinThread(server->receiveThread);
 	destroyThread(server->receiveThread);
+
+	shutdownSocket(
+		server->receiveSocket,
+		SHUTDOWN_RECEIVE_SEND);
 	destroySocket(server->receiveSocket);
 
 	free(server->receiveBuffer);

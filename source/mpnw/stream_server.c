@@ -286,6 +286,10 @@ void destroyStreamServer(
 	server->threadsRunning = false;
 	joinThread(server->receiveThread);
 	destroyThread(server->receiveThread);
+
+	shutdownSocket(
+		server->acceptSocket,
+		SHUTDOWN_RECEIVE_SEND);
 	destroySocket(server->acceptSocket);
 
 	size_t sessionCount =
