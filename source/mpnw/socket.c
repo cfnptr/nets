@@ -988,139 +988,75 @@ uint16_t getSocketAddressPort(
 	}
 }
 
-char* getSocketAddressHost(
-	const struct SocketAddress* address)
+size_t getSocketMaxHostLength()
+{
+	return NI_MAXHOST;
+}
+
+size_t getSocketMaxServiceLength()
+{
+	return NI_MAXSERV;
+}
+
+bool getSocketAddressHost(
+	const struct SocketAddress* address,
+	char* host)
 {
 	assert(address != NULL);
+	assert(host != NULL);
 
-	char buffer[NI_MAXHOST];
 	int flags = NI_NUMERICHOST;
 
-	int result = getnameinfo(
+	return getnameinfo(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
-		buffer,
+		host,
 		NI_MAXHOST,
 		NULL,
 		0,
-		flags);
-
-	if (result != 0)
-		return NULL;
-
-	size_t hostLength =
-		strlen(buffer);
-	char* host = malloc(
-		(hostLength + 1) * sizeof(char));
-
-	if (host == NULL)
-		return NULL;
-
-	memcpy(
-		host,
-		buffer,
-		hostLength);
-
-	host[hostLength] = '\0';
-	return host;
+		flags) == 0;
 }
 
-char* getSocketAddressService(
-	const struct SocketAddress* address)
+bool getSocketAddressService(
+	const struct SocketAddress* address,
+	char* service)
 {
 	assert(address != NULL);
+	assert(service != NULL);
 
-	char buffer[NI_MAXSERV];
 	int flags = NI_NUMERICSERV;
 
-	int result = getnameinfo(
+	return getnameinfo(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
 		NULL,
 		0,
-		buffer,
-		NI_MAXSERV,
-		flags);
-
-	if (result != 0)
-		return NULL;
-
-	size_t serviceLength =
-		strlen(buffer);
-	char* service = malloc(
-		(serviceLength + 1) * sizeof(char));
-
-	if (service == NULL)
-		return NULL;
-
-	memcpy(
 		service,
-		buffer,
-		serviceLength);
-
-	service[serviceLength] = '\0';
-	return service;
+		NI_MAXSERV,
+		flags) == 0;
 }
 
 bool getSocketAddressHostService(
 	const struct SocketAddress* address,
-	char** _host,
-	char** _service)
+	char* host,
+	char* service)
 {
 	assert(address != NULL);
-	assert(_host != NULL);
-	assert(_service != NULL);
-
-	char hostBuffer[NI_MAXHOST];
-	char serviceBuffer[NI_MAXSERV];
+	assert(host != NULL);
+	assert(service != NULL);
 
 	int flags =
 		NI_NUMERICHOST |
 		NI_NUMERICSERV;
 
-	int result = getnameinfo(
+	return getnameinfo(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
-		hostBuffer,
-		NI_MAXHOST,
-		serviceBuffer,
-		NI_MAXSERV,
-		flags);
-
-	if (result != 0)
-		return false;
-
-	size_t hostLength =
-		strlen(hostBuffer) * sizeof(char);
-	char* host = malloc(
-		hostLength);
-
-	if (host == NULL)
-		return false;
-
-	size_t serviceLength =
-		strlen(hostBuffer) * sizeof(char);
-	char* service = malloc(
-		serviceLength);
-
-	if (service == NULL)
-	{
-		free(host);
-		return false;
-	}
-
-	memcpy(
 		host,
-		hostBuffer,
-		hostLength);
-	memcpy(
+		NI_MAXHOST,
 		service,
-		serviceBuffer,
-		serviceLength);
-
-	*_host = host;
-	*_service = service;
-	return true;
+		NI_MAXSERV,
+		flags) == 0;
 }
 
 struct SslContext* createSslContext(

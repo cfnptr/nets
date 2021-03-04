@@ -318,29 +318,37 @@ uint8_t* getSocketAddressIP(
 uint16_t getSocketAddressPort(
 	const struct SocketAddress* address);
 
+/* Returns maximum socket address host string length. */
+size_t getSocketMaxHostLength();
+
+/* Returns maximum socket address service string length. */
+size_t getSocketMaxServiceLength();
+
 /*
- * Returns a new socket address host name.
- * Returns host on success, otherwise NULL.
+ * Returns socket address host name.
+ * Returns true on successful get.
  *
  * address - pointer to the valid socket address.
  * host - pointer to the valid socket host name.
  */
-char* getSocketAddressHost(
-	const struct SocketAddress* address);
+bool getSocketAddressHost(
+	const struct SocketAddress* address,
+	char* host);
 
 /*
- * Returns a new socket address service name string.
+ * Returns socket address service name.
  * Returns true on successful get.
  *
  * address - pointer to the valid socket address.
  * service - pointer to the valid socket service name.
  */
-char* getSocketAddressService(
-	const struct SocketAddress* address);
+bool getSocketAddressService(
+	const struct SocketAddress* address,
+	char* service);
 
 /*
- * Returns a new socket address host and service name.
- * Returns true on success.
+ * Returns socket address host and service name.
+ * Returns true on successful get.
  *
  * address - pointer to the valid socket address.
  * host - pointer to the valid host name string.
@@ -348,8 +356,8 @@ char* getSocketAddressService(
  */
 bool getSocketAddressHostService(
 	const struct SocketAddress* address,
-	char** host,
-	char** service);
+	char* host,
+	char* service);
 
 /*
  * Creates a new SSL context.

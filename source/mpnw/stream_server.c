@@ -124,16 +124,32 @@ void streamServerReceiveHandler(
 
 		if (result == true)
 		{
-			void* session;
-
-			if (sessionCount < server->sessionBufferSize &&
-				createFunction(server, &session) == true)
+			if (sessionCount < server->sessionBufferSize)
 			{
-				struct StreamSession streamSession;
-				streamSession.receiveSocket = acceptedSocket;
-				streamSession.lastMessageTime = getCurrentClock();
-				streamSession.handle = session;
-				sessionBuffer[sessionCount++] = streamSession;
+				void* session;
+
+				result = createFunction(
+					server,
+					acceptedSocket,
+					&session);
+
+				if (result == true)
+				{
+					struct StreamSession streamSession;
+					streamSession.receiveSocket = acceptedSocket;
+					streamSession.lastMessageTime = getCurrentClock();
+					streamSession.handle = session;
+					sessionBuffer[sessionCount++] = streamSession;
+				}
+				else
+				{
+					shutdownSocket(
+						acceptedSocket,
+						SHUTDOWN_RECEIVE_SEND);
+					destroySocket(acceptedSocket);
+				}
+
+				shouldSleep = false;
 			}
 			else
 			{
@@ -142,8 +158,6 @@ void streamServerReceiveHandler(
 					SHUTDOWN_RECEIVE_SEND);
 				destroySocket(acceptedSocket);
 			}
-
-			shouldSleep = false;
 		}
 
 		server->sessionCount = sessionCount;
