@@ -140,13 +140,11 @@ struct Socket* createSocket(
 	{
 		type = SOCK_STREAM;
 		protocol = IPPROTO_TCP;
-		length = sizeof(struct sockaddr_in);
 	}
 	else if (_type == DATAGRAM_SOCKET_TYPE)
 	{
 		type = SOCK_DGRAM;
 		protocol = IPPROTO_UDP;
-		length = sizeof(struct sockaddr_in6);
 	}
 	else
 	{
@@ -154,11 +152,19 @@ struct Socket* createSocket(
 	}
 
 	if (_family == IP_V4_ADDRESS_FAMILY)
+	{
 		family = AF_INET;
+		length = sizeof(struct sockaddr_in);
+	}
 	else if (_family == IP_V6_ADDRESS_FAMILY)
+	{
 		family = AF_INET6;
+		length = sizeof(struct sockaddr_in6);
+	}
 	else
+	{
 		abort();
+	}
 
 	SOCKET handle = socket(
 		family,
@@ -815,10 +821,7 @@ bool socketReceiveFrom(
 		&length);
 
 	if (count < 0)
-	{
-		free(address);
 		return false;
-	}
 
 	address->handle = socketAddress;
 	*_count = (size_t)count;
