@@ -187,7 +187,7 @@ void* getStreamClientFunctionArgument(
 	return client->functionArgument;
 }
 
-const struct Socket* getStreamClientSocket(
+struct Socket* getStreamClientSocket(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);

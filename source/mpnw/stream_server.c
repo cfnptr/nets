@@ -362,14 +362,14 @@ void* getStreamServerFunctionArgument(
 	return server->functionArgument;
 }
 
-const struct Socket* getStreamServerSocket(
+struct Socket* getStreamServerSocket(
 	const struct StreamServer* server)
 {
 	assert(server != NULL);
 	return server->acceptSocket;
 }
 
-const struct Socket* getStreamSessionSocket(
+struct Socket* getStreamSessionSocket(
 	const struct StreamSession* session)
 {
 	assert(session != NULL);

@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 
 #define SOCKET int
 #define INVALID_SOCKET (-1)
@@ -409,8 +410,6 @@ bool getSocketRemoteAddress(
 bool isSocketSsl(
 	const struct Socket* socket)
 {
-
-
 #if MPNW_HAS_OPENSSL
 	assert(socket != NULL);
 	return socket->sslContext == NULL;
@@ -430,13 +429,133 @@ struct SslContext* getSocketSslContext(
 #endif
 }
 
+bool isSocketNoDelay(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
+	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
+
+#if __linux__ || __APPLE__
+	int value;
+#elif _WIN32
+	BOOL value;
+#endif
+
+	SOCKET_LENGTH length;
+
+	int result = getsockopt(
+		socket->handle,
+		IPPROTO_TCP,
+		TCP_NODELAY,
+		(char*)&value,
+		&length);
+
+	if (result != 0)
+		abort();
+
+#if __linux__ || __APPLE__
+	return value != 0;
+#elif _WIN32
+	return value != FALSE;
+#endif
+}
+
+void setSocketNoDelay(
+	struct Socket* socket,
+	bool _value)
+{
+	assert(socket != NULL);
+	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
+
+#if __linux__ || __APPLE__
+	int value = _value ==
+		true ? 1 : 0;
+	SOCKET_LENGTH length =
+		sizeof(int);
+#elif _WIN32
+	BOOL value = _value ==
+		true ? TRUE : FALSE;
+	SOCKET_LENGTH length =
+		sizeof(BOOL);
+#endif
+
+	int result = setsockopt(
+		socket->handle,
+		IPPROTO_TCP,
+		TCP_NODELAY,
+		(char*)&value,
+		length);
+
+	if (result != 0)
+		abort();
+}
+
+bool isSocketReuseAddress(
+	const struct Socket* socket)
+{
+	assert(socket != NULL);
+
+#if __linux__ || __APPLE__
+	int value;
+#elif _WIN32
+	BOOL value;
+#endif
+
+	SOCKET_LENGTH length;
+
+	int result = getsockopt(
+		socket->handle,
+		SOL_SOCKET,
+		SO_REUSEADDR,
+		(char*)&value,
+		&length);
+
+	if (result != 0)
+		abort();
+
+#if __linux__ || __APPLE__
+	return value != 0;
+#elif _WIN32
+	return value != FALSE;
+#endif
+}
+
+void setSocketReuseAddress(
+	struct Socket* socket,
+	bool _value)
+{
+	assert(socket != NULL);
+
+#if __linux__ || __APPLE__
+	int value = _value ==
+		true ? 1 : 0;
+	SOCKET_LENGTH length =
+		sizeof(int);
+#elif _WIN32
+	BOOL value = _value ==
+		true ? TRUE : FALSE;
+	SOCKET_LENGTH length =
+		sizeof(BOOL);
+#endif
+
+	int result = setsockopt(
+		socket->handle,
+		SOL_SOCKET,
+		SO_REUSEADDR,
+		(char*)&value,
+		length);
+
+	if (result != 0)
+		abort();
+}
+
 bool acceptSocket(
 	struct Socket* socket,
 	struct Socket** _acceptedSocket)
 {
 	assert(socket != NULL);
 	assert(_acceptedSocket != NULL);
-	assert(socket->listening == true);
+	assert(isSocketListening(socket) == true);
 	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
 
 	struct Socket* acceptedSocket = malloc(
@@ -457,6 +576,8 @@ bool acceptSocket(
 	}
 
 	acceptedSocket->handle = handle;
+	acceptedSocket->listening = false;
+	acceptedSocket->blocking = socket->blocking;
 
 #if MPNW_HAS_OPENSSL
 	if (socket->sslContext != NULL)

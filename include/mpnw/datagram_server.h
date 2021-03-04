@@ -55,7 +55,7 @@ void* getDatagramServerFunctionArgument(
  * Returns datagram server socket.
  * server - pointer to the valid datagram server.
  */
-const struct Socket* getDatagramServerSocket(
+struct Socket* getDatagramServerSocket(
 	const struct DatagramServer* server);
 
 /*

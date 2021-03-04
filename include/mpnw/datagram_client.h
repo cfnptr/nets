@@ -52,7 +52,7 @@ void* getDatagramClientFunctionArgument(
  * Returns datagram client socket.
  * client - pointer to the valid datagram client.
  */
-const struct Socket* getDatagramClientSocket(
+struct Socket* getDatagramClientSocket(
 	const struct DatagramClient* client);
 
 /*

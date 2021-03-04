@@ -90,14 +90,14 @@ void* getStreamServerFunctionArgument(
  * Returns stream server socket.
  * server - pointer to the valid stream server.
  */
-const struct Socket* getStreamServerSocket(
+struct Socket* getStreamServerSocket(
 	const struct StreamServer* server);
 
 /*
  * Returns stream server session socket.
  * session - pointer to the valid stream server session.
  */
-const struct Socket* getStreamSessionSocket(
+struct Socket* getStreamSessionSocket(
 	const struct StreamSession* session);
 
 /*

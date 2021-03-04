@@ -52,7 +52,7 @@ void* getStreamClientFunctionArgument(
  * Returns stream client socket.
  * client - pointer to the valid stream client.
  */
-const struct Socket* getStreamClientSocket(
+struct Socket* getStreamClientSocket(
 	const struct StreamClient* client);
 
 /*

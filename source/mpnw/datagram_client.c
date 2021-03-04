@@ -203,7 +203,7 @@ void* getDatagramClientFunctionArgument(
 	return client->functionArgument;
 }
 
-const struct Socket* getDatagramClientSocket(
+struct Socket* getDatagramClientSocket(
 	const struct DatagramClient* client)
 {
 	assert(client != NULL);

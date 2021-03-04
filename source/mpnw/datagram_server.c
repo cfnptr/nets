@@ -198,7 +198,7 @@ void* getDatagramServerFunctionArgument(
 	return server->functionArgument;
 }
 
-const struct Socket* getDatagramServerSocket(
+struct Socket* getDatagramServerSocket(
 	const struct DatagramServer* server)
 {
 	assert(server != NULL);
