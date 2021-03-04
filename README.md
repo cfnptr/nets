@@ -1,10 +1,7 @@
 ## Features
-* Blocking socket
-* Non-blocking socket
-* Stream client (TCP)
-* Stream server (TCP)
-* Datagram client (UDP)
-* Datagram server (UDP)
+* Blocking/Non-blocking socket
+* Stream client/server (TCP)
+* Datagram client/server (UDP)
 * Secure socket layer (OpenSSL)
 
 ## Supported operating systems
