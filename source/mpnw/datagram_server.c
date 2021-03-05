@@ -54,14 +54,11 @@ void datagramServerReceiveHandler(
 			continue;
 		}
 
-		result = receiveFunction(
+		receiveFunction(
 			server,
 			remoteAddress,
 			receiveBuffer,
 			byteCount);
-
-		if (result == false)
-			break;
 	}
 
 	server->threadRunning = false;

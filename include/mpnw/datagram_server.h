@@ -5,9 +5,9 @@
 struct DatagramServer;
 
 /* Datagram server datagram receive function */
-typedef bool(*DatagramServerReceive)(
-	struct DatagramServer* server,
-	const struct SocketAddress* address,
+typedef void(*DatagramServerReceive)(
+	struct DatagramServer* datagramServer,
+	const struct SocketAddress* socketAddress,
 	const uint8_t* buffer,
 	size_t count);
 

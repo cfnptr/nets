@@ -46,13 +46,10 @@ void datagramClientReceiveHandler(
 			continue;
 		}
 
-		result = receiveFunction(
+		receiveFunction(
 			client,
 			receiveBuffer,
 			byteCount);
-
-		if (result == false)
-			break;
 	}
 
 	client->threadRunning = false;

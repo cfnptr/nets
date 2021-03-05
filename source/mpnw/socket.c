@@ -1013,10 +1013,27 @@ int compareSocketAddress(
 	assert(a != NULL);
 	assert(b != NULL);
 
-	return memcmp(
-		&a->handle,
-		&b->handle,
-		sizeof(struct sockaddr_storage));
+	if (a->handle.ss_family == AF_INET)
+	{
+		return memcmp(
+			&a->handle,
+			&b->handle,
+			sizeof(struct sockaddr_in));
+	}
+	else if (a->handle.ss_family == AF_INET6)
+	{
+		return memcmp(
+			&a->handle,
+			&b->handle,
+			sizeof(struct sockaddr_in6));
+	}
+	else
+	{
+		return memcmp(
+			&a->handle,
+			&b->handle,
+			sizeof(struct sockaddr_storage));
+	}
 }
 
 uint8_t getSocketAddressFamily(
@@ -1204,12 +1221,16 @@ struct SslContext* createSslContext(
 		abort();
 	case TLS_1_3_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
+		break;
 	case DTLS_1_3_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(DTLS_method());
+		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLSv1_2_method());
+		break;
 	case DTLS_1_2_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(DTLSv1_2_method());
+		break;
 	}
 
 	if (handle == NULL)
@@ -1271,12 +1292,16 @@ struct SslContext* createSslContextFromFile(
 		abort();
 	case TLS_1_3_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
+		break;
 	case DTLS_1_3_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(DTLS_method());
+		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLSv1_2_method());
+		break;
 	case DTLS_1_2_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(DTLSv1_2_method());
+		break;
 	}
 
 	if (handle == NULL)
