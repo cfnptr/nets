@@ -16,7 +16,7 @@ typedef bool(*StreamSessionReceive)(
 /* Create stream session function */
 typedef bool(*CreateStreamSession)(
 	struct StreamServer* streamServer,
-	const struct Socket* streamSocket,
+	struct Socket* streamSocket,
 	void** handle);
 
 /* Destroy stream session function */
