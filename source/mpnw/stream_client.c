@@ -40,7 +40,7 @@ void streamClientReceiveHandler(
 			receiveBufferSize,
 			&byteCount);
 
-		if (result == false || byteCount == 0)
+		if (result == false)
 		{
 			sleepThread(0.001);
 			continue;

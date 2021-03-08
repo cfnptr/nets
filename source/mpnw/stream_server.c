@@ -32,6 +32,8 @@ struct StreamSession
 	void* handle;
 };
 
+// TODO: check if possible to use socket select here
+
 void streamServerReceiveHandler(
 	void* argument)
 {
@@ -81,7 +83,7 @@ void streamServerReceiveHandler(
 				receiveBufferSize,
 				&byteCount);
 
-			if (result == false || byteCount == 0)
+			if (result == false)
 				continue;
 
 			result = receiveFunction(

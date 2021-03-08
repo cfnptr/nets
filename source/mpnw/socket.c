@@ -181,7 +181,7 @@ struct Socket* createSocket(
 		handle,
 		(const struct sockaddr*)&address->handle,
 		length);
-
+	
 	if (result != 0)
 	{
 		closesocket(handle);
@@ -496,65 +496,6 @@ void setSocketNoDelay(
 		abort();
 }
 
-bool isSocketReuseAddress(
-	const struct Socket* socket)
-{
-	assert(socket != NULL);
-
-#if __linux__ || __APPLE__
-	int value;
-#elif _WIN32
-	BOOL value;
-#endif
-
-	SOCKET_LENGTH length;
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_REUSEADDR,
-		(char*)&value,
-		&length);
-
-	if (result != 0)
-		abort();
-
-#if __linux__ || __APPLE__
-	return value != 0;
-#elif _WIN32
-	return value != FALSE;
-#endif
-}
-
-void setSocketReuseAddress(
-	struct Socket* socket,
-	bool _value)
-{
-	assert(socket != NULL);
-
-#if __linux__ || __APPLE__
-	int value = _value ==
-		true ? 1 : 0;
-	SOCKET_LENGTH length =
-		sizeof(int);
-#elif _WIN32
-	BOOL value = _value ==
-		true ? TRUE : FALSE;
-	SOCKET_LENGTH length =
-		sizeof(BOOL);
-#endif
-
-	int result = setsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_REUSEADDR,
-		(char*)&value,
-		length);
-
-	if (result != 0)
-		abort();
-}
-
 bool acceptSocket(
 	struct Socket* socket,
 	struct Socket** _acceptedSocket)
@@ -715,7 +656,6 @@ bool socketReceive(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(size != 0);
 	assert(_count != NULL);
 
 	int count;
@@ -758,7 +698,6 @@ bool socketSend(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(count != 0);
 
 #if MPNW_HAS_OPENSSL
 	if (socket->sslContext != NULL)
@@ -794,7 +733,6 @@ bool socketReceiveFrom(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(size != 0);
 	assert(address != NULL);
 	assert(_count != NULL);
 
@@ -836,7 +774,6 @@ bool socketSendTo(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(count != 0);
 	assert(address != NULL);
 
 #if MPNW_HAS_OPENSSL

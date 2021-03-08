@@ -164,21 +164,6 @@ void setSocketNoDelay(
 	bool value);
 
 /*
- * Returns true if socket in reuse address mode.
- * socket - pointer to the valid socket.
- */
-bool isSocketReuseAddress(
-	const struct Socket* socket);
-
-/*
- * Sets socket reuse address mode.
- * socket - pointer to the valid socket.
- */
-void setSocketReuseAddress(
-	struct Socket* socket,
-	bool value);
-
-/*
  * Accepts a new socket connection.
  * Returns true on success.
  *
