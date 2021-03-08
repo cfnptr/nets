@@ -425,12 +425,6 @@ uint16_t hostToNet16(uint16_t value);
 uint32_t hostToNet32(uint32_t value);
 
 /*
- * Convert host value to the network byte order.
- * value - 64 bit value in host byte order.
- */
-uint64_t hostToNet64(uint64_t value);
-
-/*
  * Convert network value to the host byte order.
  * value - 16 bit value in host byte order.
  */
@@ -441,9 +435,3 @@ uint16_t netToHost16(uint16_t value);
  * value - 32 bit value in host byte order.
  */
 uint32_t netToHost32(uint32_t value);
-
-/*
- * Convert network value to the host byte order.
- * value - 32 bit value in host byte order.
- */
-uint64_t netToHost64(uint64_t value);

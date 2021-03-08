@@ -1336,11 +1336,6 @@ uint32_t hostToNet32(uint32_t value)
 	return htonl(value);
 }
 
-uint64_t hostToNet64(uint64_t value)
-{
-	return htonll(value);
-}
-
 uint16_t netToHost16(uint16_t value)
 {
 	return ntohs(value);
@@ -1349,9 +1344,4 @@ uint16_t netToHost16(uint16_t value)
 uint32_t netToHost32(uint32_t value)
 {
 	return ntohl(value);
-}
-
-uint64_t netToHost64(uint64_t value)
-{
-	return ntohll(value);
 }
