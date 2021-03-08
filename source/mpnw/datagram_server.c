@@ -15,9 +15,6 @@ struct DatagramServer
 	volatile bool threadRunning;
 };
 
-// TODO:TMP
-#include <stdio.h>
-
 void datagramServerReceiveHandler(
 	void* argument)
 {
@@ -56,9 +53,6 @@ void datagramServerReceiveHandler(
 			sleepThread(0.001);
 			continue;
 		}
-
-		printf("udp update\n");
-		fflush(stdout);
 
 		receiveFunction(
 			server,
