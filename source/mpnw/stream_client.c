@@ -100,7 +100,9 @@ struct StreamClient* createStreamClient(
 	}
 	else
 	{
-		abort();
+		free(receiveBuffer);
+		free(client);
+		return NULL;
 	}
 
 	if (localAddress == NULL)

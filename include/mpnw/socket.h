@@ -28,15 +28,17 @@ struct SslContext;
 /* Socket internet protocol address family */
 enum AddressFamily
 {
-	IP_V4_ADDRESS_FAMILY = 0,
-	IP_V6_ADDRESS_FAMILY = 1,
+	UNKNOWN_ADDRESS_FAMILY = 0,
+	IP_V4_ADDRESS_FAMILY = 1,
+	IP_V6_ADDRESS_FAMILY = 2,
 };
 
 /* Socket communication type */
 enum SocketType
 {
-	STREAM_SOCKET_TYPE = 0,
-	DATAGRAM_SOCKET_TYPE = 1,
+	UNKNOWN_SOCKET_TYPE = 0,
+	STREAM_SOCKET_TYPE = 1,
+	DATAGRAM_SOCKET_TYPE = 2,
 };
 
 /* Socket connection shutdown */
@@ -50,10 +52,11 @@ enum SocketShutdown
 /* Socket security protocol */
 enum SecurityProtocol
 {
-	TLS_1_3_SECURITY_PROTOCOL = 0,
-	DTLS_1_3_SECURITY_PROTOCOL = 1,
-	TLS_1_2_SECURITY_PROTOCOL = 2,
-	DTLS_1_2_SECURITY_PROTOCOL = 3,
+	UNKNOWN_SECURITY_PROTOCOL = 0,
+	TLS_1_3_SECURITY_PROTOCOL = 1,
+	DTLS_1_3_SECURITY_PROTOCOL = 2,
+	TLS_1_2_SECURITY_PROTOCOL = 3,
+	DTLS_1_2_SECURITY_PROTOCOL = 4,
 	TLS_SECURITY_PROTOCOL = TLS_1_3_SECURITY_PROTOCOL,
 	DTLS_SECURITY_PROTOCOL = DTLS_1_3_SECURITY_PROTOCOL,
 };
@@ -316,22 +319,64 @@ uint8_t getSocketAddressFamily(
 	const struct SocketAddress* address);
 
 /*
- * Returns a new socket IP address byte array.
- * Returns IP address on success, otherwise NULL.
+ * Returns socket address family IP byte array size.
+ * addressFamily - socket address family.
+ */
+size_t getSocketAddressFamilyIpSize(
+	uint8_t addressFamily);
+
+/*
+ * Returns socket IP address byte array size.
+ * address - pointer to the valid socket address.
+ */
+size_t getSocketAddressIpSize(
+	const struct SocketAddress* address);
+
+/*
+ * Returns socket IP address byte array.
+ * Returns true on success.
  *
  * address - pointer to the valid socket address.
- * size - pointer to the valid byte array size.
+ * ip - pointer to the valid IP byte array.
  */
-uint8_t* getSocketAddressIP(
+bool getSocketAddressIP(
 	const struct SocketAddress* address,
-	size_t* size);
+	uint8_t* ip);
+
+/*
+ * Sets socket IP address byte array.
+ * Returns true on success.
+ *
+ * address - pointer to the valid socket address.
+ * ip - pointer to the valid IP byte array.
+ * size - IP byte array size.
+ */
+bool setSocketAddressIP(
+	const struct SocketAddress* address,
+	const uint8_t* ip,
+	size_t size);
 
 /*
  * Returns socket address port number.
+ * Returns true on success.
+ *
  * address - pointer to the valid socket address.
+ * port - pointer to the valid socket address port.
  */
-uint16_t getSocketAddressPort(
-	const struct SocketAddress* address);
+bool getSocketAddressPort(
+	const struct SocketAddress* address,
+	uint16_t* port);
+
+/*
+ * Sets socket address port number.
+ * Returns true on success.
+ *
+ * address - pointer to the valid socket address.
+ * port - socket address port.
+ */
+bool setSocketAddressPort(
+	const struct SocketAddress* address,
+	uint16_t port);
 
 /* Returns maximum socket address host string length. */
 size_t getSocketMaxHostLength();

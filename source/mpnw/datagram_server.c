@@ -108,7 +108,9 @@ struct DatagramServer* createDatagramServer(
 	}
 	else
 	{
-		abort();
+		free(receiveBuffer);
+		free(server);
+		return NULL;
 	}
 
 	if (localAddress == NULL)

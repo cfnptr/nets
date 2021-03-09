@@ -231,7 +231,10 @@ struct StreamServer* createStreamServer(
 	}
 	else
 	{
-		abort();
+		free(sessionBuffer);
+		free(receiveBuffer);
+		free(server);
+		return NULL;
 	}
 
 	if (localAddress == NULL)

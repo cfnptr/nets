@@ -148,7 +148,8 @@ struct Socket* createSocket(
 	}
 	else
 	{
-		abort();
+		free(_socket);
+		return NULL;
 	}
 
 	if (_family == IP_V4_ADDRESS_FAMILY)
@@ -163,7 +164,8 @@ struct Socket* createSocket(
 	}
 	else
 	{
-		abort();
+		free(_socket);
+		return NULL;
 	}
 
 	SOCKET handle = socket(
@@ -330,7 +332,7 @@ uint8_t getSocketType(
 	else if (type == SOCK_DGRAM)
 		return DATAGRAM_SOCKET_TYPE;
 	else
-		abort();
+		return UNKNOWN_SOCKET_TYPE;
 }
 
 bool isSocketListening(
@@ -592,7 +594,7 @@ bool connectSocket(
 	else if (family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
-		abort();
+		return false;
 
 	int result = connect(
 		socket->handle,
@@ -616,11 +618,6 @@ bool shutdownSocket(
 {
 	assert(socket != NULL);
 
-#if MPNW_HAS_OPENSSL
-	if (socket->sslContext != NULL)
-		SSL_shutdown(socket->ssl);
-#endif
-
 	int type;
 
 #if __linux__ || __APPLE__
@@ -631,7 +628,7 @@ bool shutdownSocket(
 	else if (_type == SHUTDOWN_RECEIVE_SEND)
 		type = SHUT_RDWR;
 	else
-		abort();
+		return false;
 #elif _WIN32
 	if (_type == SHUTDOWN_RECEIVE_ONLY)
 		type = SD_RECEIVE;
@@ -640,7 +637,12 @@ bool shutdownSocket(
 	else if (_type == SHUTDOWN_RECEIVE_SEND)
 		type = SD_BOTH;
 	else
-		abort();
+		return false;
+#endif
+
+#if MPNW_HAS_OPENSSL
+	if (socket->sslContext != NULL)
+		SSL_shutdown(socket->ssl);
 #endif
 
 	return shutdown(
@@ -787,7 +789,7 @@ bool socketSendTo(
 	else if(address->handle.ss_family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
-		abort();
+		return false;
 
 	return sendto(
 		socket->handle,
@@ -878,18 +880,32 @@ struct SocketAddress* resolveSocketAddress(
 		AI_V4MAPPED;
 
 	if(family == IP_V4_ADDRESS_FAMILY)
+	{
 		hints.ai_family = AF_INET;
+	}
 	else if(family == IP_V6_ADDRESS_FAMILY)
+	{
 		hints.ai_family = AF_INET6;
+	}
 	else
-		abort();
+	{
+		free(address);
+		return NULL;
+	}
 
 	if(type == STREAM_SOCKET_TYPE)
+	{
 		hints.ai_socktype = SOCK_STREAM;
+	}
 	else if(type == DATAGRAM_SOCKET_TYPE)
+	{
 		hints.ai_socktype = SOCK_DGRAM;
+	}
 	else
-		abort();
+	{
+		free(address);
+		return NULL;
+	}
 
 	struct addrinfo* addressInfos;
 
@@ -985,64 +1001,130 @@ uint8_t getSocketAddressFamily(
 	else if (family == AF_INET6)
 		return IP_V6_ADDRESS_FAMILY;
 	else
-		abort();
+		return UNKNOWN_ADDRESS_FAMILY;
 }
 
-uint8_t* getSocketAddressIP(
-	const struct SocketAddress* address,
-	size_t* size)
+size_t getSocketAddressFamilyIpSize(
+	uint8_t addressFamily)
+{
+	if (addressFamily == IP_V4_ADDRESS_FAMILY)
+		return sizeof(struct sockaddr_in);
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
+		return sizeof(struct sockaddr_in6);
+	else
+		return 0;
+}
+
+size_t getSocketAddressIpSize(
+	const struct SocketAddress* address)
 {
 	assert(address != NULL);
-	assert(size != NULL);
+
+	int family = address->handle.ss_family;
+
+	if (family == AF_INET)
+		return sizeof(struct sockaddr_in);
+	else if (family == AF_INET6)
+		return sizeof(struct sockaddr_in6);
+	else
+		return 0;
+}
+
+bool getSocketAddressIP(
+	const struct SocketAddress* address,
+	uint8_t* ip)
+{
+	assert(address != NULL);
+	assert(ip != NULL);
 
 	int family = address->handle.ss_family;
 
 	if (family == AF_INET)
 	{
-		uint8_t* ip = malloc(
-			sizeof(struct sockaddr_in));
-
-		if (ip == NULL)
-			return NULL;
-
-		const struct sockaddr_in* address4 =
-			(const struct sockaddr_in*)&address->handle;
-
 		memcpy(
 			ip,
-			address4,
+			(const struct sockaddr_in*)&address->handle,
 			sizeof(struct sockaddr_in));
-
-		*size = sizeof(struct sockaddr_in);
-		return ip;
+		return true;
 	}
 	else if (family == AF_INET6)
 	{
-		uint8_t* ip = malloc(
-			sizeof(struct sockaddr_in6));
-
-		if (ip == NULL)
-			return NULL;
-
-		const struct sockaddr_in6* address6 =
-			(const struct sockaddr_in6*)&address->handle;
-
 		memcpy(
 			ip,
-			address6,
+			(const struct sockaddr_in6*)&address->handle,
 			sizeof(struct sockaddr_in6));
-
-		*size = sizeof(struct sockaddr_in6);
-		return ip;
+		return true;
 	}
 	else
 	{
-		abort();
+		return false;
 	}
 }
 
-uint16_t getSocketAddressPort(
-	const struct SocketAddress* address)
+bool setSocketAddressIP(
+	const struct SocketAddress* address,
+	const uint8_t* ip,
+	size_t size)
+{
+	assert(address != NULL);
+	assert(ip != NULL);
+
+	int family = address->handle.ss_family;
+
+	if (family == AF_INET && size == sizeof(struct sockaddr_in))
+	{
+		memcpy(
+			(struct sockaddr_in*)&address->handle,
+			ip,
+			sizeof(struct sockaddr_in));
+		return true;
+	}
+	else if (family == AF_INET6 && size == sizeof(struct sockaddr_in6))
+	{
+		memcpy(
+			(struct sockaddr_in6*)&address->handle,
+			ip,
+			sizeof(struct sockaddr_in6));
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool getSocketAddressPort(
+	const struct SocketAddress* address,
+	uint16_t* port)
+{
+	assert(address != NULL);
+	assert(port != NULL);
+
+	int family = address->handle.ss_family;
+
+	if (family == AF_INET)
+	{
+		struct sockaddr_in* address4 =
+			(struct sockaddr_in*)&address->handle;
+		*port = ntohs(address4->sin_port);
+		return true;
+	}
+	else if (family == AF_INET6)
+	{
+		struct sockaddr_in6* address6 =
+			(struct sockaddr_in6*)&address->handle;
+		*port = ntohs(address6->sin6_port);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool setSocketAddressPort(
+	const struct SocketAddress* address,
+	uint16_t port)
 {
 	assert(address != NULL);
 
@@ -1052,17 +1134,19 @@ uint16_t getSocketAddressPort(
 	{
 		struct sockaddr_in* address4 =
 			(struct sockaddr_in*)&address->handle;
-		return ntohs(address4->sin_port);
+		address4->sin_port = htons(port);
+		return true;
 	}
 	else if (family == AF_INET6)
 	{
 		struct sockaddr_in6* address6 =
 			(struct sockaddr_in6*)&address->handle;
-		return ntohs(address6->sin6_port);
+		address6->sin6_port = htons(port);
+		return true;
 	}
 	else
 	{
-		abort();
+		return false;
 	}
 }
 
@@ -1155,7 +1239,8 @@ struct SslContext* createSslContext(
 	switch (securityProtocol)
 	{
 	default:
-		abort();
+		free(context);
+		return NULL;
 	case TLS_1_3_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
 		break;
@@ -1226,7 +1311,8 @@ struct SslContext* createSslContextFromFile(
 	switch (securityProtocol)
 	{
 	default:
-		abort();
+		free(context);
+		return NULL;
 	case TLS_1_3_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
 		break;
@@ -1320,7 +1406,7 @@ uint8_t getSslContextSecurityProtocol(
 	else if (method == DTLSv1_2_method())
 		return DTLS_1_2_SECURITY_PROTOCOL;
 	else
-		abort();
+		return UNKNOWN_SECURITY_PROTOCOL;
 #else
 	abort();
 #endif
