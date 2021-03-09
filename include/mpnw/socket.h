@@ -271,6 +271,12 @@ struct SocketAddress* createSocketAddress(
 	const char* service);
 
 /*
+ * Creates a new empty socket address.
+ * Returns address on success, otherwise NULL.
+ */
+struct SocketAddress* createEmptySocketAddress();
+
+/*
  * Resolves a new socket addresses.
  * Returns address on success, otherwise NULL.
  *
@@ -319,6 +325,16 @@ uint8_t getSocketAddressFamily(
 	const struct SocketAddress* address);
 
 /*
+ * Sets socket address family.
+ *
+ * address - pointer to the valid socket address.
+ * addressFamily - socket address family.
+ */
+void setSocketAddressFamily(
+	struct SocketAddress* address,
+	uint8_t addressFamily);
+
+/*
  * Returns socket address family IP byte array size.
  * addressFamily - socket address family.
  */
@@ -352,7 +368,7 @@ bool getSocketAddressIP(
  * size - IP byte array size.
  */
 bool setSocketAddressIP(
-	const struct SocketAddress* address,
+	struct SocketAddress* address,
 	const uint8_t* ip,
 	size_t size);
 
@@ -375,7 +391,7 @@ bool getSocketAddressPort(
  * port - socket address port.
  */
 bool setSocketAddressPort(
-	const struct SocketAddress* address,
+	struct SocketAddress* address,
 	uint16_t port);
 
 /* Returns maximum socket address host string length. */
@@ -390,10 +406,12 @@ size_t getSocketMaxServiceLength();
  *
  * address - pointer to the valid socket address.
  * host - pointer to the valid socket host name.
+ * length - host name string length.
  */
 bool getSocketAddressHost(
 	const struct SocketAddress* address,
-	char* host);
+	char* host,
+	size_t length);
 
 /*
  * Returns socket address service name.
@@ -401,10 +419,12 @@ bool getSocketAddressHost(
  *
  * address - pointer to the valid socket address.
  * service - pointer to the valid socket service name.
+ * length - service name string length.
  */
 bool getSocketAddressService(
 	const struct SocketAddress* address,
-	char* service);
+	char* service,
+	size_t length);
 
 /*
  * Returns socket address host and service name.
@@ -412,12 +432,16 @@ bool getSocketAddressService(
  *
  * address - pointer to the valid socket address.
  * host - pointer to the valid host name string.
+ * hostLength - host name string length.
  * service - pointer to the valid host name string.
+ * serviceLength - service name string length.
  */
 bool getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char* host,
-	char* service);
+	size_t hostLength,
+	char* service,
+	size_t serviceLength);
 
 /*
  * Creates a new SSL context.

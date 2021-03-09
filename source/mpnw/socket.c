@@ -852,6 +852,22 @@ struct SocketAddress* createSocketAddress(
 	return address;
 }
 
+struct SocketAddress* createEmptySocketAddress()
+{
+	struct SocketAddress* address = malloc(
+		sizeof(struct SocketAddress));
+
+	if (address == NULL)
+		return NULL;
+
+	memset(
+		&address->handle,
+		0,
+		sizeof(struct sockaddr_storage));
+
+	return address;
+}
+
 struct SocketAddress* resolveSocketAddress(
 	const char* host,
 	const char* service,
@@ -1004,6 +1020,20 @@ uint8_t getSocketAddressFamily(
 		return UNKNOWN_ADDRESS_FAMILY;
 }
 
+void setSocketAddressFamily(
+	struct SocketAddress* address,
+	uint8_t addressFamily)
+{
+	assert(address != NULL);
+
+	if (addressFamily == IP_V4_ADDRESS_FAMILY)
+		address->handle.ss_family = AF_INET;
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
+		address->handle.ss_family = AF_INET6;
+	else
+		address->handle.ss_family = 0;
+}
+
 size_t getSocketAddressFamilyIpSize(
 	uint8_t addressFamily)
 {
@@ -1062,7 +1092,7 @@ bool getSocketAddressIP(
 }
 
 bool setSocketAddressIP(
-	const struct SocketAddress* address,
+	struct SocketAddress* address,
 	const uint8_t* ip,
 	size_t size)
 {
@@ -1123,7 +1153,7 @@ bool getSocketAddressPort(
 }
 
 bool setSocketAddressPort(
-	const struct SocketAddress* address,
+	struct SocketAddress* address,
 	uint16_t port)
 {
 	assert(address != NULL);
@@ -1162,10 +1192,12 @@ size_t getSocketMaxServiceLength()
 
 bool getSocketAddressHost(
 	const struct SocketAddress* address,
-	char* host)
+	char* host,
+	size_t length)
 {
 	assert(address != NULL);
 	assert(host != NULL);
+	assert(length != 0);
 
 	int flags = NI_NUMERICHOST;
 
@@ -1173,7 +1205,7 @@ bool getSocketAddressHost(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
 		host,
-		NI_MAXHOST,
+		length,
 		NULL,
 		0,
 		flags) == 0;
@@ -1181,10 +1213,12 @@ bool getSocketAddressHost(
 
 bool getSocketAddressService(
 	const struct SocketAddress* address,
-	char* service)
+	char* service,
+	size_t length)
 {
 	assert(address != NULL);
 	assert(service != NULL);
+	assert(length != 0);
 
 	int flags = NI_NUMERICSERV;
 
@@ -1194,18 +1228,22 @@ bool getSocketAddressService(
 		NULL,
 		0,
 		service,
-		NI_MAXSERV,
+		length,
 		flags) == 0;
 }
 
 bool getSocketAddressHostService(
 	const struct SocketAddress* address,
 	char* host,
-	char* service)
+	size_t hostLength,
+	char* service,
+	size_t serviceLength)
 {
 	assert(address != NULL);
 	assert(host != NULL);
+	assert(hostLength != 0);
 	assert(service != NULL);
+	assert(serviceLength != 0);
 
 	int flags =
 		NI_NUMERICHOST |
@@ -1215,9 +1253,9 @@ bool getSocketAddressHostService(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
 		host,
-		NI_MAXHOST,
+		hostLength,
 		service,
-		NI_MAXSERV,
+		serviceLength,
 		flags) == 0;
 }
 

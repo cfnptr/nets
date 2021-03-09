@@ -32,9 +32,8 @@ void datagramServerReceiveHandler(
 	bool result;
 	size_t byteCount;
 
-	struct SocketAddress* remoteAddress = createSocketAddress(
-		ANY_IP_ADDRESS_V4,
-		ANY_IP_ADDRESS_PORT);
+	struct SocketAddress* remoteAddress =
+		createEmptySocketAddress();
 
 	if (remoteAddress == NULL)
 		return;
