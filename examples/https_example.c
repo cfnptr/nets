@@ -57,18 +57,15 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	size_t hostSize = 15;
-	size_t serviceSize = 5;
-
-	char host[hostSize];
-	char service[serviceSize];
+	char host[15];
+	char service[5];
 
 	bool result = getSocketAddressHostService(
 		address,
 		host,
-		hostSize,
+		15,
 		service,
-		serviceSize);
+		5);
 
 	if (result == false)
 		return EXIT_FAILURE;
