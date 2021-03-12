@@ -10,6 +10,7 @@
 #if __linux__ || __APPLE__
 #include <netdb.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/socket.h>
