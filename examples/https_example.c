@@ -57,8 +57,8 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	size_t hostSize = getSocketMaxHostLength();
-	size_t serviceSize = getSocketMaxServiceLength();
+	size_t hostSize = 15;
+	size_t serviceSize = 5;
 
 	char host[hostSize];
 	char service[serviceSize];
