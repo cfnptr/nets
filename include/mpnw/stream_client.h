@@ -6,9 +6,9 @@ struct StreamClient;
 
 /* Stream client message receive function */
 typedef bool(*StreamClientReceive)(
-	struct StreamClient* client,
-	const uint8_t* buffer,
-	size_t count);
+	struct StreamClient* streamClient,
+	const uint8_t* receiveBuffer,
+	size_t byteCount);
 
 /*
  * Creates a new stream client (TCP).
@@ -63,15 +63,15 @@ bool isStreamClientRunning(
 	const struct StreamClient* client);
 
 /*
- * Attempts to connect to the server.
+ * Connects stream client to the server.
  * Returns true on success.
  *
  * socket - pointer to the valid socket.
  * address - pointer to the valid address.
  * timeoutTime - attempt time out time (ms).
  */
-bool tryConnectStreamClient(
-	struct Socket* socket,
+bool connectStreamClient(
+	struct StreamClient* streamClient,
 	const struct SocketAddress* address,
 	double timeoutTime);
 

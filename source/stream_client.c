@@ -203,33 +203,18 @@ bool isStreamClientRunning(
 	return client->threadRunning;
 }
 
-bool tryConnectStreamClient(
-	struct Socket* socket,
+bool connectStreamClient(
+	struct StreamClient* streamClient,
 	const struct SocketAddress* address,
 	double timeoutTime)
 {
-	assert(socket != NULL);
+	assert(streamClient != NULL);
 	assert(address != NULL);
 
-	double currentTime = getCurrentClock();
-	double lastTime = currentTime;
-
-	while (true)
-	{
-		currentTime = getCurrentClock();
-
-		if (currentTime - lastTime > timeoutTime)
-			return false;
-
-		bool result = connectSocket(
-			socket,
-			address);
-
-		if (result == true)
-			return true;
-
-		sleepThread(0.001);
-	}
+	return connectSocket(
+		streamClient->receiveSocket,
+		address,
+		timeoutTime);
 }
 
 bool streamClientSend(

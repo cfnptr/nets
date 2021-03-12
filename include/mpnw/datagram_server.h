@@ -8,8 +8,8 @@ struct DatagramServer;
 typedef void(*DatagramServerReceive)(
 	struct DatagramServer* datagramServer,
 	const struct SocketAddress* socketAddress,
-	const uint8_t* buffer,
-	size_t count);
+	const uint8_t* receiveBuffer,
+	size_t byteCount);
 
 /*
  * Creates a new datagram server (UDP).

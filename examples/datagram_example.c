@@ -8,29 +8,29 @@
 static void serverReceiveHandler(
 	struct DatagramServer* datagramServer,
 	const struct SocketAddress* socketAddress,
-	const uint8_t* buffer,
-	size_t count)
+	const uint8_t* receiveBuffer,
+	size_t byteCount)
 {
 	const char* serverName = (const char*)
 		getDatagramServerFunctionArgument(datagramServer);
 
-	if (count != 1)
+	if (byteCount != 1)
 	{
 		printf("%s: incorrect datagram size (%zu)\n",
 			serverName,
-			count);
+			byteCount);
 		fflush(stdout);
 		return;
 	}
 
 	printf("%s: received request (%hhu)\n",
 		serverName,
-		buffer[0]);
+		receiveBuffer[0]);
 	fflush(stdout);
 
 	bool result = datagramServerSend(
 		datagramServer,
-		buffer,
+		receiveBuffer,
 		1,
 		socketAddress);
 
@@ -44,31 +44,31 @@ static void serverReceiveHandler(
 
 static void clientReceiveHandler(
 	struct DatagramClient* datagramClient,
-	const uint8_t* buffer,
-	size_t count)
+	const uint8_t* receiveBuffer,
+	size_t byteCount)
 {
 	const char* clientName = (const char*)
 		getDatagramClientFunctionArgument(datagramClient);
 
-	if (count != 1)
+	if (byteCount != 1)
 	{
 		printf("%s: incorrect datagram size (%zu)\n",
 			clientName,
-			count);
+			byteCount);
 		fflush(stdout);
 		return;
 	}
 
 	printf("%s: received response (%hhu)\n",
 		clientName,
-		buffer[0]);
+		receiveBuffer[0]);
 	fflush(stdout);
 }
 
 int main()
 {
 	const char* serverPort = "12345";
-	const size_t receiveBufferSize = 4;
+	size_t receiveBufferSize = 4;
 
 	if (initializeNetwork() == false)
 		return EXIT_FAILURE;
@@ -89,10 +89,7 @@ int main()
 		serverPort);
 
 	if (serverAddress == NULL)
-	{
-		destroyDatagramServer(server);
 		return EXIT_FAILURE;
-	}
 
 	struct DatagramClient* client = createDatagramClient(
 		serverAddress,
@@ -104,10 +101,7 @@ int main()
 	destroySocketAddress(serverAddress);
 
 	if (client == NULL)
-	{
-		destroyDatagramServer(server);
 		return EXIT_FAILURE;
-	}
 
 	uint8_t message = 1;
 
@@ -117,11 +111,7 @@ int main()
 		sizeof(uint8_t));
 
 	if (result == false)
-	{
-		destroyDatagramClient(client);
-		destroyDatagramServer(server);
 		return EXIT_FAILURE;
-	}
 
 	sleepThread(0.1);
 

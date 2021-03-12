@@ -1,6 +1,8 @@
 #include "mpnw/socket.h"
 #include "mpnw/defines.h"
 
+#include "mpmt/thread.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -580,7 +582,8 @@ bool acceptSocket(
 
 bool connectSocket(
 	struct Socket* socket,
-	const struct SocketAddress* address)
+	const struct SocketAddress* address,
+	double timeoutTime)
 {
 	assert(socket != NULL);
 	assert(address != NULL);
@@ -596,25 +599,39 @@ bool connectSocket(
 	else
 		return false;
 
+	double timeout = getCurrentClock() + timeoutTime;
 
-#if MPNW_HAS_OPENSSL
-	if (socket->sslContext != NULL)
+	while (true)
 	{
-		return SSL_connect(
-			socket->ssl) == 1;
-	}
-	else
-	{
-		return connect(
+		if (getCurrentClock() > timeout)
+			return false;
+
+		int result = connect(
 			socket->handle,
 			(const struct sockaddr*)&address->handle,
-			length) == 0;
+			length);
+
+		if (result == 0 || errno == EISCONN)
+			break;
+	}
+
+#if MPNW_HAS_OPENSSL
+	if (socket->sslContext == NULL)
+		return true;
+
+	while (true)
+	{
+		if (getCurrentClock() > timeout)
+			return false;
+
+		int result = SSL_connect(
+			socket->ssl);
+
+		if(result == 1)
+			return true;
 	}
 #else
-	return connect(
-		socket->handle,
-		(const struct sockaddr*)&address->handle,
-		length) == 0;
+	return false;
 #endif
 }
 
@@ -918,10 +935,12 @@ struct SocketAddress* resolveSocketAddress(
 	if(type == STREAM_SOCKET_TYPE)
 	{
 		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
 	}
 	else if(type == DATAGRAM_SOCKET_TYPE)
 	{
 		hints.ai_socktype = SOCK_DGRAM;
+		hints.ai_protocol = IPPROTO_UDP;
 	}
 	else
 	{

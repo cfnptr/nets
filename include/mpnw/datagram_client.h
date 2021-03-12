@@ -7,8 +7,8 @@ struct DatagramClient;
 /* Datagram client datagram receive function */
 typedef void(*DatagramClientReceive)(
 	struct DatagramClient* datagramClient,
-	const uint8_t* buffer,
-	size_t count);
+	const uint8_t* receiveBuffer,
+	size_t byteCount);
 
 /*
  * Creates a new datagram client (UDP).

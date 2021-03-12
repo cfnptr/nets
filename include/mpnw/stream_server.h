@@ -10,14 +10,14 @@ struct StreamSession;
 typedef bool(*StreamSessionReceive)(
 	struct StreamServer* streamServer,
 	struct StreamSession* streamSession,
-	const uint8_t* buffer,
-	size_t count);
+	const uint8_t* receiveBuffer,
+	size_t byteCount);
 
 /* Create stream session function */
 typedef bool(*CreateStreamSession)(
 	struct StreamServer* streamServer,
 	struct Socket* streamSocket,
-	void** handle);
+	void** sessionHandle);
 
 /* Destroy stream session function */
 typedef void(*DestroyStreamSession)(

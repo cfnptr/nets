@@ -183,10 +183,12 @@ bool acceptSocket(
  *
  * socket - pointer to the valid socket.
  * address - pointer to the valid socket address.
+ * timeoutTime - connect attempt timeout time.
  */
 bool connectSocket(
 	struct Socket* socket,
-	const struct SocketAddress* address);
+	const struct SocketAddress* address,
+	double timeoutTime);
 
 /*
  * Shutdowns part of the full-duplex connection.

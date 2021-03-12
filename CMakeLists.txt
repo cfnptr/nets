@@ -65,4 +65,12 @@ if (MPNW_BUILD_EXAMPLES)
 	target_include_directories(mpnw-datagram-example PRIVATE
 		${PROJECT_BINARY_DIR}
 		${PROJECT_SOURCE_DIR}/include)
+
+	add_executable(mpnw-https-example
+		examples/https_example.c)
+	target_link_libraries(mpnw-https-example PRIVATE
+		mpnw)
+	target_include_directories(mpnw-https-example PRIVATE
+		${PROJECT_BINARY_DIR}
+		${PROJECT_SOURCE_DIR}/include)
 endif()
