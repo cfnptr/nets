@@ -15,7 +15,7 @@ struct DatagramServer
 	volatile bool threadRunning;
 };
 
-void datagramServerReceiveHandler(
+static void datagramServerReceiveHandler(
 	void* argument)
 {
 	struct DatagramServer* server =

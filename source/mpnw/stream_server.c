@@ -6,7 +6,12 @@
 #include <time.h>
 #include <assert.h>
 
-// TODO: add socket address getters
+struct StreamSession
+{
+	struct Socket* receiveSocket;
+	double lastMessageTime;
+	void* handle;
+};
 
 struct StreamServer
 {
@@ -25,16 +30,7 @@ struct StreamServer
 	volatile bool threadsRunning;
 };
 
-struct StreamSession
-{
-	struct Socket* receiveSocket;
-	double lastMessageTime;
-	void* handle;
-};
-
-// TODO: check if possible to use socket select here
-
-void streamServerReceiveHandler(
+static void streamServerReceiveHandler(
 	void* argument)
 {
 	struct StreamServer* server =
@@ -72,14 +68,11 @@ void streamServerReceiveHandler(
 			if (currentTime - session->lastMessageTime > receiveTimeoutTime)
 				goto DESTROY_SOCKET;
 
-			uint8_t* sessionReceiveBuffer =
-				receiveBuffer + receiveBufferSize * i;
-
 			size_t byteCount;
 
 			bool result = socketReceive(
 				receiveSocket,
-				sessionReceiveBuffer,
+				receiveBuffer,
 				receiveBufferSize,
 				&byteCount);
 
@@ -89,7 +82,7 @@ void streamServerReceiveHandler(
 			result = receiveFunction(
 				server,
 				session,
-				sessionReceiveBuffer,
+				receiveBuffer,
 				byteCount);
 
 			if (result == true)
@@ -196,8 +189,8 @@ struct StreamServer* createStreamServer(
 	if (server == NULL)
 		return NULL;
 
-	uint8_t* receiveBuffer = malloc(sizeof(uint8_t) *
-		sessionBufferSize * receiveBufferSize);
+	uint8_t* receiveBuffer = malloc(
+		receiveBufferSize * sizeof(uint8_t));
 
 	if (receiveBuffer == NULL)
 	{

@@ -15,7 +15,7 @@ struct StreamClient
 	volatile bool threadRunning;
 };
 
-void streamClientReceiveHandler(
+static void streamClientReceiveHandler(
 	void* argument)
 {
 	struct StreamClient* client =

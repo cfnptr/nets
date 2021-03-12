@@ -15,7 +15,7 @@ struct DatagramClient
 	volatile bool threadRunning;
 };
 
-void datagramClientReceiveHandler(
+static void datagramClientReceiveHandler(
 	void* argument)
 {
 	struct DatagramClient* client =
