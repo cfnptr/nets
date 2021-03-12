@@ -1211,7 +1211,7 @@ bool getSocketAddressHost(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
 		host,
-		length,
+		(SOCKET_LENGTH)length,
 		NULL,
 		0,
 		flags) == 0;
@@ -1234,7 +1234,7 @@ bool getSocketAddressService(
 		NULL,
 		0,
 		service,
-		length,
+		(SOCKET_LENGTH)length,
 		flags) == 0;
 }
 
@@ -1259,9 +1259,9 @@ bool getSocketAddressHostService(
 		(const struct sockaddr*)&address->handle,
 		sizeof(struct sockaddr_storage),
 		host,
-		hostLength,
+		(SOCKET_LENGTH)hostLength,
 		service,
-		serviceLength,
+		(SOCKET_LENGTH)serviceLength,
 		flags) == 0;
 }
 
