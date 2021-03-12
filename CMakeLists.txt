@@ -13,6 +13,7 @@ project(mpnw
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
+option(MPNW_BUILD_EXAMPLES "Build MPNW examples" ON)
 option(MPNW_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 
 if(MPNW_USE_OPENSSL)
@@ -45,13 +46,23 @@ if(MPNW_USE_OPENSSL)
 endif()
 
 add_library(mpnw STATIC
-	source/mpnw/datagram_client.c
-	source/mpnw/datagram_server.c
-	source/mpnw/socket.c
-	source/mpnw/stream_client.c
-	source/mpnw/stream_server.c)
+	source/datagram_client.c
+	source/datagram_server.c
+	source/socket.c
+	source/stream_client.c
+	source/stream_server.c)
 target_link_libraries(mpnw PUBLIC
 	${MPNW_LINK_LIBRARIES})
 target_include_directories(mpnw PUBLIC
 	${PROJECT_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/include)
+
+if (MPNW_BUILD_EXAMPLES)
+	add_executable(mpnw-datagram-example
+		examples/datagram_example.c)
+	target_link_libraries(mpnw-datagram-example PRIVATE
+		mpnw)
+	target_include_directories(mpnw-datagram-example PRIVATE
+		${PROJECT_BINARY_DIR}
+		${PROJECT_SOURCE_DIR}/include)
+endif()

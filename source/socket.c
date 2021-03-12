@@ -596,19 +596,25 @@ bool connectSocket(
 	else
 		return false;
 
-	int result = connect(
-		socket->handle,
-		(const struct sockaddr*)&address->handle,
-		length);
 
 #if MPNW_HAS_OPENSSL
-	if (result != 0)
-		return false;
-
-	return SSL_connect(
-		socket->ssl) == 1;
+	if (socket->sslContext != NULL)
+	{
+		return SSL_connect(
+			socket->ssl) == 1;
+	}
+	else
+	{
+		return connect(
+			socket->handle,
+			(const struct sockaddr*)&address->handle,
+			length) == 0;
+	}
 #else
-	return result == 0;
+	return connect(
+		socket->handle,
+		(const struct sockaddr*)&address->handle,
+		length) == 0;
 #endif
 }
 
