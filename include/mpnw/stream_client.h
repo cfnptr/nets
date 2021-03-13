@@ -24,7 +24,7 @@ struct StreamClient* createStreamClient(
 	uint8_t addressFamily,
 	size_t receiveBufferSize,
 	StreamClientReceive receiveFunction,
-	void* functionArgument,
+	void* handle,
 	struct SslContext* sslContext);
 
 /*
@@ -42,10 +42,17 @@ size_t getStreamClientReceiveBufferSize(
 	const struct StreamClient* client);
 
 /*
- * Returns stream client receive function argument.
+* Returns stream client receive function.
+* client - pointer to the valid stream client.
+*/
+StreamClientReceive getStreamClientReceiveFunction(
+	const struct StreamClient* client);
+
+/*
+ * Returns stream client handle.
  * client - pointer to the valid stream client.
  */
-void* getStreamClientFunctionArgument(
+void* getStreamClientHandle(
 	const struct StreamClient* client);
 
 /*

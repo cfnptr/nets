@@ -19,9 +19,9 @@ struct StreamServer
 	size_t receiveBufferSize;
 	double receiveTimeoutTime;
 	StreamSessionReceive receiveFunction;
-	CreateStreamSession createFunction;
-	DestroyStreamSession destroyFunction;
-	void* functionArgument;
+	StreamSessionCreate createFunction;
+	StreamSessionDestroy destroyFunction;
+	void* handle;
 	uint8_t* receiveBuffer;
 	struct StreamSession* sessionBuffer;
 	size_t sessionCount;
@@ -41,9 +41,9 @@ static void streamServerReceiveHandler(
 		server->receiveTimeoutTime;
 	StreamSessionReceive receiveFunction =
 		server->receiveFunction;
-	CreateStreamSession createFunction =
+	StreamSessionCreate createFunction =
 		server->createFunction;
-	DestroyStreamSession destroyFunction =
+	StreamSessionDestroy destroyFunction =
 		server->destroyFunction;
 	uint8_t* receiveBuffer =
 		server->receiveBuffer;
@@ -169,9 +169,9 @@ struct StreamServer* createStreamServer(
 	size_t receiveBufferSize,
 	double receiveTimeoutTime,
 	StreamSessionReceive receiveFunction,
-	CreateStreamSession createFunction,
-	DestroyStreamSession destroyFunction,
-	void* functionArgument,
+	StreamSessionCreate createFunction,
+	StreamSessionDestroy destroyFunction,
+	void* handle,
 	struct SslContext* sslContext)
 {
 	assert(port != NULL);
@@ -263,7 +263,7 @@ struct StreamServer* createStreamServer(
 	server->receiveFunction = receiveFunction;
 	server->createFunction = createFunction;
 	server->destroyFunction = destroyFunction;
-	server->functionArgument = functionArgument;
+	server->handle = handle;
 	server->sessionBuffer = sessionBuffer;
 	server->sessionCount = 0;
 	server->receiveBuffer = receiveBuffer;
@@ -308,7 +308,7 @@ void destroyStreamServer(
 		server->sessionCount;
 	struct StreamSession* sessionBuffer =
 		server->sessionBuffer;
-	DestroyStreamSession destroyFunction =
+	StreamSessionDestroy destroyFunction =
 		server->destroyFunction;
 
 	for (size_t i = 0; i < sessionCount; i++)
@@ -339,6 +339,27 @@ size_t getStreamServerSessionBufferSize(
 	return server->sessionBufferSize;
 }
 
+StreamSessionReceive getStreamServerReceiveFunction(
+	const struct StreamServer* server)
+{
+	assert(server != NULL);
+	return server->receiveFunction;
+}
+
+StreamSessionCreate getStreamServerCreateFunction(
+	const struct StreamServer* server)
+{
+	assert(server != NULL);
+	return server->createFunction;
+}
+
+StreamSessionDestroy getStreamServerDestroyFunction(
+	const struct StreamServer* server)
+{
+	assert(server != NULL);
+	return server->destroyFunction;
+}
+
 size_t getStreamServerReceiveBufferSize(
 	const struct StreamServer* server)
 {
@@ -353,11 +374,11 @@ double getStreamServerReceiveTimeoutTime(
 	return server->receiveTimeoutTime;
 }
 
-void* getStreamServerFunctionArgument(
+void* getStreamServerHandle(
 	const struct StreamServer* server)
 {
 	assert(server != NULL);
-	return server->functionArgument;
+	return server->handle;
 }
 
 struct Socket* getStreamServerSocket(

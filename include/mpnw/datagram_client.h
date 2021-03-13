@@ -24,7 +24,7 @@ struct DatagramClient* createDatagramClient(
 	const struct SocketAddress* remoteAddress,
 	size_t receiveBufferSize,
 	DatagramClientReceive receiveFunction,
-	void* functionArgument,
+	void* handle,
 	struct SslContext* sslContext);
 
 /*
@@ -42,10 +42,17 @@ size_t getDatagramClientReceiveBufferSize(
 	const struct DatagramClient* client);
 
 /*
- * Returns datagram client receive function argument.
+ * Returns datagram client receive function.
  * client - pointer to the valid datagram client.
  */
-void* getDatagramClientFunctionArgument(
+DatagramClientReceive getDatagramClientReceiveFunction(
+	const struct DatagramClient* client);
+
+/*
+ * Returns datagram client handle.
+ * client - pointer to the valid datagram client.
+ */
+void* getDatagramClientHandle(
 	const struct DatagramClient* client);
 
 /*

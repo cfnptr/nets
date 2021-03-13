@@ -8,7 +8,7 @@ struct StreamClient
 {
 	size_t receiveBufferSize;
 	StreamClientReceive receiveFunction;
-	void* functionArgument;
+	void* handle;
 	uint8_t* receiveBuffer;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
@@ -62,7 +62,7 @@ struct StreamClient* createStreamClient(
 	uint8_t addressFamily,
 	size_t receiveBufferSize,
 	StreamClientReceive receiveFunction,
-	void* functionArgument,
+	void* handle,
 	struct SslContext* sslContext)
 {
 	assert(receiveBufferSize != 0);
@@ -130,9 +130,9 @@ struct StreamClient* createStreamClient(
 		return NULL;
 	}
 
-	client->receiveFunction = receiveFunction;
-	client->functionArgument = functionArgument;
 	client->receiveBufferSize = receiveBufferSize;
+	client->receiveFunction = receiveFunction;
+	client->handle = handle;
 	client->receiveBuffer = receiveBuffer;
 	client->receiveSocket = receiveSocket;
 	client->threadRunning = true;
@@ -182,11 +182,18 @@ size_t getStreamClientReceiveBufferSize(
 	return client->receiveBufferSize;
 }
 
-void* getStreamClientFunctionArgument(
+StreamClientReceive getStreamClientReceiveFunction(
 	const struct StreamClient* client)
 {
 	assert(client != NULL);
-	return client->functionArgument;
+	return client->receiveFunction;
+}
+
+void* getStreamClientHandle(
+	const struct StreamClient* client)
+{
+	assert(client != NULL);
+	return client->handle;
 }
 
 struct Socket* getStreamClientSocket(

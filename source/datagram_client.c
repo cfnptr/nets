@@ -8,7 +8,7 @@ struct DatagramClient
 {
 	size_t receiveBufferSize;
 	DatagramClientReceive receiveFunction;
-	void* functionArgument;
+	void* handle;
 	uint8_t* receiveBuffer;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
@@ -59,7 +59,7 @@ struct DatagramClient* createDatagramClient(
 	const struct SocketAddress* remoteAddress,
 	size_t receiveBufferSize,
 	DatagramClientReceive receiveFunction,
-	void* functionArgument,
+	void* handle,
 	struct SslContext* sslContext)
 {
 	assert(remoteAddress != NULL);
@@ -146,7 +146,7 @@ struct DatagramClient* createDatagramClient(
 
 	client->receiveBufferSize = receiveBufferSize;
 	client->receiveFunction = receiveFunction;
-	client->functionArgument = functionArgument;
+	client->handle = handle;
 	client->receiveBuffer = receiveBuffer;
 	client->receiveSocket = receiveSocket;
 	client->threadRunning = true;
@@ -196,11 +196,18 @@ size_t getDatagramClientReceiveBufferSize(
 	return client->receiveBufferSize;
 }
 
-void* getDatagramClientFunctionArgument(
+DatagramClientReceive getDatagramClientReceiveFunction(
 	const struct DatagramClient* client)
 {
 	assert(client != NULL);
-	return client->functionArgument;
+	return client->receiveFunction;
+}
+
+void* getDatagramClientHandle(
+	const struct DatagramClient* client)
+{
+	assert(client != NULL);
+	return client->handle;
 }
 
 struct Socket* getDatagramClientSocket(

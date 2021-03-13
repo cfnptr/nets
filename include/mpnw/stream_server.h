@@ -13,14 +13,14 @@ typedef bool(*StreamSessionReceive)(
 	const uint8_t* receiveBuffer,
 	size_t byteCount);
 
-/* Create stream session function */
-typedef bool(*CreateStreamSession)(
+/* Stream session create function */
+typedef bool(*StreamSessionCreate)(
 	struct StreamServer* streamServer,
 	struct Socket* streamSocket,
 	void** sessionHandle);
 
-/* Destroy stream session function */
-typedef void(*DestroyStreamSession)(
+/* Stream session destroy function */
+typedef void(*StreamSessionDestroy)(
 	struct StreamServer* streamServer,
 	struct StreamSession* streamSession);
 
@@ -46,8 +46,8 @@ struct StreamServer* createStreamServer(
 	size_t receiveBufferSize,
 	double receiveTimeoutTime,
 	StreamSessionReceive receiveFunction,
-	CreateStreamSession createFunction,
-	DestroyStreamSession destroyFunction,
+	StreamSessionCreate createFunction,
+	StreamSessionDestroy destroyFunction,
 	void* functionArgument,
 	struct SslContext* sslContext);
 
@@ -66,10 +66,24 @@ size_t getStreamServerSessionBufferSize(
 	const struct StreamServer* server);
 
 /*
- * Returns stream server receive buffer size.
+ * Returns stream server receive function.
  * server - pointer to the valid stream server.
  */
-size_t getStreamServerReceiveBufferSize(
+StreamSessionReceive getStreamServerReceiveFunction(
+	const struct StreamServer* server);
+
+/*
+ * Returns stream server create function.
+ * server - pointer to the valid stream server.
+ */
+StreamSessionCreate getStreamServerCreateFunction(
+	const struct StreamServer* server);
+
+/*
+ * Returns stream server destroy function.
+ * server - pointer to the valid stream server.
+ */
+StreamSessionDestroy getStreamServerDestroyFunction(
 	const struct StreamServer* server);
 
 /*
@@ -80,10 +94,10 @@ double getStreamServerReceiveTimeoutTime(
 	const struct StreamServer* server);
 
 /*
- * Returns stream server receive function argument.
+ * Returns stream server handle.
  * server - pointer to the valid stream server.
  */
-void* getStreamServerFunctionArgument(
+void* getStreamServerHandle(
 	const struct StreamServer* server);
 
 /*

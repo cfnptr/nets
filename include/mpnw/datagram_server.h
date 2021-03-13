@@ -27,7 +27,7 @@ struct DatagramServer* createDatagramServer(
 	const char* port,
 	size_t receiveBufferSize,
 	DatagramServerReceive receiveFunction,
-	void* functionArgument,
+	void* handle,
 	struct SslContext* sslContext);
 
 /*
@@ -45,10 +45,17 @@ size_t getDatagramServerReceiveBufferSize(
 	const struct DatagramServer* server);
 
 /*
- * Returns datagram server receive function argument.
+ * Returns datagram server receive function.
  * server - pointer to the valid datagram server.
  */
-void* getDatagramServerFunctionArgument(
+DatagramServerReceive getDatagramServerReceiveFunction(
+	const struct DatagramServer* server);
+
+/*
+ * Returns datagram server handle.
+ * server - pointer to the valid datagram server.
+ */
+void* getDatagramServerHandle(
 	const struct DatagramServer* server);
 
 /*

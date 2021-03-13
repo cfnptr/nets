@@ -8,7 +8,7 @@ struct DatagramServer
 {
 	size_t receiveBufferSize;
 	DatagramServerReceive receiveFunction;
-	void* functionArgument;
+	void* handle;
 	uint8_t* receiveBuffer;
 	struct Socket* receiveSocket;
 	struct Thread* receiveThread;
@@ -68,7 +68,7 @@ struct DatagramServer* createDatagramServer(
 	const char* port,
 	size_t receiveBufferSize,
 	DatagramServerReceive receiveFunction,
-	void* functionArgument,
+	void* handle,
 	struct SslContext* sslContext)
 {
 	assert(port != NULL);
@@ -139,7 +139,7 @@ struct DatagramServer* createDatagramServer(
 
 	server->receiveBufferSize = receiveBufferSize;
 	server->receiveFunction = receiveFunction;
-	server->functionArgument = functionArgument;
+	server->handle = handle;
 	server->receiveBuffer = receiveBuffer;
 	server->receiveSocket = receiveSocket;
 	server->threadRunning = true;
@@ -189,11 +189,18 @@ size_t getDatagramServerReceiveBufferSize(
 	return server->receiveBufferSize;
 }
 
-void* getDatagramServerFunctionArgument(
+DatagramServerReceive getDatagramServerReceiveFunction(
 	const struct DatagramServer* server)
 {
 	assert(server != NULL);
-	return server->functionArgument;
+	return server->receiveFunction;
+}
+
+void* getDatagramServerHandle(
+	const struct DatagramServer* server)
+{
+	assert(server != NULL);
+	return server->handle;
 }
 
 struct Socket* getDatagramServerSocket(

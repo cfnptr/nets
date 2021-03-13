@@ -12,7 +12,7 @@ static void serverReceiveHandler(
 	size_t byteCount)
 {
 	const char* serverName = (const char*)
-		getDatagramServerFunctionArgument(datagramServer);
+		getDatagramServerHandle(datagramServer);
 
 	if (byteCount != 1)
 	{
@@ -48,7 +48,7 @@ static void clientReceiveHandler(
 	size_t byteCount)
 {
 	const char* clientName = (const char*)
-		getDatagramClientFunctionArgument(datagramClient);
+		getDatagramClientHandle(datagramClient);
 
 	if (byteCount != 1)
 	{

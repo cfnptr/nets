@@ -57,15 +57,15 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	char host[15];
-	char service[5];
+	char host[16];
+	char service[6];
 
 	bool result = getSocketAddressHostService(
 		address,
 		host,
-		15,
+		16,
 		service,
-		5);
+		6);
 
 	if (result == false)
 		return EXIT_FAILURE;
