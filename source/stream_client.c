@@ -218,10 +218,36 @@ bool connectStreamClient(
 	assert(streamClient != NULL);
 	assert(address != NULL);
 
-	return connectSocket(
-		streamClient->receiveSocket,
-		address,
-		timeoutTime);
+	struct Socket* socket = streamClient->receiveSocket;
+	double timeout = getCurrentClock() + timeoutTime;
+
+	while (getCurrentClock() < timeout)
+	{
+		bool result = connectSocket(
+			socket,
+			address);
+
+		if (result == true)
+			goto CONNECT_SSL;
+	}
+
+	return false;
+
+CONNECT_SSL:
+
+	if (getSocketSslContext(socket) == NULL)
+		return true;
+
+	while (getCurrentClock() < timeout)
+	{
+		bool result = connectSslSocket(
+			socket);
+
+		if (result == true)
+			return true;
+	}
+
+	return false;
 }
 
 bool streamClientSend(

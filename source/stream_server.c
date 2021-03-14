@@ -9,8 +9,9 @@
 struct StreamSession
 {
 	struct Socket* receiveSocket;
-	double lastMessageTime;
 	void* handle;
+	double lastMessageTime;
+	bool isSslConnected;
 };
 
 struct StreamServer
@@ -49,8 +50,10 @@ static void streamServerReceiveHandler(
 		server->receiveBuffer;
 	struct StreamSession* sessionBuffer =
 		server->sessionBuffer;
-	struct Socket* _acceptSocket =
+	struct Socket* serverSocket =
 		server->acceptSocket;
+	bool isServerSocketSsl =
+		getSocketSslContext(serverSocket) != NULL;
 
 	while (server->threadsRunning == true)
 	{
@@ -65,8 +68,19 @@ static void streamServerReceiveHandler(
 			struct Socket* receiveSocket =
 				session->receiveSocket;
 
+			if (session->isSslConnected == false)
+			{
+				bool result = connectSslSocket(
+					receiveSocket);
+
+				if(result == true)
+					session->isSslConnected = true;
+				else
+					continue;
+			}
+
 			if (currentTime - session->lastMessageTime > receiveTimeoutTime)
-				goto DESTROY_SOCKET;
+				goto DESTROY_SESSION;
 
 			size_t byteCount;
 
@@ -92,7 +106,7 @@ static void streamServerReceiveHandler(
 				continue;
 			}
 
-		DESTROY_SOCKET:
+		DESTROY_SESSION:
 			destroyFunction(
 				server,
 				session);
@@ -111,19 +125,16 @@ static void streamServerReceiveHandler(
 			shouldSleep = false;
 		}
 
-		struct Socket* acceptedSocket;
+		struct Socket* acceptedSocket = acceptSocket(
+			serverSocket);
 
-		bool result = acceptSocket(
-			_acceptSocket,
-			&acceptedSocket);
-
-		if (result == true)
+		if (acceptedSocket != NULL)
 		{
 			if (sessionCount < server->sessionBufferSize)
 			{
 				void* session;
 
-				result = createFunction(
+				bool result = createFunction(
 					server,
 					acceptedSocket,
 					&session);
@@ -132,8 +143,9 @@ static void streamServerReceiveHandler(
 				{
 					struct StreamSession streamSession;
 					streamSession.receiveSocket = acceptedSocket;
-					streamSession.lastMessageTime = getCurrentClock();
 					streamSession.handle = session;
+					streamSession.lastMessageTime = getCurrentClock();
+					streamSession.isSslConnected = !isServerSocketSsl;
 					sessionBuffer[sessionCount++] = streamSession;
 				}
 				else

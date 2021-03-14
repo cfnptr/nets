@@ -1,8 +1,6 @@
 #include "mpnw/socket.h"
 #include "mpnw/defines.h"
 
-#include "mpmt/thread.h"
-
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -281,7 +279,6 @@ struct Socket* createSocket(
 	else
 	{
 		_socket->sslContext = NULL;
-		_socket->ssl = NULL;
 	}
 #endif
 
@@ -329,6 +326,8 @@ uint8_t getSocketType(
 
 	if (result != 0)
 		abort();
+
+	// TODO: check for ssl fatal error
 
 	if (type == SOCK_STREAM)
 		return STREAM_SOCKET_TYPE;
@@ -501,12 +500,10 @@ void setSocketNoDelay(
 		abort();
 }
 
-bool acceptSocket(
-	struct Socket* socket,
-	struct Socket** _acceptedSocket)
+struct Socket* acceptSocket(
+	struct Socket* socket)
 {
 	assert(socket != NULL);
-	assert(_acceptedSocket != NULL);
 	assert(isSocketListening(socket) == true);
 	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
 
@@ -514,7 +511,7 @@ bool acceptSocket(
 		sizeof(struct Socket));
 
 	if (acceptedSocket == NULL)
-		return false;
+		return NULL;
 
 	SOCKET handle = accept(
 		socket->handle,
@@ -524,7 +521,43 @@ bool acceptSocket(
 	if (handle == INVALID_SOCKET)
 	{
 		free(acceptedSocket);
-		return false;
+		return NULL;
+	}
+
+	if (socket->blocking == false)
+	{
+#if __linux__ || __APPLE__
+		int flags = fcntl(
+			handle,
+			F_GETFL,
+			0);
+
+		if (flags == -1)
+		{
+			closesocket(handle);
+			free(acceptedSocket);
+			return NULL;
+		}
+
+		int result = fcntl(
+			handle,
+			F_SETFL,
+			flags | O_NONBLOCK);
+#elif _WIN32
+		u_long flags = 1;
+
+		int result = ioctlsocket(
+			handle,
+			FIONBIO,
+			&flags);
+#endif
+
+		if (result != 0)
+		{
+			closesocket(handle);
+			free(acceptedSocket);
+			return NULL;
+		}
 	}
 
 	acceptedSocket->handle = handle;
@@ -541,7 +574,7 @@ bool acceptSocket(
 		{
 			closesocket(handle);
 			free(acceptedSocket);
-			return false;
+			return NULL;
 		}
 
 		int result = SSL_set_fd(
@@ -553,17 +586,7 @@ bool acceptSocket(
 			SSL_free(ssl);
 			closesocket(handle);
 			free(acceptedSocket);
-			return false;
-		}
-
-		result = SSL_accept(ssl);
-
-		if (result != 1)
-		{
-			SSL_free(ssl);
-			closesocket(handle);
-			free(acceptedSocket);
-			return false;
+			return NULL;
 		}
 
 		acceptedSocket->sslContext =
@@ -573,18 +596,30 @@ bool acceptSocket(
 	else
 	{
 		acceptedSocket->sslContext = NULL;
-		acceptedSocket->ssl = NULL;
 	}
 #endif
 
-	*_acceptedSocket = acceptedSocket;
-	return true;
+	return acceptedSocket;
+}
+
+bool acceptSslSocket(
+	struct Socket* socket)
+{
+	assert(socket != NULL);
+
+#if MPNW_HAS_OPENSSL
+	assert(socket->sslContext != NULL);
+
+	return SSL_accept(
+		socket->ssl) == 1;
+#else
+	abort();
+#endif
 }
 
 bool connectSocket(
 	struct Socket* socket,
-	const struct SocketAddress* address,
-	double timeoutTime)
+	const struct SocketAddress* address)
 {
 	assert(socket != NULL);
 	assert(address != NULL);
@@ -600,39 +635,26 @@ bool connectSocket(
 	else
 		return false;
 
-	double timeout = getCurrentClock() + timeoutTime;
+	int result = connect(
+		socket->handle,
+		(const struct sockaddr*)&address->handle,
+		length);
 
-	while (true)
-	{
-		if (getCurrentClock() > timeout)
-			return false;
+	return result == 0 || errno == EISCONN;
+}
 
-		int result = connect(
-			socket->handle,
-			(const struct sockaddr*)&address->handle,
-			length);
-
-		if (result == 0 || errno == EISCONN)
-			break;
-	}
+bool connectSslSocket(
+	struct Socket* socket)
+{
+	assert(socket != NULL);
 
 #if MPNW_HAS_OPENSSL
-	if (socket->sslContext == NULL)
-		return true;
+	assert(socket->sslContext != NULL);
 
-	while (true)
-	{
-		if (getCurrentClock() > timeout)
-			return false;
-
-		int result = SSL_connect(
-			socket->ssl);
-
-		if(result == 1)
-			return true;
-	}
+	return SSL_connect(
+		socket->ssl) == 1;
 #else
-	return false;
+	abort();
 #endif
 }
 
@@ -664,10 +686,7 @@ bool shutdownSocket(
 		return false;
 #endif
 
-#if MPNW_HAS_OPENSSL
-	if (socket->sslContext != NULL)
-		SSL_shutdown(socket->ssl);
-#endif
+	// Do not shutdown SSL, due to the bad documentation
 
 	return shutdown(
 		socket->handle,
@@ -678,42 +697,38 @@ bool socketReceive(
 	struct Socket* socket,
 	void* buffer,
 	size_t size,
-	size_t* _count)
+	size_t* count)
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
-	assert(_count != NULL);
-
-	int count;
+	assert(count != NULL);
 
 #if MPNW_HAS_OPENSSL
 	if (socket->sslContext != NULL)
 	{
-		count = SSL_read(
+		int result = SSL_read(
 			socket->ssl,
 			buffer,
 			(int)size);
+
+		if (result < 0)
+			return false;
+
+		*count = (size_t)result;
+		return true;
 	}
-	else
-	{
-		count = recv(
-			socket->handle,
-			(char*)buffer,
-			(int)size,
-			0);
-	}
-#else
-	count = recv(
+#endif
+
+	int result = recv(
 		socket->handle,
 		(char*)buffer,
 		(int)size,
 		0);
-#endif
 
-	if (count < 0)
+	if (result < 0)
 		return false;
 
-	*_count = (size_t)count;
+	*count = (size_t)result;
 	return true;
 }
 
@@ -733,21 +748,13 @@ bool socketSend(
 			buffer,
 			(int)count) == count;
 	}
-	else
-	{
-		return send(
-			socket->handle,
-			(const char*)buffer,
-			(int)count,
-			0) == count;
-	}
-#else
+#endif
+
 	return send(
 		socket->handle,
 		(const char*)buffer,
 		(int)count,
 		0) == count;
-#endif
 }
 
 bool socketReceiveFrom(

@@ -168,31 +168,45 @@ void setSocketNoDelay(
 
 /*
  * Accepts a new socket connection.
+ * Returns socket on success, otherwise NULL.
+ *
+ * socket - pointer to the valid socket.
+ * timeoutTime - accept attempt timeout time.
+ */
+struct Socket* acceptSocket(
+	struct Socket* socket);
+
+/*
+ * Accepts socket SSL connection.
  * Returns true on success.
  *
  * socket - pointer to the valid socket.
- * acceptedSocket - pointer to the valid socket.
  */
-bool acceptSocket(
-	struct Socket* socket,
-	struct Socket** acceptedSocket);
+bool acceptSslSocket(
+	struct Socket* socket);
 
 /*
- * Starts connection to the specified address.
+ * Connects socket to the specified address.
  * Returns true on success.
  *
  * socket - pointer to the valid socket.
  * address - pointer to the valid socket address.
- * timeoutTime - connect attempt timeout time.
  */
 bool connectSocket(
 	struct Socket* socket,
-	const struct SocketAddress* address,
-	double timeoutTime);
+	const struct SocketAddress* address);
+
+/*
+ * Connects socket SSL.
+ * Returns true on success.
+ *
+ * socket - pointer to the valid socket.
+ */
+bool connectSslSocket(
+	struct Socket* socket);
 
 /*
  * Shutdowns part of the full-duplex connection.
- * Returns true on success.
  *
  * socket - pointer to the valid socket.
  * type - socket connection shutdown.

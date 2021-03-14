@@ -133,8 +133,7 @@ struct DatagramClient* createDatagramClient(
 
 	bool result = connectSocket(
 		receiveSocket,
-		remoteAddress,
-		0.0);
+		remoteAddress);
 
 	if (result == false)
 	{
