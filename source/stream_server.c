@@ -65,12 +65,16 @@ static void streamServerReceiveHandler(
 		{
 			struct StreamSession* session =
 				&sessionBuffer[i];
+
+			if (currentTime - session->lastMessageTime > receiveTimeoutTime)
+				goto DESTROY_SESSION;
+
 			struct Socket* receiveSocket =
 				session->receiveSocket;
 
 			if (session->isSslConnected == false)
 			{
-				bool result = connectSslSocket(
+				bool result = acceptSslSocket(
 					receiveSocket);
 
 				if(result == true)
@@ -78,9 +82,6 @@ static void streamServerReceiveHandler(
 				else
 					continue;
 			}
-
-			if (currentTime - session->lastMessageTime > receiveTimeoutTime)
-				goto DESTROY_SESSION;
 
 			size_t byteCount;
 
