@@ -327,8 +327,6 @@ uint8_t getSocketType(
 	if (result != 0)
 		abort();
 
-	// TODO: check for ssl fatal error
-
 	if (type == SOCK_STREAM)
 		return STREAM_SOCKET_TYPE;
 	else if (type == SOCK_DGRAM)

@@ -60,6 +60,7 @@ static void datagramServerReceiveHandler(
 			byteCount);
 	}
 
+	destroySocketAddress(remoteAddress);
 	server->threadRunning = false;
 }
 

@@ -11,7 +11,7 @@ struct StreamSession
 	struct Socket* receiveSocket;
 	void* handle;
 	double lastMessageTime;
-	bool isSslConnected;
+	bool isSslAccepted;
 };
 
 struct StreamServer
@@ -25,7 +25,6 @@ struct StreamServer
 	void* handle;
 	uint8_t* receiveBuffer;
 	struct StreamSession* sessionBuffer;
-	size_t sessionCount;
 	struct Socket* acceptSocket;
 	struct Thread* receiveThread;
 	volatile bool threadsRunning;
@@ -36,6 +35,8 @@ static void streamServerReceiveHandler(
 {
 	struct StreamServer* server =
 		(struct StreamServer*)argument;
+	size_t sessionBufferSize =
+		server->sessionBufferSize;
 	size_t receiveBufferSize =
 		server->receiveBufferSize;
 	double receiveTimeoutTime =
@@ -55,30 +56,30 @@ static void streamServerReceiveHandler(
 	bool isServerSocketSsl =
 		getSocketSslContext(serverSocket) != NULL;
 
+	size_t sessionCount = 0;
+
 	while (server->threadsRunning == true)
 	{
 		bool shouldSleep = true;
 		double currentTime = getCurrentClock();
-		size_t sessionCount = server->sessionCount;
 
 		for (size_t i = 0; i < sessionCount; i++)
 		{
 			struct StreamSession* session =
 				&sessionBuffer[i];
+			struct Socket* receiveSocket =
+				session->receiveSocket;
 
 			if (currentTime - session->lastMessageTime > receiveTimeoutTime)
 				goto DESTROY_SESSION;
 
-			struct Socket* receiveSocket =
-				session->receiveSocket;
-
-			if (session->isSslConnected == false)
+			if (session->isSslAccepted == false)
 			{
 				bool result = acceptSslSocket(
 					receiveSocket);
 
 				if(result == true)
-					session->isSslConnected = true;
+					session->isSslAccepted = true;
 				else
 					continue;
 			}
@@ -131,7 +132,7 @@ static void streamServerReceiveHandler(
 
 		if (acceptedSocket != NULL)
 		{
-			if (sessionCount < server->sessionBufferSize)
+			if (sessionCount < sessionBufferSize)
 			{
 				void* session;
 
@@ -146,7 +147,7 @@ static void streamServerReceiveHandler(
 					streamSession.receiveSocket = acceptedSocket;
 					streamSession.handle = session;
 					streamSession.lastMessageTime = getCurrentClock();
-					streamSession.isSslConnected = !isServerSocketSsl;
+					streamSession.isSslAccepted = !isServerSocketSsl;
 					sessionBuffer[sessionCount++] = streamSession;
 				}
 				else
@@ -168,10 +169,24 @@ static void streamServerReceiveHandler(
 			}
 		}
 
-		server->sessionCount = sessionCount;
-
 		if (shouldSleep == true)
 			sleepThread(0.001);
+	}
+
+	for (size_t i = 0; i < sessionCount; i++)
+	{
+		struct StreamSession* session =
+			&sessionBuffer[i];
+		struct Socket* receiveSocket =
+			session->receiveSocket;
+
+		destroyFunction(
+			server,
+			session);
+		shutdownSocket(
+			receiveSocket,
+			SHUTDOWN_RECEIVE_SEND);
+		destroySocket(receiveSocket);
 	}
 }
 
@@ -278,7 +293,6 @@ struct StreamServer* createStreamServer(
 	server->destroyFunction = destroyFunction;
 	server->handle = handle;
 	server->sessionBuffer = sessionBuffer;
-	server->sessionCount = 0;
 	server->receiveBuffer = receiveBuffer;
 	server->acceptSocket = acceptSocket;
 	server->threadsRunning = true;
@@ -316,29 +330,6 @@ void destroyStreamServer(
 		server->acceptSocket,
 		SHUTDOWN_RECEIVE_SEND);
 	destroySocket(server->acceptSocket);
-
-	size_t sessionCount =
-		server->sessionCount;
-	struct StreamSession* sessionBuffer =
-		server->sessionBuffer;
-	StreamSessionDestroy destroyFunction =
-		server->destroyFunction;
-
-	for (size_t i = 0; i < sessionCount; i++)
-	{
-		struct StreamSession* session =
-			&sessionBuffer[i];
-		struct Socket* receiveSocket =
-			session->receiveSocket;
-
-		destroyFunction(
-			server,
-			session);
-		shutdownSocket(
-			receiveSocket,
-			SHUTDOWN_RECEIVE_SEND);
-		destroySocket(receiveSocket);
-	}
 
 	free(server->receiveBuffer);
 	free(server->sessionBuffer);
