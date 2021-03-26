@@ -481,7 +481,8 @@ struct SslContext* createSslContext(
 struct SslContext* createSslContextFromFile(
 	uint8_t securityProtocol,
 	const char* certificateFilePath,
-	const char* privateKeyFilePath);
+	const char* privateKeyFilePath,
+	bool certificateChain);
 
 /*
  * Destroys specified SSL context.

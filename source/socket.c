@@ -1364,7 +1364,8 @@ struct SslContext* createSslContext(
 struct SslContext* createSslContextFromFile(
 	uint8_t securityProtocol,
 	const char* certificateFilePath,
-	const char* privateKeyFilePath)
+	const char* privateKeyFilePath,
+	bool certificateChain)
 {
 #if MPNW_HAS_OPENSSL
 	assert(networkInitialized == true);
@@ -1404,10 +1405,21 @@ struct SslContext* createSslContextFromFile(
 		return NULL;
 	}
 
-	int result = SSL_CTX_use_certificate_file(
-		handle,
-		certificateFilePath,
-		SSL_FILETYPE_PEM);
+	int result;
+
+	if (certificateChain == true)
+	{
+		result = SSL_CTX_use_certificate_chain_file(
+			handle,
+			certificateFilePath);
+	}
+	else
+	{
+		result = SSL_CTX_use_certificate_file(
+			handle,
+			certificateFilePath,
+			SSL_FILETYPE_PEM);
+	}
 
 	if (result != 1)
 	{
