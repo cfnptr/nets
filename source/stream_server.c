@@ -3,9 +3,6 @@
 #include "mpmt/mutex.h"
 #include "mpmt/thread.h"
 
-#include <time.h>
-#include <assert.h>
-
 struct StreamSession
 {
 	struct Socket* receiveSocket;
