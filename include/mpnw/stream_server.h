@@ -168,8 +168,7 @@ inline static bool handleStreamDatagram(
 	assert(
 		datagramLengthSize == sizeof(uint8_t) ||
 		datagramLengthSize == sizeof(uint16_t) ||
-		datagramLengthSize == sizeof(uint32_t) ||
-		datagramLengthSize == sizeof(uint64_t));
+		datagramLengthSize == sizeof(uint32_t));
 	assert(datagramBufferSize >= datagramLengthSize);
 
 	size_t _datagramByteCount =
@@ -208,16 +207,14 @@ inline static bool handleStreamDatagram(
 		}
 
 		// Decode received datagram size
-		uint64_t datagramSize;
+		uint32_t datagramSize;
 
 		if (datagramLengthSize == sizeof(uint8_t))
 			datagramSize = datagramBuffer[0];
 		else if (datagramLengthSize == sizeof(uint16_t))
-			datagramSize = *(uint16_t*)datagramBuffer;
+			datagramSize = netToHost16(*(uint16_t*)datagramBuffer);
 		else if (datagramLengthSize == sizeof(uint32_t))
-			datagramSize = *(uint32_t*)datagramBuffer;
-		else if (datagramLengthSize == sizeof(uint64_t))
-			datagramSize = *(uint64_t*)datagramBuffer;
+			datagramSize = netToHost32(*(uint32_t*)datagramBuffer);
 		else
 			abort();
 
@@ -275,16 +272,14 @@ inline static bool handleStreamDatagram(
 		}
 
 		// Decode received datagram size
-		uint64_t datagramSize;
+		uint32_t datagramSize;
 
 		if (datagramLengthSize == sizeof(uint8_t))
 			datagramSize = receiveBuffer[pointer];
 		else if (datagramLengthSize == sizeof(uint16_t))
-			datagramSize = *(uint16_t*)(receiveBuffer + pointer);
+			datagramSize = netToHost16(*(uint16_t*)(receiveBuffer + pointer));
 		else if (datagramLengthSize == sizeof(uint32_t))
-			datagramSize = *(uint32_t*)(receiveBuffer + pointer);
-		else if (datagramLengthSize == sizeof(uint64_t))
-			datagramSize = *(uint64_t*)(receiveBuffer + pointer);
+			datagramSize = netToHost16(*(uint32_t*)(receiveBuffer + pointer));
 		else
 			abort();
 
