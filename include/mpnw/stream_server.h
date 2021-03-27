@@ -137,6 +137,18 @@ bool streamSessionSend(
 	const void* buffer,
 	size_t count);
 
+/*
+ * Splits and handles received stream data to the datagrams.
+ * Returns true on all handle success
+ *
+ * receiveBuffer - pointer to the valid receive buffer.
+ * byteCount - receive buffer byte count.
+ * datagramBuffer - pointer to the valid datagram buffer.
+ * datagramByteCount - pointer to the valid datagram buffer byte count.
+ * datagramLengthSize - datagram length header size.
+ * receiveFunction - pointer to the valid receive handler.
+ * functionHandle - pointer to the function handle or NULL.
+ */
 inline static bool handleStreamDatagram(
 	const uint8_t* receiveBuffer,
 	size_t byteCount,
