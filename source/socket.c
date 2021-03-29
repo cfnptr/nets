@@ -1211,16 +1211,6 @@ bool setSocketAddressPort(
 	}
 }
 
-size_t getSocketMaxHostLength()
-{
-	return NI_MAXHOST;
-}
-
-size_t getSocketMaxServiceLength()
-{
-	return NI_MAXSERV;
-}
-
 bool getSocketAddressHost(
 	const struct SocketAddress* address,
 	char* host,
@@ -1491,24 +1481,4 @@ uint8_t getSslContextSecurityProtocol(
 #else
 	abort();
 #endif
-}
-
-uint16_t hostToNet16(uint16_t value)
-{
-	return htons(value);
-}
-
-uint32_t hostToNet32(uint32_t value)
-{
-	return htonl(value);
-}
-
-uint16_t netToHost16(uint16_t value)
-{
-	return ntohs(value);
-}
-
-uint32_t netToHost32(uint32_t value)
-{
-	return ntohl(value);
 }

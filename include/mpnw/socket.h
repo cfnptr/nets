@@ -3,6 +3,39 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#if __linux__
+#include <byteswap.h>
+#define swapBytes16(x) bswap_16(x)
+#define swapBytes32(x) bswap_32(x)
+#define swapBytes64(x) bswap_64(x)
+#elif __APPLE__
+#include <libkern/OSByteOrder.h>
+#define swapBytes16(x) OSSwapInt16(x)
+#define swapBytes32(x) OSSwapInt32(x)
+#define swapBytes64(x) OSSwapInt64(x)
+#elif _WIN32
+#include <stdlib.h>
+#define swapBytes16(x) _byteswap_ushort(x)
+#define swapBytes32(x) _byteswap_ulong(x)
+#define swapBytes64(x) _byteswap_uint64(x)
+#endif
+
+#if MPNW_IS_LITTLE_ENDIAN
+#define hostToNet16(x) swapBytes16(x)
+#define hostToNet32(x) swapBytes32(x)
+#define hostToNet64(x) swapBytes64(x)
+#define netToHost16(x) swapBytes16(x)
+#define netToHost32(x) swapBytes32(x)
+#define netToHost64(x) swapBytes64(x)
+#else
+#define hostToNet16(x) (x)
+#define hostToNet32(x) (x)
+#define hostToNet64(x) (x)
+#define netToHost16(x) (x)
+#define netToHost32(x) (x)
+#define netToHost64(x) (x)
+#endif
+
 /* Internet Protocol V4 any address */
 #define ANY_IP_ADDRESS_V4 "0.0.0.0"
 /* Internet Protocol V6 any address */
@@ -17,6 +50,11 @@
 #define LOCALHOST_HOSTNAME "localhost"
 /* System-allocated, dynamic port */
 #define ANY_IP_ADDRESS_PORT "0"
+
+/* Maximum numeric host string length*/
+#define MAX_NUMERIC_HOST_LENGTH 46
+/* Maximum numeric service string length*/
+#define MAX_NUMERIC_SERVICE_LENGTH 6
 
 /* Socket instance handle */
 struct Socket;
@@ -410,12 +448,6 @@ bool setSocketAddressPort(
 	struct SocketAddress* address,
 	uint16_t port);
 
-/* Returns maximum socket address host string length. */
-size_t getSocketMaxHostLength();
-
-/* Returns maximum socket address service string length. */
-size_t getSocketMaxServiceLength();
-
 /*
  * Returns socket address host name.
  * Returns true on successful get.
@@ -497,27 +529,3 @@ void destroySslContext(
  */
 uint8_t getSslContextSecurityProtocol(
 	const struct SslContext* context);
-
-/*
- * Convert host value to the network byte order.
- * value - 16 bit value in host byte order.
- */
-uint16_t hostToNet16(uint16_t value);
-
-/*
- * Convert host value to the network byte order.
- * value - 32 bit value in host byte order.
- */
-uint32_t hostToNet32(uint32_t value);
-
-/*
- * Convert network value to the host byte order.
- * value - 16 bit value in host byte order.
- */
-uint16_t netToHost16(uint16_t value);
-
-/*
- * Convert network value to the host byte order.
- * value - 32 bit value in host byte order.
- */
-uint32_t netToHost32(uint32_t value);

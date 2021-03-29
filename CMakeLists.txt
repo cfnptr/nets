@@ -30,6 +30,15 @@ else()
 	set(MPNW_HAS_OPENSSL 0)
 endif()
 
+include(TestBigEndian)
+TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
+
+if(IS_BIG_ENDIAN)
+	set(MPNW_IS_LITTLE_ENDIAN 0)
+else()
+	set(MPNW_IS_LITTLE_ENDIAN 1)
+endif()
+
 add_subdirectory(libraries/mpmt)
 
 configure_file(
