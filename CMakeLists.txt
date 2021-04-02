@@ -5,7 +5,7 @@ if(${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
 endif()
 
 project(mpnw 
-	VERSION 0.7.0
+	VERSION 0.7.2
 	DESCRIPTION "Multi-platform networking library"
 	HOMEPAGE_URL "https://github.com/cfnptr/mpnw"
 	LANGUAGES C)
