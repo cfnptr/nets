@@ -1,5 +1,4 @@
 #include "mpnw/socket.h"
-#include "mpnw/defines.h"
 
 #include <stdlib.h>
 #include <string.h>

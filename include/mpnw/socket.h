@@ -1,4 +1,6 @@
 #pragma once
+#include "mpnw/defines.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
