@@ -665,11 +665,11 @@ bool shutdownSocket(
 	else
 		return false;
 #elif _WIN32
-	if (_type == SHUTDOWN_RECEIVE_ONLY)
+	if (_type == RECEIVE_ONLY_SOCKET_SHUTDOWN)
 		type = SD_RECEIVE;
-	else if (_type == SHUTDOWN_SEND_ONLY)
+	else if (_type == SEND_ONLY_SOCKET_SHUTDOWN)
 		type = SD_SEND;
-	else if (_type == SHUTDOWN_RECEIVE_SEND)
+	else if (_type == RECEIVE_SEND_SOCKET_SHUTDOWN)
 		type = SD_BOTH;
 	else
 		return false;
