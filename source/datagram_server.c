@@ -10,29 +10,29 @@ struct DatagramServer
 	DatagramServerReceive receiveFunction;
 	void* handle;
 	uint8_t* receiveBuffer;
-	struct Socket* receiveSocket;
-	struct Thread* receiveThread;
+	Socket* receiveSocket;
+	Thread* receiveThread;
 	volatile bool threadRunning;
 };
 
 static void datagramServerReceiveHandler(
 	void* argument)
 {
-	struct DatagramServer* server =
-		(struct DatagramServer*)argument;
+	DatagramServer* server =
+		(DatagramServer*)argument;
 	DatagramServerReceive receiveFunction =
 		server->receiveFunction;
 	size_t receiveBufferSize =
 		server->receiveBufferSize;
 	uint8_t* receiveBuffer =
 		server->receiveBuffer;
-	struct Socket* receiveSocket =
+	Socket* receiveSocket =
 		server->receiveSocket;
 
 	bool result;
 	size_t byteCount;
 
-	struct SocketAddress* remoteAddress =
+	SocketAddress* remoteAddress =
 		createEmptySocketAddress();
 
 	if (remoteAddress == NULL)
@@ -64,21 +64,21 @@ static void datagramServerReceiveHandler(
 	server->threadRunning = false;
 }
 
-struct DatagramServer* createDatagramServer(
+DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
 	const char* port,
 	size_t receiveBufferSize,
 	DatagramServerReceive receiveFunction,
 	void* handle,
-	struct SslContext* sslContext)
+	SslContext* sslContext)
 {
 	assert(port != NULL);
 	assert(receiveBufferSize != 0);
 	assert(receiveFunction != NULL);
 	assert(isNetworkInitialized() == true);
 
-	struct DatagramServer* server = malloc(
-		sizeof(struct DatagramServer));
+	DatagramServer* server = malloc(
+		sizeof(DatagramServer));
 
 	if (server == NULL)
 		return NULL;
@@ -92,7 +92,7 @@ struct DatagramServer* createDatagramServer(
 		return NULL;
 	}
 
-	struct SocketAddress* localAddress;
+	SocketAddress* localAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -120,7 +120,7 @@ struct DatagramServer* createDatagramServer(
 		return NULL;
 	}
 
-	struct Socket* receiveSocket = createSocket(
+	Socket* receiveSocket = createSocket(
 		DATAGRAM_SOCKET_TYPE,
 		addressFamily,
 		localAddress,
@@ -145,7 +145,7 @@ struct DatagramServer* createDatagramServer(
 	server->receiveSocket = receiveSocket;
 	server->threadRunning = true;
 
-	struct Thread* receiveThread = createThread(
+	Thread* receiveThread = createThread(
 		datagramServerReceiveHandler,
 		server);
 
@@ -162,7 +162,7 @@ struct DatagramServer* createDatagramServer(
 }
 
 void destroyDatagramServer(
-	struct DatagramServer* server)
+	DatagramServer* server)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -184,45 +184,45 @@ void destroyDatagramServer(
 }
 
 size_t getDatagramServerReceiveBufferSize(
-	const struct DatagramServer* server)
+	const DatagramServer* server)
 {
 	assert(server != NULL);
 	return server->receiveBufferSize;
 }
 
 DatagramServerReceive getDatagramServerReceiveFunction(
-	const struct DatagramServer* server)
+	const DatagramServer* server)
 {
 	assert(server != NULL);
 	return server->receiveFunction;
 }
 
 void* getDatagramServerHandle(
-	const struct DatagramServer* server)
+	const DatagramServer* server)
 {
 	assert(server != NULL);
 	return server->handle;
 }
 
-struct Socket* getDatagramServerSocket(
-	const struct DatagramServer* server)
+Socket* getDatagramServerSocket(
+	const DatagramServer* server)
 {
 	assert(server != NULL);
 	return server->receiveSocket;
 }
 
 bool isDatagramServerRunning(
-	const struct DatagramServer* server)
+	const DatagramServer* server)
 {
 	assert(server != NULL);
 	return server->threadRunning;
 }
 
 bool datagramServerSend(
-	struct DatagramServer* server,
+	DatagramServer* server,
 	const void* buffer,
 	size_t count,
-	const struct SocketAddress* address)
+	const SocketAddress* address)
 {
 	assert(server != NULL);
 	assert(buffer != NULL);

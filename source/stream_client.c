@@ -10,23 +10,23 @@ struct StreamClient
 	StreamClientReceive receiveFunction;
 	void* handle;
 	uint8_t* receiveBuffer;
-	struct Socket* receiveSocket;
-	struct Thread* receiveThread;
+	Socket* receiveSocket;
+	Thread* receiveThread;
 	volatile bool threadRunning;
 };
 
 static void streamClientReceiveHandler(
 	void* argument)
 {
-	struct StreamClient* client =
-		(struct StreamClient*)argument;
+	StreamClient* client =
+		(StreamClient*)argument;
 	StreamClientReceive receiveFunction =
 		client->receiveFunction;
 	size_t receiveBufferSize =
 		client->receiveBufferSize;
 	uint8_t* receiveBuffer =
 		client->receiveBuffer;
-	struct Socket* receiveSocket =
+	Socket* receiveSocket =
 		client->receiveSocket;
 
 	bool result;
@@ -58,19 +58,19 @@ static void streamClientReceiveHandler(
 	client->threadRunning = false;
 }
 
-struct StreamClient* createStreamClient(
+StreamClient* createStreamClient(
 	uint8_t addressFamily,
 	size_t receiveBufferSize,
 	StreamClientReceive receiveFunction,
 	void* handle,
-	struct SslContext* sslContext)
+	SslContext* sslContext)
 {
 	assert(receiveBufferSize != 0);
 	assert(receiveFunction != NULL);
 	assert(isNetworkInitialized() == true);
 
-	struct StreamClient* client = malloc(
-		sizeof(struct StreamClient));
+	StreamClient* client = malloc(
+		sizeof(StreamClient));
 
 	if (client == NULL)
 		return NULL;
@@ -84,7 +84,7 @@ struct StreamClient* createStreamClient(
 		return NULL;
 	}
 
-	struct SocketAddress* localAddress;
+	SocketAddress* localAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -112,7 +112,7 @@ struct StreamClient* createStreamClient(
 		return NULL;
 	}
 
-	struct Socket* receiveSocket = createSocket(
+	Socket* receiveSocket = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
 		localAddress,
@@ -137,7 +137,7 @@ struct StreamClient* createStreamClient(
 	client->receiveSocket = receiveSocket;
 	client->threadRunning = true;
 
-	struct Thread* receiveThread = createThread(
+	Thread* receiveThread = createThread(
 		streamClientReceiveHandler,
 		client);
 
@@ -154,7 +154,7 @@ struct StreamClient* createStreamClient(
 }
 
 void destroyStreamClient(
-	struct StreamClient* client)
+	StreamClient* client)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -176,49 +176,49 @@ void destroyStreamClient(
 }
 
 size_t getStreamClientReceiveBufferSize(
-	const struct StreamClient* client)
+	const StreamClient* client)
 {
 	assert(client != NULL);
 	return client->receiveBufferSize;
 }
 
 StreamClientReceive getStreamClientReceiveFunction(
-	const struct StreamClient* client)
+	const StreamClient* client)
 {
 	assert(client != NULL);
 	return client->receiveFunction;
 }
 
 void* getStreamClientHandle(
-	const struct StreamClient* client)
+	const StreamClient* client)
 {
 	assert(client != NULL);
 	return client->handle;
 }
 
-struct Socket* getStreamClientSocket(
-	const struct StreamClient* client)
+Socket* getStreamClientSocket(
+	const StreamClient* client)
 {
 	assert(client != NULL);
 	return client->receiveSocket;
 }
 
 bool isStreamClientRunning(
-	const struct StreamClient* client)
+	const StreamClient* client)
 {
 	assert(client != NULL);
 	return client->threadRunning;
 }
 
 bool connectStreamClient(
-	struct StreamClient* streamClient,
-	const struct SocketAddress* address,
+	StreamClient* streamClient,
+	const SocketAddress* address,
 	double timeoutTime)
 {
 	assert(streamClient != NULL);
 	assert(address != NULL);
 
-	struct Socket* socket = streamClient->receiveSocket;
+	Socket* socket = streamClient->receiveSocket;
 	double timeout = getCurrentClock() + timeoutTime;
 
 	while (getCurrentClock() < timeout)
@@ -251,7 +251,7 @@ CONNECT_SSL:
 }
 
 bool streamClientSend(
-	struct StreamClient* client,
+	StreamClient* client,
 	const void* buffer,
 	size_t count)
 {

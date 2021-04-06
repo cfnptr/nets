@@ -2,12 +2,12 @@
 #include "mpnw/socket.h"
 
 /* Datagram server instance handle (UDP) */
-struct DatagramServer;
+typedef struct DatagramServer DatagramServer;
 
 /* Datagram server datagram receive function */
 typedef void(*DatagramServerReceive)(
-	struct DatagramServer* datagramServer,
-	const struct SocketAddress* socketAddress,
+	DatagramServer* datagramServer,
+	const SocketAddress* socketAddress,
 	const uint8_t* receiveBuffer,
 	size_t byteCount);
 
@@ -22,55 +22,55 @@ typedef void(*DatagramServerReceive)(
  * functionArgument - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
-struct DatagramServer* createDatagramServer(
+DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
 	const char* port,
 	size_t receiveBufferSize,
 	DatagramServerReceive receiveFunction,
 	void* handle,
-	struct SslContext* sslContext);
+	SslContext* sslContext);
 
 /*
  * Destroys specified datagram server.
  * server - pointer to the datagram server or NULL.
  */
 void destroyDatagramServer(
-	struct DatagramServer* server);
+	DatagramServer* server);
 
 /*
  * Returns datagram server receive buffer size.
  * server - pointer to the valid datagram server.
  */
 size_t getDatagramServerReceiveBufferSize(
-	const struct DatagramServer* server);
+	const DatagramServer* server);
 
 /*
  * Returns datagram server receive function.
  * server - pointer to the valid datagram server.
  */
 DatagramServerReceive getDatagramServerReceiveFunction(
-	const struct DatagramServer* server);
+	const DatagramServer* server);
 
 /*
  * Returns datagram server handle.
  * server - pointer to the valid datagram server.
  */
 void* getDatagramServerHandle(
-	const struct DatagramServer* server);
+	const DatagramServer* server);
 
 /*
  * Returns datagram server socket.
  * server - pointer to the valid datagram server.
  */
-struct Socket* getDatagramServerSocket(
-	const struct DatagramServer* server);
+Socket* getDatagramServerSocket(
+	const DatagramServer* server);
 
 /*
  * Returns current datagram server running state.
  * server - pointer to the valid datagram server.
  */
 bool isDatagramServerRunning(
-	const struct DatagramServer* server);
+	const DatagramServer* server);
 
 /*
  * Sends message to the specified address.
@@ -82,7 +82,7 @@ bool isDatagramServerRunning(
  * address - destination datagram address.
  */
 bool datagramServerSend(
-	struct DatagramServer* server,
+	DatagramServer* server,
 	const void* buffer,
 	size_t count,
-	const struct SocketAddress* address);
+	const SocketAddress* address);

@@ -5,7 +5,7 @@
 
 struct StreamSession
 {
-	struct Socket* receiveSocket;
+	Socket* receiveSocket;
 	void* handle;
 	double lastMessageTime;
 	bool isSslAccepted;
@@ -21,17 +21,17 @@ struct StreamServer
 	StreamSessionDestroy destroyFunction;
 	void* handle;
 	uint8_t* receiveBuffer;
-	struct StreamSession* sessionBuffer;
-	struct Socket* acceptSocket;
-	struct Thread* receiveThread;
+	StreamSession* sessionBuffer;
+	Socket* acceptSocket;
+	Thread* receiveThread;
 	volatile bool threadsRunning;
 };
 
 static void streamServerReceiveHandler(
 	void* argument)
 {
-	struct StreamServer* server =
-		(struct StreamServer*)argument;
+	StreamServer* server =
+		(StreamServer*)argument;
 	size_t sessionBufferSize =
 		server->sessionBufferSize;
 	size_t receiveBufferSize =
@@ -46,9 +46,9 @@ static void streamServerReceiveHandler(
 		server->destroyFunction;
 	uint8_t* receiveBuffer =
 		server->receiveBuffer;
-	struct StreamSession* sessionBuffer =
+	StreamSession* sessionBuffer =
 		server->sessionBuffer;
-	struct Socket* serverSocket =
+	Socket* serverSocket =
 		server->acceptSocket;
 	bool isServerSocketSsl =
 		getSocketSslContext(serverSocket) != NULL;
@@ -62,9 +62,9 @@ static void streamServerReceiveHandler(
 
 		for (size_t i = 0; i < sessionCount; i++)
 		{
-			struct StreamSession* session =
+			StreamSession* session =
 				&sessionBuffer[i];
-			struct Socket* receiveSocket =
+			Socket* receiveSocket =
 				session->receiveSocket;
 
 			if (currentTime - session->lastMessageTime > receiveTimeoutTime)
@@ -124,7 +124,7 @@ static void streamServerReceiveHandler(
 			shouldSleep = false;
 		}
 
-		struct Socket* acceptedSocket = acceptSocket(
+		Socket* acceptedSocket = acceptSocket(
 			serverSocket);
 
 		if (acceptedSocket != NULL)
@@ -140,7 +140,7 @@ static void streamServerReceiveHandler(
 
 				if (result == true)
 				{
-					struct StreamSession streamSession;
+					StreamSession streamSession;
 					streamSession.receiveSocket = acceptedSocket;
 					streamSession.handle = session;
 					streamSession.lastMessageTime = getCurrentClock();
@@ -172,9 +172,9 @@ static void streamServerReceiveHandler(
 
 	for (size_t i = 0; i < sessionCount; i++)
 	{
-		struct StreamSession* session =
+		StreamSession* session =
 			&sessionBuffer[i];
-		struct Socket* receiveSocket =
+		Socket* receiveSocket =
 			session->receiveSocket;
 
 		destroyFunction(
@@ -187,7 +187,7 @@ static void streamServerReceiveHandler(
 	}
 }
 
-struct StreamServer* createStreamServer(
+StreamServer* createStreamServer(
 	uint8_t addressFamily,
 	const char* port,
 	size_t sessionBufferSize,
@@ -197,7 +197,7 @@ struct StreamServer* createStreamServer(
 	StreamSessionCreate createFunction,
 	StreamSessionDestroy destroyFunction,
 	void* handle,
-	struct SslContext* sslContext)
+	SslContext* sslContext)
 {
 	assert(port != NULL);
 	assert(sessionBufferSize != 0);
@@ -208,8 +208,8 @@ struct StreamServer* createStreamServer(
 	assert(destroyFunction != NULL);
 	assert(isNetworkInitialized() == true);
 
-	struct StreamServer* server = malloc(
-		sizeof(struct StreamServer));
+	StreamServer* server = malloc(
+		sizeof(StreamServer));
 
 	if (server == NULL)
 		return NULL;
@@ -223,8 +223,8 @@ struct StreamServer* createStreamServer(
 		return NULL;
 	}
 
-	struct StreamSession* sessionBuffer = malloc(
-		sessionBufferSize * sizeof(struct StreamSession));
+	StreamSession* sessionBuffer = malloc(
+		sessionBufferSize * sizeof(StreamSession));
 
 	if (sessionBuffer == NULL)
 	{
@@ -233,7 +233,7 @@ struct StreamServer* createStreamServer(
 		return NULL;
 	}
 
-	struct SocketAddress* localAddress;
+	SocketAddress* localAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -263,7 +263,7 @@ struct StreamServer* createStreamServer(
 		return NULL;
 	}
 
-	struct Socket* acceptSocket = createSocket(
+	Socket* acceptSocket = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
 		localAddress,
@@ -294,7 +294,7 @@ struct StreamServer* createStreamServer(
 	server->acceptSocket = acceptSocket;
 	server->threadsRunning = true;
 
-	struct Thread* receiveThread = createThread(
+	Thread* receiveThread = createThread(
 		streamServerReceiveHandler,
 		server);
 
@@ -312,7 +312,7 @@ struct StreamServer* createStreamServer(
 }
 
 void destroyStreamServer(
-	struct StreamServer* server)
+	StreamServer* server)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -334,77 +334,77 @@ void destroyStreamServer(
 }
 
 size_t getStreamServerSessionBufferSize(
-	const struct StreamServer* server)
+	const StreamServer* server)
 {
 	assert(server != NULL);
 	return server->sessionBufferSize;
 }
 
 StreamSessionReceive getStreamServerReceiveFunction(
-	const struct StreamServer* server)
+	const StreamServer* server)
 {
 	assert(server != NULL);
 	return server->receiveFunction;
 }
 
 StreamSessionCreate getStreamServerCreateFunction(
-	const struct StreamServer* server)
+	const StreamServer* server)
 {
 	assert(server != NULL);
 	return server->createFunction;
 }
 
 StreamSessionDestroy getStreamServerDestroyFunction(
-	const struct StreamServer* server)
+	const StreamServer* server)
 {
 	assert(server != NULL);
 	return server->destroyFunction;
 }
 
 size_t getStreamServerReceiveBufferSize(
-	const struct StreamServer* server)
+	const StreamServer* server)
 {
 	assert(server != NULL);
 	return server->receiveBufferSize;
 }
 
 double getStreamServerReceiveTimeoutTime(
-	const struct StreamServer* server)
+	const StreamServer* server)
 {
 	assert(server != NULL);
 	return server->receiveTimeoutTime;
 }
 
 void* getStreamServerHandle(
-	const struct StreamServer* server)
+	const StreamServer* server)
 {
 	assert(server != NULL);
 	return server->handle;
 }
 
-struct Socket* getStreamServerSocket(
-	const struct StreamServer* server)
+Socket* getStreamServerSocket(
+	const StreamServer* server)
 {
 	assert(server != NULL);
 	return server->acceptSocket;
 }
 
-struct Socket* getStreamSessionSocket(
-	const struct StreamSession* session)
+Socket* getStreamSessionSocket(
+	const StreamSession* session)
 {
 	assert(session != NULL);
 	return session->receiveSocket;
 }
 
 void* getStreamSessionHandle(
-	const struct StreamSession* session)
+	const StreamSession* session)
 {
 	assert(session != NULL);
 	return session->handle;
 }
 
 bool streamSessionSend(
-	struct StreamSession* streamSession,
+	StreamSession* streamSession,
 	const void* buffer,
 	size_t count)
 {

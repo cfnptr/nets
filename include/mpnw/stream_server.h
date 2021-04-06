@@ -5,27 +5,27 @@
 #include <string.h>
 
 /* Stream server instance handle (TCP) */
-struct StreamServer;
+typedef struct StreamServer StreamServer;
 /* Stream server session instance handle (TCP) */
-struct StreamSession;
+typedef struct StreamSession StreamSession;
 
 /* Stream session message receive function */
 typedef bool(*StreamSessionReceive)(
-	struct StreamServer* streamServer,
-	struct StreamSession* streamSession,
+	StreamServer* streamServer,
+	StreamSession* streamSession,
 	const uint8_t* receiveBuffer,
 	size_t byteCount);
 
 /* Stream session create function */
 typedef bool(*StreamSessionCreate)(
-	struct StreamServer* streamServer,
-	struct Socket* streamSocket,
+	StreamServer* streamServer,
+	Socket* streamSocket,
 	void** sessionHandle);
 
 /* Stream session destroy function */
 typedef void(*StreamSessionDestroy)(
-	struct StreamServer* streamServer,
-	struct StreamSession* streamSession);
+	StreamServer* streamServer,
+	StreamSession* streamSession);
 
 /*
  * Creates a new stream server (TCP).
@@ -42,7 +42,7 @@ typedef void(*StreamSessionDestroy)(
  * functionArgument - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
-struct StreamServer* createStreamServer(
+StreamServer* createStreamServer(
 	uint8_t addressFamily,
 	const char* port,
 	size_t sessionBufferSize,
@@ -52,77 +52,76 @@ struct StreamServer* createStreamServer(
 	StreamSessionCreate createFunction,
 	StreamSessionDestroy destroyFunction,
 	void* functionArgument,
-	struct SslContext* sslContext);
+	SslContext* sslContext);
 
 /*
  * Destroys specified stream server.
  * server - pointer to the stream server or NULL.
  */
-void destroyStreamServer(
-	struct StreamServer* server);
+void destroyStreamServer(StreamServer* server);
 
 /*
  * Returns stream server receive buffer size.
  * server - pointer to the valid stream server.
  */
 size_t getStreamServerSessionBufferSize(
-	const struct StreamServer* server);
+	const StreamServer* server);
 
 /*
  * Returns stream server receive function.
  * server - pointer to the valid stream server.
  */
 StreamSessionReceive getStreamServerReceiveFunction(
-	const struct StreamServer* server);
+	const StreamServer* server);
 
 /*
  * Returns stream server create function.
  * server - pointer to the valid stream server.
  */
 StreamSessionCreate getStreamServerCreateFunction(
-	const struct StreamServer* server);
+	const StreamServer* server);
 
 /*
  * Returns stream server destroy function.
  * server - pointer to the valid stream server.
  */
 StreamSessionDestroy getStreamServerDestroyFunction(
-	const struct StreamServer* server);
+	const StreamServer* server);
 
 /*
  * Returns stream server receive timeout time (s).
  * server - pointer to the valid stream server.
  */
 double getStreamServerReceiveTimeoutTime(
-	const struct StreamServer* server);
+	const StreamServer* server);
 
 /*
  * Returns stream server handle.
  * server - pointer to the valid stream server.
  */
 void* getStreamServerHandle(
-	const struct StreamServer* server);
+	const StreamServer* server);
 
 /*
  * Returns stream server socket.
  * server - pointer to the valid stream server.
  */
-struct Socket* getStreamServerSocket(
-	const struct StreamServer* server);
+Socket* getStreamServerSocket(
+	const StreamServer* server);
 
 /*
  * Returns stream server session socket.
  * session - pointer to the valid stream server session.
  */
-struct Socket* getStreamSessionSocket(
-	const struct StreamSession* session);
+Socket* getStreamSessionSocket(
+	const StreamSession* session);
 
 /*
  * Returns stream server session handle.
  * session - pointer to the valid stream server session.
  */
 void* getStreamSessionHandle(
-	const struct StreamSession* session);
+	const StreamSession* session);
 
 /*
  * Sends datagram to the specified session.
@@ -133,7 +132,7 @@ void* getStreamSessionHandle(
  * count - data buffer send byte count.
  */
 bool streamSessionSend(
-	struct StreamSession* streamSession,
+	StreamSession* streamSession,
 	const void* buffer,
 	size_t count);
 

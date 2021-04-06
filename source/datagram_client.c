@@ -10,23 +10,23 @@ struct DatagramClient
 	DatagramClientReceive receiveFunction;
 	void* handle;
 	uint8_t* receiveBuffer;
-	struct Socket* receiveSocket;
-	struct Thread* receiveThread;
+	Socket* receiveSocket;
+	Thread* receiveThread;
 	volatile bool threadRunning;
 };
 
 static void datagramClientReceiveHandler(
 	void* argument)
 {
-	struct DatagramClient* client =
-		(struct DatagramClient*)argument;
+	DatagramClient* client =
+		(DatagramClient*)argument;
 	DatagramClientReceive receiveFunction =
 		client->receiveFunction;
 	size_t receiveBufferSize =
 		client->receiveBufferSize;
 	uint8_t* receiveBuffer =
 		client->receiveBuffer;
-	struct Socket* receiveSocket =
+	Socket* receiveSocket =
 		client->receiveSocket;
 
 	bool result;
@@ -55,20 +55,20 @@ static void datagramClientReceiveHandler(
 	client->threadRunning = false;
 }
 
-struct DatagramClient* createDatagramClient(
-	const struct SocketAddress* remoteAddress,
+DatagramClient* createDatagramClient(
+	const SocketAddress* remoteAddress,
 	size_t receiveBufferSize,
 	DatagramClientReceive receiveFunction,
 	void* handle,
-	struct SslContext* sslContext)
+	SslContext* sslContext)
 {
 	assert(remoteAddress != NULL);
 	assert(receiveBufferSize != 0);
 	assert(receiveFunction != NULL);
 	assert(isNetworkInitialized() == true);
 
-	struct DatagramClient* client = malloc(
-		sizeof(struct DatagramClient));
+	DatagramClient* client = malloc(
+		sizeof(DatagramClient));
 
 	if (client == NULL)
 		return NULL;
@@ -85,7 +85,7 @@ struct DatagramClient* createDatagramClient(
 	uint8_t addressFamily = getSocketAddressFamily(
 		remoteAddress);
 
-	struct SocketAddress* localAddress;
+	SocketAddress* localAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -113,7 +113,7 @@ struct DatagramClient* createDatagramClient(
 		return NULL;
 	}
 
-	struct Socket* receiveSocket = createSocket(
+	Socket* receiveSocket = createSocket(
 		DATAGRAM_SOCKET_TYPE,
 		addressFamily,
 		localAddress,
@@ -150,7 +150,7 @@ struct DatagramClient* createDatagramClient(
 	client->receiveSocket = receiveSocket;
 	client->threadRunning = true;
 
-	struct Thread* receiveThread = createThread(
+	Thread* receiveThread = createThread(
 		datagramClientReceiveHandler,
 		client);
 
@@ -167,7 +167,7 @@ struct DatagramClient* createDatagramClient(
 }
 
 void destroyDatagramClient(
-	struct DatagramClient* client)
+	DatagramClient* client)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -189,42 +189,42 @@ void destroyDatagramClient(
 }
 
 size_t getDatagramClientReceiveBufferSize(
-	const struct DatagramClient* client)
+	const DatagramClient* client)
 {
 	assert(client != NULL);
 	return client->receiveBufferSize;
 }
 
 DatagramClientReceive getDatagramClientReceiveFunction(
-	const struct DatagramClient* client)
+	const DatagramClient* client)
 {
 	assert(client != NULL);
 	return client->receiveFunction;
 }
 
 void* getDatagramClientHandle(
-	const struct DatagramClient* client)
+	const DatagramClient* client)
 {
 	assert(client != NULL);
 	return client->handle;
 }
 
-struct Socket* getDatagramClientSocket(
-	const struct DatagramClient* client)
+Socket* getDatagramClientSocket(
+	const DatagramClient* client)
 {
 	assert(client != NULL);
 	return client->receiveSocket;
 }
 
 bool isDatagramClientRunning(
-	const struct DatagramClient* client)
+	const DatagramClient* client)
 {
 	assert(client != NULL);
 	return client->threadRunning;
 }
 
 bool datagramClientSend(
-	struct DatagramClient* client,
+	DatagramClient* client,
 	const void* buffer,
 	size_t count)
 {

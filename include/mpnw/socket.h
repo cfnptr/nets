@@ -59,38 +59,38 @@
 #define MAX_NUMERIC_SERVICE_LENGTH 6
 
 /* Socket instance handle */
-struct Socket;
+typedef struct Socket Socket;
 /* Socket address instance handle */
-struct SocketAddress;
+typedef struct SocketAddress SocketAddress;
 /* Secure socket layer context handle */
-struct SslContext;
+typedef struct SslContext SslContext;
 
 /* Socket internet protocol address family */
-enum AddressFamily
+typedef enum ADDRESS_FAMILY
 {
 	UNKNOWN_ADDRESS_FAMILY = 0,
 	IP_V4_ADDRESS_FAMILY = 1,
 	IP_V6_ADDRESS_FAMILY = 2,
-};
+} ADDRESS_FAMILY;
 
 /* Socket communication type */
-enum SocketType
+typedef enum SOCKET_TYPE
 {
 	UNKNOWN_SOCKET_TYPE = 0,
 	STREAM_SOCKET_TYPE = 1,
 	DATAGRAM_SOCKET_TYPE = 2,
-};
+} SOCKET_TYPE;
 
 /* Socket connection shutdown */
-enum SocketShutdown
+typedef enum SOCKET_SHUTDOWN
 {
 	SHUTDOWN_RECEIVE_ONLY = 0,
 	SHUTDOWN_SEND_ONLY = 1,
 	SHUTDOWN_RECEIVE_SEND = 2,
-};
+} SOCKET_SHUTDOWN;
 
 /* Socket security protocol */
-enum SecurityProtocol
+typedef enum SECURITY_PROTOCOL
 {
 	UNKNOWN_SECURITY_PROTOCOL = 0,
 	TLS_1_3_SECURITY_PROTOCOL = 1,
@@ -99,7 +99,7 @@ enum SecurityProtocol
 	DTLS_1_2_SECURITY_PROTOCOL = 4,
 	TLS_SECURITY_PROTOCOL = TLS_1_3_SECURITY_PROTOCOL,
 	DTLS_SECURITY_PROTOCOL = DTLS_1_3_SECURITY_PROTOCOL,
-};
+} SECURITY_PROTOCOL;
 
 /* Returns true if network was initialized. */
 bool initializeNetwork();
@@ -119,41 +119,37 @@ bool isNetworkInitialized();
  * blocking - socket blocking mode.
  * sslContext - pointer to the SSL context or NULL.
  */
-struct Socket* createSocket(
+Socket* createSocket(
 	uint8_t type,
 	uint8_t family,
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	bool listening,
 	bool blocking,
-	struct SslContext* sslContext);
+	SslContext* sslContext);
 
 /*
  * Destroys specified socket.
  * socket - pointer to the socket or NULL.
  */
-void destroySocket(
-	struct Socket* socket);
+void destroySocket(Socket* socket);
 
 /*
  * Returns socket connection type.
  * socket - pointer to the valid socket.
  */
-uint8_t getSocketType(
-	const struct Socket* socket);
+uint8_t getSocketType(const Socket* socket);
 
 /*
  * Returns true if socket is in listening state.
  * socket - pointer to the valid socket.
  */
-bool isSocketListening(
-	const struct Socket* socket);
+bool isSocketListening(const Socket* socket);
 
 /*
  * Returns true if socket blocking mode.
  * socket - pointer to the valid socket.
  */
-bool isSocketBlocking(
-	const struct Socket* socket);
+bool isSocketBlocking(const Socket* socket);
 
 /*
  * Returns local socket address.
@@ -163,8 +159,8 @@ bool isSocketBlocking(
  * address - pointer to the valid socket address.
  */
 bool getSocketLocalAddress(
-	const struct Socket* socket,
-	struct SocketAddress* address);
+	const Socket* socket,
+	SocketAddress* address);
 
 /*
  * Returns remote socket address.
@@ -174,36 +170,33 @@ bool getSocketLocalAddress(
  * address - pointer to the valid socket address.
  */
 bool getSocketRemoteAddress(
-	const struct Socket* socket,
-	struct SocketAddress* address);
+	const Socket* socket,
+	SocketAddress* address);
 
 /*
  * Returns true if socket uses SSL.
  * socket - pointer to the valid socket.
  */
-bool isSocketSsl(
-	const struct Socket* socket);
+bool isSocketSsl(const Socket* socket);
 
 /*
  * Returns socket SSL context.
  * socket - pointer to the valid socket.
  */
-struct SslContext* getSocketSslContext(
-	const struct Socket* socket);
+SslContext* getSocketSslContext(const Socket* socket);
 
 /*
  * Returns true if socket in no delay mode.
  * socket - pointer to the valid socket.
  */
-bool isSocketNoDelay(
-	const struct Socket* socket);
+bool isSocketNoDelay(const Socket* socket);
 
 /*
  * Sets socket no delay mode.
  * socket - pointer to the valid socket.
  */
 void setSocketNoDelay(
-	struct Socket* socket,
+	Socket* socket,
 	bool value);
 
 /*
@@ -213,8 +206,7 @@ void setSocketNoDelay(
  * socket - pointer to the valid socket.
  * timeoutTime - accept attempt timeout time.
  */
-struct Socket* acceptSocket(
-	struct Socket* socket);
+Socket* acceptSocket(Socket* socket);
 
 /*
  * Accepts socket SSL connection.
@@ -222,8 +214,7 @@ struct Socket* acceptSocket(
  *
  * socket - pointer to the valid socket.
  */
-bool acceptSslSocket(
-	struct Socket* socket);
+bool acceptSslSocket(Socket* socket);
 
 /*
  * Connects socket to the specified address.
@@ -233,8 +224,8 @@ bool acceptSslSocket(
  * address - pointer to the valid socket address.
  */
 bool connectSocket(
-	struct Socket* socket,
-	const struct SocketAddress* address);
+	Socket* socket,
+	const SocketAddress* address);
 
 /*
  * Connects socket SSL.
@@ -242,8 +233,7 @@ bool connectSocket(
  *
  * socket - pointer to the valid socket.
  */
-bool connectSslSocket(
-	struct Socket* socket);
+bool connectSslSocket(Socket* socket);
 
 /*
  * Shutdowns part of the full-duplex connection.
@@ -252,7 +242,7 @@ bool connectSslSocket(
  * type - socket connection shutdown.
  */
 bool shutdownSocket(
-	struct Socket* socket,
+	Socket* socket,
 	uint8_t type);
 
 /*
@@ -265,7 +255,7 @@ bool shutdownSocket(
  * count - pointer to the valid receive byte count.
  */
 bool socketReceive(
-	struct Socket* socket,
+	Socket* socket,
 	void* buffer,
 	size_t size,
 	size_t* count);
@@ -279,7 +269,7 @@ bool socketReceive(
  * count - message byte count to send.
  */
 bool socketSend(
-	struct Socket* socket,
+	Socket* socket,
 	const void* buffer,
 	size_t count);
 
@@ -294,10 +284,10 @@ bool socketSend(
  * count - pointer to the valid receive byte count.
  */
 bool socketReceiveFrom(
-	struct Socket* socket,
+	Socket* socket,
 	void* buffer,
 	size_t size,
-	struct SocketAddress* address,
+	SocketAddress* address,
 	size_t* count);
 
 /*
@@ -310,10 +300,10 @@ bool socketReceiveFrom(
  * address - pointer to the valid socket address.
  */
 bool socketSendTo(
-	struct Socket* socket,
+	Socket* socket,
 	const void* buffer,
 	size_t count,
-	const struct SocketAddress* address);
+	const SocketAddress* address);
 
 /*
  * Creates a new socket address.
@@ -322,7 +312,7 @@ bool socketSendTo(
  * host - pointer to the valid host name.
  * service - pointer to the valid service name.
  */
-struct SocketAddress* createSocketAddress(
+SocketAddress* createSocketAddress(
 	const char* host,
 	const char* service);
 
@@ -330,7 +320,7 @@ struct SocketAddress* createSocketAddress(
  * Creates a new empty socket address.
  * Returns address on success, otherwise NULL.
  */
-struct SocketAddress* createEmptySocketAddress();
+SocketAddress* createEmptySocketAddress();
 
 /*
  * Resolves a new socket addresses.
@@ -341,7 +331,7 @@ struct SocketAddress* createEmptySocketAddress();
  * family - socket address family.
  * type - socket connection type.
  */
-struct SocketAddress* resolveSocketAddress(
+SocketAddress* resolveSocketAddress(
 	const char* host,
 	const char* service,
 	uint8_t family,
@@ -351,8 +341,7 @@ struct SocketAddress* resolveSocketAddress(
  * Destroys specified socket endpoint address.
  * address - pointer to the socket address or NULL.
  */
-void destroySocketAddress(
-	struct SocketAddress* address);
+void destroySocketAddress(SocketAddress* address);
 
 /*
  * Creates a new socket address copy.
@@ -360,8 +349,7 @@ void destroySocketAddress(
  *
  * address - pointer to the valid socket address.
  */
-struct SocketAddress* copySocketAddress(
-	const struct SocketAddress* address);
+SocketAddress* copySocketAddress(const SocketAddress* address);
 
 /*
  * Compares two addresses.
@@ -370,15 +358,14 @@ struct SocketAddress* copySocketAddress(
  * b - pointer to the valid socket address.
  */
 int compareSocketAddress(
-	const struct SocketAddress* a,
-	const struct SocketAddress* b);
+	const SocketAddress* a,
+	const SocketAddress* b);
 
 /*
  * Returns socket address family.
  * address - pointer to the valid socket address.
  */
-uint8_t getSocketAddressFamily(
-	const struct SocketAddress* address);
+uint8_t getSocketAddressFamily(const SocketAddress* address);
 
 /*
  * Sets socket address family.
@@ -387,22 +374,20 @@ uint8_t getSocketAddressFamily(
  * addressFamily - socket address family.
  */
 void setSocketAddressFamily(
-	struct SocketAddress* address,
+	SocketAddress* address,
 	uint8_t addressFamily);
 
 /*
  * Returns socket address family IP byte array size.
  * addressFamily - socket address family.
  */
-size_t getSocketAddressFamilyIpSize(
-	uint8_t addressFamily);
+size_t getSocketAddressFamilyIpSize(uint8_t addressFamily);
 
 /*
  * Returns socket IP address byte array size.
  * address - pointer to the valid socket address.
  */
-size_t getSocketAddressIpSize(
-	const struct SocketAddress* address);
+size_t getSocketAddressIpSize(const SocketAddress* address);
 
 /*
  * Returns socket IP address byte array.
@@ -412,7 +397,7 @@ size_t getSocketAddressIpSize(
  * ip - pointer to the valid IP byte array.
  */
 bool getSocketAddressIP(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	uint8_t* ip);
 
 /*
@@ -424,7 +409,7 @@ bool getSocketAddressIP(
  * size - IP byte array size.
  */
 bool setSocketAddressIP(
-	struct SocketAddress* address,
+	SocketAddress* address,
 	const uint8_t* ip,
 	size_t size);
 
@@ -436,7 +421,7 @@ bool setSocketAddressIP(
  * port - pointer to the valid socket address port.
  */
 bool getSocketAddressPort(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	uint16_t* port);
 
 /*
@@ -447,7 +432,7 @@ bool getSocketAddressPort(
  * port - socket address port.
  */
 bool setSocketAddressPort(
-	struct SocketAddress* address,
+	SocketAddress* address,
 	uint16_t port);
 
 /*
@@ -459,7 +444,7 @@ bool setSocketAddressPort(
  * length - host name string length.
  */
 bool getSocketAddressHost(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	char* host,
 	size_t length);
 
@@ -472,7 +457,7 @@ bool getSocketAddressHost(
  * length - service name string length.
  */
 bool getSocketAddressService(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	char* service,
 	size_t length);
 
@@ -487,7 +472,7 @@ bool getSocketAddressService(
  * serviceLength - service name string length.
  */
 bool getSocketAddressHostService(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	char* host,
 	size_t hostLength,
 	char* service,
@@ -500,7 +485,7 @@ bool getSocketAddressHostService(
  * socketType - target socket type value.
  * certificateVerifyPath - valid trusted certificates location.
  */
-struct SslContext* createSslContext(
+SslContext* createSslContext(
 	uint8_t securityProtocol,
 	const char* certificateVerifyPath);
 
@@ -512,7 +497,7 @@ struct SslContext* createSslContext(
  * certificateFilePath - valid certificate file path string.
  * privateKeyFilePath - valid private key file path string.
  */
-struct SslContext* createSslContextFromFile(
+SslContext* createSslContextFromFile(
 	uint8_t securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,
@@ -522,12 +507,11 @@ struct SslContext* createSslContextFromFile(
  * Destroys specified SSL context.
  * context - pointer to the SSL context or NULL.
  */
-void destroySslContext(
-	struct SslContext* context);
+void destroySslContext(SslContext* context);
 
 /*
  * Destroys SSL context security protocol.
  * context - pointer to the valid SSL context.
  */
 uint8_t getSslContextSecurityProtocol(
-	const struct SslContext* context);
+	const SslContext* context);

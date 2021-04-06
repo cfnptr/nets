@@ -47,7 +47,7 @@ struct Socket
 	bool blocking;
 
 #if MPNW_HAS_OPENSSL
-	struct SslContext* sslContext;
+	SslContext* sslContext;
 	SSL* ssl;
 #endif
 };
@@ -113,13 +113,13 @@ bool isNetworkInitialized()
 	return networkInitialized;
 }
 
-struct Socket* createSocket(
+Socket* createSocket(
 	uint8_t _type,
 	uint8_t _family,
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	bool listening,
 	bool blocking,
-	struct SslContext* sslContext)
+	SslContext* sslContext)
 {
 	assert(networkInitialized == true);
 
@@ -127,8 +127,7 @@ struct Socket* createSocket(
 	assert(sslContext == NULL);
 #endif
 
-	struct Socket* _socket = malloc(
-		sizeof(struct Socket));
+	Socket* _socket = malloc(sizeof(Socket));
 
 	if (_socket == NULL)
 		return NULL;
@@ -284,8 +283,7 @@ struct Socket* createSocket(
 	return _socket;
 }
 
-void destroySocket(
-	struct Socket* socket)
+void destroySocket(Socket* socket)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -306,8 +304,7 @@ void destroySocket(
 	free(socket);
 }
 
-uint8_t getSocketType(
-	const struct Socket* socket)
+uint8_t getSocketType(const Socket* socket)
 {
 	assert(socket != NULL);
 
@@ -334,23 +331,21 @@ uint8_t getSocketType(
 		return UNKNOWN_SOCKET_TYPE;
 }
 
-bool isSocketListening(
-	const struct Socket* socket)
+bool isSocketListening(const Socket* socket)
 {
 	assert(socket != NULL);
 	return socket->listening;
 }
 
-bool isSocketBlocking(
-	const struct Socket* socket)
+bool isSocketBlocking(const Socket* socket)
 {
 	assert(socket != NULL);
 	return socket->blocking;
 }
 
 bool getSocketLocalAddress(
-	const struct Socket* socket,
-	struct SocketAddress* address)
+	const Socket* socket,
+	SocketAddress* address)
 {
 	assert(socket != NULL);
 	assert(address != NULL);
@@ -382,8 +377,8 @@ bool getSocketLocalAddress(
 }
 
 bool getSocketRemoteAddress(
-	const struct Socket* socket,
-	struct SocketAddress* address)
+	const Socket* socket,
+	SocketAddress* address)
 {
 	assert(socket != NULL);
 	assert(address != NULL);
@@ -414,8 +409,7 @@ bool getSocketRemoteAddress(
 	}
 }
 
-bool isSocketSsl(
-	const struct Socket* socket)
+bool isSocketSsl(const Socket* socket)
 {
 #if MPNW_HAS_OPENSSL
 	assert(socket != NULL);
@@ -425,8 +419,7 @@ bool isSocketSsl(
 #endif
 }
 
-struct SslContext* getSocketSslContext(
-	const struct Socket* socket)
+struct SslContext* getSocketSslContext(const Socket* socket)
 {
 #if MPNW_HAS_OPENSSL
 	assert(socket != NULL);
@@ -436,8 +429,7 @@ struct SslContext* getSocketSslContext(
 #endif
 }
 
-bool isSocketNoDelay(
-	const struct Socket* socket)
+bool isSocketNoDelay(const Socket* socket)
 {
 	assert(socket != NULL);
 	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
@@ -468,7 +460,7 @@ bool isSocketNoDelay(
 }
 
 void setSocketNoDelay(
-	struct Socket* socket,
+	Socket* socket,
 	bool _value)
 {
 	assert(socket != NULL);
@@ -497,15 +489,13 @@ void setSocketNoDelay(
 		abort();
 }
 
-struct Socket* acceptSocket(
-	struct Socket* socket)
+Socket* acceptSocket(Socket* socket)
 {
 	assert(socket != NULL);
 	assert(isSocketListening(socket) == true);
 	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
 
-	struct Socket* acceptedSocket = malloc(
-		sizeof(struct Socket));
+	Socket* acceptedSocket = malloc(sizeof(Socket));
 
 	if (acceptedSocket == NULL)
 		return NULL;
@@ -599,8 +589,7 @@ struct Socket* acceptSocket(
 	return acceptedSocket;
 }
 
-bool acceptSslSocket(
-	struct Socket* socket)
+bool acceptSslSocket(Socket* socket)
 {
 	assert(socket != NULL);
 
@@ -615,8 +604,8 @@ bool acceptSslSocket(
 }
 
 bool connectSocket(
-	struct Socket* socket,
-	const struct SocketAddress* address)
+	Socket* socket,
+	const SocketAddress* address)
 {
 	assert(socket != NULL);
 	assert(address != NULL);
@@ -640,8 +629,7 @@ bool connectSocket(
 	return result == 0 || errno == EISCONN;
 }
 
-bool connectSslSocket(
-	struct Socket* socket)
+bool connectSslSocket(Socket* socket)
 {
 	assert(socket != NULL);
 
@@ -656,7 +644,7 @@ bool connectSslSocket(
 }
 
 bool shutdownSocket(
-	struct Socket* socket,
+	Socket* socket,
 	uint8_t _type)
 {
 	assert(socket != NULL);
@@ -691,7 +679,7 @@ bool shutdownSocket(
 }
 
 bool socketReceive(
-	struct Socket* socket,
+	Socket* socket,
 	void* buffer,
 	size_t size,
 	size_t* count)
@@ -730,7 +718,7 @@ bool socketReceive(
 }
 
 bool socketSend(
-	struct Socket* socket,
+	Socket* socket,
 	const void* buffer,
 	size_t count)
 {
@@ -755,10 +743,10 @@ bool socketSend(
 }
 
 bool socketReceiveFrom(
-	struct Socket* socket,
+	Socket* socket,
 	void* buffer,
 	size_t size,
-	struct SocketAddress* address,
+	SocketAddress* address,
 	size_t* _count)
 {
 	assert(socket != NULL);
@@ -797,10 +785,10 @@ bool socketReceiveFrom(
 }
 
 bool socketSendTo(
-	struct Socket* socket,
+	Socket* socket,
 	const void* buffer,
 	size_t count,
-	const struct SocketAddress* address)
+	const SocketAddress* address)
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
@@ -828,7 +816,7 @@ bool socketSendTo(
 		length) == count;
 }
 
-struct SocketAddress* createSocketAddress(
+SocketAddress* createSocketAddress(
 	const char* host,
 	const char* service)
 {
@@ -836,8 +824,8 @@ struct SocketAddress* createSocketAddress(
 	assert(service != NULL);
 	assert(networkInitialized == true);
 
-	struct SocketAddress* address = malloc(
-		sizeof(struct SocketAddress));
+	SocketAddress* address = malloc(
+		sizeof(SocketAddress));
 
 	if (address == NULL)
 		return NULL;
@@ -880,10 +868,10 @@ struct SocketAddress* createSocketAddress(
 	return address;
 }
 
-struct SocketAddress* createEmptySocketAddress()
+SocketAddress* createEmptySocketAddress()
 {
-	struct SocketAddress* address = malloc(
-		sizeof(struct SocketAddress));
+	SocketAddress* address = malloc(
+		sizeof(SocketAddress));
 
 	if (address == NULL)
 		return NULL;
@@ -896,7 +884,7 @@ struct SocketAddress* createEmptySocketAddress()
 	return address;
 }
 
-struct SocketAddress* resolveSocketAddress(
+SocketAddress* resolveSocketAddress(
 	const char* host,
 	const char* service,
 	uint8_t family,
@@ -906,8 +894,8 @@ struct SocketAddress* resolveSocketAddress(
 	assert(service != NULL);
 	assert(networkInitialized == true);
 
-	struct SocketAddress* address = malloc(
-		sizeof(struct SocketAddress));
+	SocketAddress* address = malloc(
+		sizeof(SocketAddress));
 
 	if (address == NULL)
 		return NULL;
@@ -981,18 +969,18 @@ struct SocketAddress* resolveSocketAddress(
 }
 
 void destroySocketAddress(
-	struct SocketAddress* address)
+	SocketAddress* address)
 {
 	free(address);
 }
 
-struct SocketAddress* copySocketAddress(
-	const struct SocketAddress* address)
+SocketAddress* copySocketAddress(
+	const SocketAddress* address)
 {
 	assert(address != NULL);
 
-	struct SocketAddress* _address = malloc(
-		sizeof(struct SocketAddress));
+	SocketAddress* _address = malloc(
+		sizeof(SocketAddress));
 
 	if (_address == NULL)
 		return NULL;
@@ -1006,8 +994,8 @@ struct SocketAddress* copySocketAddress(
 }
 
 int compareSocketAddress(
-	const struct SocketAddress* a,
-	const struct SocketAddress* b)
+	const SocketAddress* a,
+	const SocketAddress* b)
 {
 	assert(a != NULL);
 	assert(b != NULL);
@@ -1036,7 +1024,7 @@ int compareSocketAddress(
 }
 
 uint8_t getSocketAddressFamily(
-	const struct SocketAddress* address)
+	const SocketAddress* address)
 {
 	assert(address != NULL);
 
@@ -1051,7 +1039,7 @@ uint8_t getSocketAddressFamily(
 }
 
 void setSocketAddressFamily(
-	struct SocketAddress* address,
+	SocketAddress* address,
 	uint8_t addressFamily)
 {
 	assert(address != NULL);
@@ -1076,7 +1064,7 @@ size_t getSocketAddressFamilyIpSize(
 }
 
 size_t getSocketAddressIpSize(
-	const struct SocketAddress* address)
+	const SocketAddress* address)
 {
 	assert(address != NULL);
 
@@ -1091,7 +1079,7 @@ size_t getSocketAddressIpSize(
 }
 
 bool getSocketAddressIP(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	uint8_t* ip)
 {
 	assert(address != NULL);
@@ -1122,7 +1110,7 @@ bool getSocketAddressIP(
 }
 
 bool setSocketAddressIP(
-	struct SocketAddress* address,
+	SocketAddress* address,
 	const uint8_t* ip,
 	size_t size)
 {
@@ -1154,7 +1142,7 @@ bool setSocketAddressIP(
 }
 
 bool getSocketAddressPort(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	uint16_t* port)
 {
 	assert(address != NULL);
@@ -1211,7 +1199,7 @@ bool setSocketAddressPort(
 }
 
 bool getSocketAddressHost(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	char* host,
 	size_t length)
 {
@@ -1232,7 +1220,7 @@ bool getSocketAddressHost(
 }
 
 bool getSocketAddressService(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	char* service,
 	size_t length)
 {
@@ -1253,7 +1241,7 @@ bool getSocketAddressService(
 }
 
 bool getSocketAddressHostService(
-	const struct SocketAddress* address,
+	const SocketAddress* address,
 	char* host,
 	size_t hostLength,
 	char* service,
@@ -1279,15 +1267,15 @@ bool getSocketAddressHostService(
 		flags) == 0;
 }
 
-struct SslContext* createSslContext(
+SslContext* createSslContext(
 	uint8_t securityProtocol,
 	const char* certificateVerifyPath)
 {
 #if MPNW_HAS_OPENSSL
 	assert(networkInitialized == true);
 
-	struct SslContext* context = malloc(
-		sizeof(struct SslContext));
+	SslContext* context = malloc(
+		sizeof(SslContext));
 
 	if (context == NULL)
 		return NULL;
@@ -1348,7 +1336,7 @@ struct SslContext* createSslContext(
 #endif
 }
 
-struct SslContext* createSslContextFromFile(
+SslContext* createSslContextFromFile(
 	uint8_t securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,
@@ -1359,8 +1347,8 @@ struct SslContext* createSslContextFromFile(
 	assert(certificateFilePath != NULL);
 	assert(privateKeyFilePath != NULL);
 
-	struct SslContext* context = malloc(
-		sizeof(struct SslContext));
+	SslContext* context = malloc(
+		sizeof(SslContext));
 
 	if (context == NULL)
 		return NULL;
@@ -1444,8 +1432,7 @@ struct SslContext* createSslContextFromFile(
 #endif
 }
 
-void destroySslContext(
-	struct SslContext* context)
+void destroySslContext(SslContext* context)
 {
 #if MPNW_HAS_OPENSSL
 	if (context == NULL)
@@ -1459,7 +1446,7 @@ void destroySslContext(
 }
 
 uint8_t getSslContextSecurityProtocol(
-	const struct SslContext* context)
+	const SslContext* context)
 {
 #if MPNW_HAS_OPENSSL
 	assert(context != NULL);

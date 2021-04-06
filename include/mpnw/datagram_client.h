@@ -2,11 +2,11 @@
 #include "mpnw/socket.h"
 
 /* Datagram client instance handle (UDP) */
-struct DatagramClient;
+typedef struct DatagramClient DatagramClient;
 
 /* Datagram client datagram receive function */
 typedef void(*DatagramClientReceive)(
-	struct DatagramClient* datagramClient,
+	DatagramClient* datagramClient,
 	const uint8_t* receiveBuffer,
 	size_t byteCount);
 
@@ -20,54 +20,54 @@ typedef void(*DatagramClientReceive)(
  * functionArgument - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
-struct DatagramClient* createDatagramClient(
-	const struct SocketAddress* remoteAddress,
+DatagramClient* createDatagramClient(
+	const SocketAddress* remoteAddress,
 	size_t receiveBufferSize,
 	DatagramClientReceive receiveFunction,
 	void* handle,
-	struct SslContext* sslContext);
+	SslContext* sslContext);
 
 /*
  * Destroys specified datagram client.
  * client - pointer to the datagram client or NULL.
  */
 void destroyDatagramClient(
-	struct DatagramClient* client);
+	DatagramClient* client);
 
 /*
  * Returns datagram client receive buffer size.
  * client - pointer to the valid datagram client.
  */
 size_t getDatagramClientReceiveBufferSize(
-	const struct DatagramClient* client);
+	const DatagramClient* client);
 
 /*
  * Returns datagram client receive function.
  * client - pointer to the valid datagram client.
  */
 DatagramClientReceive getDatagramClientReceiveFunction(
-	const struct DatagramClient* client);
+	const DatagramClient* client);
 
 /*
  * Returns datagram client handle.
  * client - pointer to the valid datagram client.
  */
 void* getDatagramClientHandle(
-	const struct DatagramClient* client);
+	const DatagramClient* client);
 
 /*
  * Returns datagram client socket.
  * client - pointer to the valid datagram client.
  */
-struct Socket* getDatagramClientSocket(
-	const struct DatagramClient* client);
+Socket* getDatagramClientSocket(
+	const DatagramClient* client);
 
 /*
  * Returns current datagram client running state.
  * client - pointer to the valid datagram client.
  */
 bool isDatagramClientRunning(
-	const struct DatagramClient* client);
+	const DatagramClient* client);
 
 /*
  * Sends message to the datagram server.
@@ -78,6 +78,6 @@ bool isDatagramClientRunning(
  * count - data buffer send byte count.
  */
 bool datagramClientSend(
-	struct DatagramClient* client,
+	DatagramClient* client,
 	const void* buffer,
 	size_t count);
