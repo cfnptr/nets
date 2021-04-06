@@ -6,8 +6,8 @@
 #include <stdio.h>
 
 static void serverReceiveHandler(
-	struct DatagramServer* datagramServer,
-	const struct SocketAddress* socketAddress,
+	DatagramServer* datagramServer,
+	const SocketAddress* socketAddress,
 	const uint8_t* receiveBuffer,
 	size_t byteCount)
 {
@@ -43,7 +43,7 @@ static void serverReceiveHandler(
 }
 
 static void clientReceiveHandler(
-	struct DatagramClient* datagramClient,
+	DatagramClient* datagramClient,
 	const uint8_t* receiveBuffer,
 	size_t byteCount)
 {
@@ -73,7 +73,7 @@ int main()
 	if (initializeNetwork() == false)
 		return EXIT_FAILURE;
 
-	struct DatagramServer* server = createDatagramServer(
+	DatagramServer* server = createDatagramServer(
 		IP_V4_ADDRESS_FAMILY,
 		serverPort,
 		receiveBufferSize,
@@ -84,14 +84,14 @@ int main()
 	if (server == NULL)
 		return EXIT_FAILURE;
 
-	struct SocketAddress* serverAddress = createSocketAddress(
+	SocketAddress* serverAddress = createSocketAddress(
 		LOOPBACK_IP_ADDRESS_V4,
 		serverPort);
 
 	if (serverAddress == NULL)
 		return EXIT_FAILURE;
 
-	struct DatagramClient* client = createDatagramClient(
+	DatagramClient* client = createDatagramClient(
 		serverAddress,
 		receiveBufferSize,
 		clientReceiveHandler,

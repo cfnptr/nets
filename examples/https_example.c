@@ -6,7 +6,7 @@
 #include <string.h>
 
 static bool clientReceiveHandler(
-	struct StreamClient* streamClient,
+	StreamClient* streamClient,
 	const uint8_t* receiveBuffer,
 	size_t byteCount)
 {
@@ -28,14 +28,14 @@ int main()
 	if (initializeNetwork() == false)
 		return EXIT_FAILURE;
 
-	struct SslContext* sslContext = createSslContext(
+	SslContext* sslContext = createSslContext(
 		TLS_SECURITY_PROTOCOL,
 		NULL);
 
 	if (sslContext == NULL)
 		return EXIT_FAILURE;
 
-	struct StreamClient* httpClient = createStreamClient(
+	StreamClient* httpClient = createStreamClient(
 		IP_V4_ADDRESS_FAMILY,
 		receiveBufferSize,
 		clientReceiveHandler,
@@ -45,7 +45,7 @@ int main()
 	if (httpClient == NULL)
 		return EXIT_FAILURE;
 
-	struct SocketAddress* address = resolveSocketAddress(
+	SocketAddress* address = resolveSocketAddress(
 		hostName,
 		"https",
 		IP_V4_ADDRESS_FAMILY,
