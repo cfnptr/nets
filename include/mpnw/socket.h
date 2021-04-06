@@ -66,7 +66,7 @@ typedef struct SocketAddress SocketAddress;
 typedef struct SslContext SslContext;
 
 /* Socket internet protocol address family */
-typedef enum ADDRESS_FAMILY
+typedef enum ADDRESS_FAMILY_TYPE
 {
 	UNKNOWN_ADDRESS_FAMILY = 0,
 	IP_V4_ADDRESS_FAMILY = 1,
@@ -93,12 +93,10 @@ typedef enum SOCKET_SHUTDOWN
 typedef enum SECURITY_PROTOCOL
 {
 	UNKNOWN_SECURITY_PROTOCOL = 0,
-	TLS_1_3_SECURITY_PROTOCOL = 1,
-	DTLS_1_3_SECURITY_PROTOCOL = 2,
+	TLS_SECURITY_PROTOCOL = 1,
+	DTLS_SECURITY_PROTOCOL = 2,
 	TLS_1_2_SECURITY_PROTOCOL = 3,
 	DTLS_1_2_SECURITY_PROTOCOL = 4,
-	TLS_SECURITY_PROTOCOL = TLS_1_3_SECURITY_PROTOCOL,
-	DTLS_SECURITY_PROTOCOL = DTLS_1_3_SECURITY_PROTOCOL,
 } SECURITY_PROTOCOL;
 
 /* Returns true if network was initialized. */

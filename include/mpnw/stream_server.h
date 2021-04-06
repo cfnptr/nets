@@ -207,7 +207,7 @@ inline static bool handleStreamDatagram(
 		}
 
 		// Decode received datagram size
-		uint32_t datagramSize;
+		uint64_t datagramSize;
 
 		if (datagramLengthSize == sizeof(uint8_t))
 			datagramSize = datagramBuffer[0];
@@ -274,7 +274,7 @@ inline static bool handleStreamDatagram(
 		}
 
 		// Decode received datagram size
-		uint32_t datagramSize;
+		uint64_t datagramSize;
 
 		if (datagramLengthSize == sizeof(uint8_t))
 			datagramSize = receiveBuffer[pointer];

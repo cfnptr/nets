@@ -1287,10 +1287,10 @@ SslContext* createSslContext(
 	default:
 		free(context);
 		return NULL;
-	case TLS_1_3_SECURITY_PROTOCOL:
+	case TLS_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
 		break;
-	case DTLS_1_3_SECURITY_PROTOCOL:
+	case DTLS_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(DTLS_method());
 		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
@@ -1360,10 +1360,10 @@ SslContext* createSslContextFromFile(
 	default:
 		free(context);
 		return NULL;
-	case TLS_1_3_SECURITY_PROTOCOL:
+	case TLS_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
 		break;
-	case DTLS_1_3_SECURITY_PROTOCOL:
+	case DTLS_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(DTLS_method());
 		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
@@ -1455,9 +1455,9 @@ uint8_t getSslContextSecurityProtocol(
 		context->handle);
 
 	if (method == TLS_method())
-		return TLS_1_3_SECURITY_PROTOCOL;
+		return TLS_SECURITY_PROTOCOL;
 	else if (method == DTLS_method())
-		return DTLS_1_3_SECURITY_PROTOCOL;
+		return DTLS_SECURITY_PROTOCOL;
 	else if (method == TLSv1_2_method())
 		return TLS_1_2_SECURITY_PROTOCOL;
 	else if (method == DTLSv1_2_method())
