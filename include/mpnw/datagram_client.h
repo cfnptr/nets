@@ -31,8 +31,7 @@ DatagramClient* createDatagramClient(
  * Destroys specified datagram client.
  * client - pointer to the datagram client or NULL.
  */
-void destroyDatagramClient(
-	DatagramClient* client);
+void destroyDatagramClient(DatagramClient* client);
 
 /*
  * Returns datagram client receive buffer size.

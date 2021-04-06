@@ -34,8 +34,7 @@ DatagramServer* createDatagramServer(
  * Destroys specified datagram server.
  * server - pointer to the datagram server or NULL.
  */
-void destroyDatagramServer(
-	DatagramServer* server);
+void destroyDatagramServer(DatagramServer* server);
 
 /*
  * Returns datagram server receive buffer size.

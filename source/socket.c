@@ -122,6 +122,9 @@ Socket* createSocket(
 	SslContext* sslContext)
 {
 	assert(networkInitialized == true);
+	assert(_type < SOCKET_TYPE_COUNT);
+	assert(_family < ADDRESS_FAMILY_COUNT);
+	assert(address != NULL);
 
 #if !MPNW_HAS_OPENSSL
 	assert(sslContext == NULL);
@@ -648,15 +651,16 @@ bool shutdownSocket(
 	uint8_t _type)
 {
 	assert(socket != NULL);
+	assert(_type < SOCKET_SHUTDOWN_COUNT);
 
 	int type;
 
 #if __linux__ || __APPLE__
-	if (_type == SHUTDOWN_RECEIVE_ONLY)
+	if (_type == RECEIVE_ONLY_SOCKET_SHUTDOWN)
 		type = SHUT_RD;
-	else if (_type == SHUTDOWN_SEND_ONLY)
+	else if (_type == SEND_ONLY_SOCKET_SHUTDOWN)
 		type = SHUT_WR;
-	else if (_type == SHUTDOWN_RECEIVE_SEND)
+	else if (_type == RECEIVE_SEND_SOCKET_SHUTDOWN)
 		type = SHUT_RDWR;
 	else
 		return false;
@@ -890,9 +894,11 @@ SocketAddress* resolveSocketAddress(
 	uint8_t family,
 	uint8_t type)
 {
+	assert(networkInitialized == true);
 	assert(host != NULL);
 	assert(service != NULL);
-	assert(networkInitialized == true);
+	assert(family < ADDRESS_FAMILY_COUNT);
+	assert(type < SOCKET_TYPE_COUNT);
 
 	SocketAddress* address = malloc(
 		sizeof(SocketAddress));
@@ -1043,18 +1049,21 @@ void setSocketAddressFamily(
 	uint8_t addressFamily)
 {
 	assert(address != NULL);
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 		address->handle.ss_family = AF_INET;
 	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
 		address->handle.ss_family = AF_INET6;
 	else
-		address->handle.ss_family = 0;
+		address->handle.ss_family = AF_UNSPEC;
 }
 
 size_t getSocketAddressFamilyIpSize(
 	uint8_t addressFamily)
 {
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 		return sizeof(struct sockaddr_in);
 	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
@@ -1273,6 +1282,7 @@ SslContext* createSslContext(
 {
 #if MPNW_HAS_OPENSSL
 	assert(networkInitialized == true);
+	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 
 	SslContext* context = malloc(
 		sizeof(SslContext));
@@ -1344,6 +1354,7 @@ SslContext* createSslContextFromFile(
 {
 #if MPNW_HAS_OPENSSL
 	assert(networkInitialized == true);
+	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(certificateFilePath != NULL);
 	assert(privateKeyFilePath != NULL);
 

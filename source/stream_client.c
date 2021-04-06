@@ -65,6 +65,7 @@ StreamClient* createStreamClient(
 	void* handle,
 	SslContext* sslContext)
 {
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(receiveBufferSize != 0);
 	assert(receiveFunction != NULL);
 	assert(isNetworkInitialized() == true);
@@ -120,8 +121,7 @@ StreamClient* createStreamClient(
 		false,
 		sslContext);
 
-	destroySocketAddress(
-		localAddress);
+	destroySocketAddress(localAddress);
 
 	if (receiveSocket == NULL)
 	{
@@ -153,8 +153,7 @@ StreamClient* createStreamClient(
 	return client;
 }
 
-void destroyStreamClient(
-	StreamClient* client)
+void destroyStreamClient(StreamClient* client)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -168,7 +167,7 @@ void destroyStreamClient(
 
 	shutdownSocket(
 		client->receiveSocket,
-		SHUTDOWN_RECEIVE_SEND);
+		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(client->receiveSocket);
 
 	free(client->receiveBuffer);

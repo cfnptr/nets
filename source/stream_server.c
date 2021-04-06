@@ -111,7 +111,7 @@ static void streamServerReceiveHandler(
 				session);
 			shutdownSocket(
 				receiveSocket,
-				SHUTDOWN_RECEIVE_SEND);
+				RECEIVE_SEND_SOCKET_SHUTDOWN);
 			destroySocket(receiveSocket);
 
 			for (size_t j = i + 1; j < sessionCount; j++)
@@ -151,7 +151,7 @@ static void streamServerReceiveHandler(
 				{
 					shutdownSocket(
 						acceptedSocket,
-						SHUTDOWN_RECEIVE_SEND);
+						RECEIVE_SEND_SOCKET_SHUTDOWN);
 					destroySocket(acceptedSocket);
 				}
 
@@ -161,7 +161,7 @@ static void streamServerReceiveHandler(
 			{
 				shutdownSocket(
 					acceptedSocket,
-					SHUTDOWN_RECEIVE_SEND);
+					RECEIVE_SEND_SOCKET_SHUTDOWN);
 				destroySocket(acceptedSocket);
 			}
 		}
@@ -182,7 +182,7 @@ static void streamServerReceiveHandler(
 			session);
 		shutdownSocket(
 			receiveSocket,
-			SHUTDOWN_RECEIVE_SEND);
+			RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
 	}
 }
@@ -199,6 +199,7 @@ StreamServer* createStreamServer(
 	void* handle,
 	SslContext* sslContext)
 {
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(port != NULL);
 	assert(sessionBufferSize != 0);
 	assert(receiveBufferSize != 0);
@@ -271,8 +272,7 @@ StreamServer* createStreamServer(
 		false,
 		sslContext);
 
-	destroySocketAddress(
-		localAddress);
+	destroySocketAddress(localAddress);
 
 	if (acceptSocket == NULL)
 	{
@@ -311,8 +311,7 @@ StreamServer* createStreamServer(
 	return server;
 }
 
-void destroyStreamServer(
-	StreamServer* server)
+void destroyStreamServer(StreamServer* server)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -325,7 +324,7 @@ void destroyStreamServer(
 
 	shutdownSocket(
 		server->acceptSocket,
-		SHUTDOWN_RECEIVE_SEND);
+		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(server->acceptSocket);
 
 	free(server->receiveBuffer);

@@ -121,8 +121,7 @@ DatagramClient* createDatagramClient(
 		false,
 		sslContext);
 
-	destroySocketAddress(
-		localAddress);
+	destroySocketAddress(localAddress);
 
 	if (receiveSocket == NULL)
 	{
@@ -166,8 +165,7 @@ DatagramClient* createDatagramClient(
 	return client;
 }
 
-void destroyDatagramClient(
-	DatagramClient* client)
+void destroyDatagramClient(DatagramClient* client)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -181,7 +179,7 @@ void destroyDatagramClient(
 
 	shutdownSocket(
 		client->receiveSocket,
-		SHUTDOWN_RECEIVE_SEND);
+		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(client->receiveSocket);
 
 	free(client->receiveBuffer);

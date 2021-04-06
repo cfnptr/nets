@@ -72,6 +72,7 @@ DatagramServer* createDatagramServer(
 	void* handle,
 	SslContext* sslContext)
 {
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(port != NULL);
 	assert(receiveBufferSize != 0);
 	assert(receiveFunction != NULL);
@@ -128,8 +129,7 @@ DatagramServer* createDatagramServer(
 		false,
 		sslContext);
 
-	destroySocketAddress(
-		localAddress);
+	destroySocketAddress(localAddress);
 
 	if (receiveSocket == NULL)
 	{
@@ -161,8 +161,7 @@ DatagramServer* createDatagramServer(
 	return server;
 }
 
-void destroyDatagramServer(
-	DatagramServer* server)
+void destroyDatagramServer(DatagramServer* server)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -176,7 +175,7 @@ void destroyDatagramServer(
 
 	shutdownSocket(
 		server->receiveSocket,
-		SHUTDOWN_RECEIVE_SEND);
+		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(server->receiveSocket);
 
 	free(server->receiveBuffer);

@@ -68,35 +68,40 @@ typedef struct SslContext SslContext;
 /* Socket internet protocol address family */
 typedef enum ADDRESS_FAMILY_TYPE
 {
-	UNKNOWN_ADDRESS_FAMILY = 0,
-	IP_V4_ADDRESS_FAMILY = 1,
-	IP_V6_ADDRESS_FAMILY = 2,
+	UNKNOWN_ADDRESS_FAMILY,
+	IP_V4_ADDRESS_FAMILY,
+	IP_V6_ADDRESS_FAMILY,
+	ADDRESS_FAMILY_COUNT = IP_V6_ADDRESS_FAMILY + 1,
 } ADDRESS_FAMILY_TYPE;
 
 /* Socket communication type */
 typedef enum SOCKET_TYPE
 {
-	UNKNOWN_SOCKET_TYPE = 0,
-	STREAM_SOCKET_TYPE = 1,
-	DATAGRAM_SOCKET_TYPE = 2,
+	UNKNOWN_SOCKET_TYPE,
+	STREAM_SOCKET_TYPE,
+	DATAGRAM_SOCKET_TYPE,
+	SOCKET_TYPE_COUNT = DATAGRAM_SOCKET_TYPE + 1,
 } SOCKET_TYPE;
 
 /* Socket connection shutdown */
 typedef enum SOCKET_SHUTDOWN
 {
-	SHUTDOWN_RECEIVE_ONLY = 0,
-	SHUTDOWN_SEND_ONLY = 1,
-	SHUTDOWN_RECEIVE_SEND = 2,
+	RECEIVE_ONLY_SOCKET_SHUTDOWN,
+	SEND_ONLY_SOCKET_SHUTDOWN,
+	RECEIVE_SEND_SOCKET_SHUTDOWN,
+	SOCKET_SHUTDOWN_COUNT = RECEIVE_SEND_SOCKET_SHUTDOWN + 1,
+
 } SOCKET_SHUTDOWN;
 
 /* Socket security protocol */
 typedef enum SECURITY_PROTOCOL
 {
-	UNKNOWN_SECURITY_PROTOCOL = 0,
-	TLS_SECURITY_PROTOCOL = 1,
-	DTLS_SECURITY_PROTOCOL = 2,
-	TLS_1_2_SECURITY_PROTOCOL = 3,
-	DTLS_1_2_SECURITY_PROTOCOL = 4,
+	UNKNOWN_SECURITY_PROTOCOL,
+	TLS_SECURITY_PROTOCOL,
+	DTLS_SECURITY_PROTOCOL,
+	TLS_1_2_SECURITY_PROTOCOL,
+	DTLS_1_2_SECURITY_PROTOCOL,
+	SECURITY_PROTOCOL_COUNT = DTLS_1_2_SECURITY_PROTOCOL + 1,
 } SECURITY_PROTOCOL;
 
 /* Returns true if network was initialized. */
@@ -379,13 +384,15 @@ void setSocketAddressFamily(
  * Returns socket address family IP byte array size.
  * addressFamily - socket address family.
  */
-size_t getSocketAddressFamilyIpSize(uint8_t addressFamily);
+size_t getSocketAddressFamilyIpSize(
+	uint8_t addressFamily);
 
 /*
  * Returns socket IP address byte array size.
  * address - pointer to the valid socket address.
  */
-size_t getSocketAddressIpSize(const SocketAddress* address);
+size_t getSocketAddressIpSize(
+	const SocketAddress* address);
 
 /*
  * Returns socket IP address byte array.
