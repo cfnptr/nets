@@ -663,7 +663,7 @@ bool shutdownSocket(
 	else if (_type == RECEIVE_SEND_SOCKET_SHUTDOWN)
 		type = SHUT_RDWR;
 	else
-		return false;
+		abort();
 #elif _WIN32
 	if (_type == RECEIVE_ONLY_SOCKET_SHUTDOWN)
 		type = SD_RECEIVE;
@@ -672,7 +672,7 @@ bool shutdownSocket(
 	else if (_type == RECEIVE_SEND_SOCKET_SHUTDOWN)
 		type = SD_BOTH;
 	else
-		return false;
+		abort();
 #endif
 
 	// Do not shutdown SSL, due to the bad documentation
