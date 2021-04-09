@@ -708,7 +708,7 @@ bool socketReceive(
 	}
 #endif
 
-	int result = recv(
+	int64_t result = recv(
 		socket->handle,
 		(char*)buffer,
 		(int)size,
@@ -772,7 +772,7 @@ bool socketReceiveFrom(
 	SOCKET_LENGTH length =
 		sizeof(struct sockaddr_storage);
 
-	int count = recvfrom(
+	int64_t count = recvfrom(
 		socket->handle,
 		(char*)buffer,
 		(int)size,
