@@ -5,7 +5,7 @@
 typedef struct DatagramClient DatagramClient;
 
 /* Datagram client datagram receive function */
-typedef void(*DatagramClientReceive)(
+typedef bool(*DatagramClientReceive)(
 	DatagramClient* datagramClient,
 	const uint8_t* receiveBuffer,
 	size_t byteCount);
@@ -15,7 +15,7 @@ typedef void(*DatagramClientReceive)(
  * Returns datagram client on success, otherwise NULL.
  *
  * remoteAddress - pointer to the valid server address.
- * receiveBufferSize - socket datagram receive buffer size.
+ * bufferSize - socket datagram receive buffer size.
  * receiveFunction - pointer to the valid receive function.
  * functionArgument - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.

@@ -15,19 +15,13 @@ struct StreamClient
 	volatile bool threadRunning;
 };
 
-static void streamClientReceiveHandler(
-	void* argument)
+static void streamClientReceiveHandler(void* argument)
 {
-	StreamClient* client =
-		(StreamClient*)argument;
-	StreamClientReceive receiveFunction =
-		client->receiveFunction;
-	size_t receiveBufferSize =
-		client->receiveBufferSize;
-	uint8_t* receiveBuffer =
-		client->receiveBuffer;
-	Socket* receiveSocket =
-		client->receiveSocket;
+	StreamClient* client = (StreamClient*)argument;
+	StreamClientReceive receiveFunction = client->receiveFunction;
+	size_t receiveBufferSize = client->receiveBufferSize;
+	uint8_t* receiveBuffer = client->receiveBuffer;
+	Socket* receiveSocket = client->receiveSocket;
 
 	bool result;
 	size_t byteCount;
@@ -70,8 +64,7 @@ StreamClient* createStreamClient(
 	assert(receiveFunction != NULL);
 	assert(isNetworkInitialized() == true);
 
-	StreamClient* client = malloc(
-		sizeof(StreamClient));
+	StreamClient* client = malloc(sizeof(StreamClient));
 
 	if (client == NULL)
 		return NULL;
@@ -178,6 +171,7 @@ size_t getStreamClientReceiveBufferSize(
 	const StreamClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->receiveBufferSize;
 }
 
@@ -185,6 +179,7 @@ StreamClientReceive getStreamClientReceiveFunction(
 	const StreamClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->receiveFunction;
 }
 
@@ -192,6 +187,7 @@ void* getStreamClientHandle(
 	const StreamClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->handle;
 }
 
@@ -199,6 +195,7 @@ Socket* getStreamClientSocket(
 	const StreamClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->receiveSocket;
 }
 
@@ -206,6 +203,7 @@ bool isStreamClientRunning(
 	const StreamClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->threadRunning;
 }
 
@@ -216,6 +214,8 @@ bool connectStreamClient(
 {
 	assert(streamClient != NULL);
 	assert(address != NULL);
+	assert(timeoutTime >= 0.0);
+	assert(isNetworkInitialized() == true);
 
 	Socket* socket = streamClient->receiveSocket;
 	double timeout = getCurrentClock() + timeoutTime;
@@ -257,6 +257,7 @@ bool streamClientSend(
 	assert(client != NULL);
 	assert(buffer != NULL);
 	assert(count != 0);
+	assert(isNetworkInitialized() == true);
 
 	return socketSend(
 		client->receiveSocket,

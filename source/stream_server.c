@@ -27,31 +27,19 @@ struct StreamServer
 	volatile bool threadsRunning;
 };
 
-static void streamServerReceiveHandler(
-	void* argument)
+static void streamServerReceiveHandler(void* argument)
 {
-	StreamServer* server =
-		(StreamServer*)argument;
-	size_t sessionBufferSize =
-		server->sessionBufferSize;
-	size_t receiveBufferSize =
-		server->receiveBufferSize;
-	double receiveTimeoutTime =
-		server->receiveTimeoutTime;
-	StreamSessionReceive receiveFunction =
-		server->receiveFunction;
-	StreamSessionCreate createFunction =
-		server->createFunction;
-	StreamSessionDestroy destroyFunction =
-		server->destroyFunction;
-	uint8_t* receiveBuffer =
-		server->receiveBuffer;
-	StreamSession* sessionBuffer =
-		server->sessionBuffer;
-	Socket* serverSocket =
-		server->acceptSocket;
-	bool isServerSocketSsl =
-		getSocketSslContext(serverSocket) != NULL;
+	StreamServer* server = (StreamServer*)argument;
+	size_t sessionBufferSize = server->sessionBufferSize;
+	size_t receiveBufferSize = server->receiveBufferSize;
+	double receiveTimeoutTime = server->receiveTimeoutTime;
+	StreamSessionReceive receiveFunction = server->receiveFunction;
+	StreamSessionCreate createFunction = server->createFunction;
+	StreamSessionDestroy destroyFunction = server->destroyFunction;
+	uint8_t* receiveBuffer = server->receiveBuffer;
+	StreamSession* sessionBuffer = server->sessionBuffer;
+	Socket* serverSocket = server->acceptSocket;
+	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
 
 	size_t sessionCount = 0;
 
@@ -62,18 +50,15 @@ static void streamServerReceiveHandler(
 
 		for (size_t i = 0; i < sessionCount; i++)
 		{
-			StreamSession* session =
-				&sessionBuffer[i];
-			Socket* receiveSocket =
-				session->receiveSocket;
+			StreamSession* session = &sessionBuffer[i];
+			Socket* receiveSocket = session->receiveSocket;
 
 			if (currentTime - session->lastMessageTime > receiveTimeoutTime)
 				goto DESTROY_SESSION;
 
 			if (session->isSslAccepted == false)
 			{
-				bool result = acceptSslSocket(
-					receiveSocket);
+				bool result = acceptSslSocket(receiveSocket);
 
 				if(result == true)
 					session->isSslAccepted = true;
@@ -124,8 +109,7 @@ static void streamServerReceiveHandler(
 			shouldSleep = false;
 		}
 
-		Socket* acceptedSocket = acceptSocket(
-			serverSocket);
+		Socket* acceptedSocket = acceptSocket(serverSocket);
 
 		if (acceptedSocket != NULL)
 		{
@@ -172,10 +156,8 @@ static void streamServerReceiveHandler(
 
 	for (size_t i = 0; i < sessionCount; i++)
 	{
-		StreamSession* session =
-			&sessionBuffer[i];
-		Socket* receiveSocket =
-			session->receiveSocket;
+		StreamSession* session = &sessionBuffer[i];
+		Socket* receiveSocket = session->receiveSocket;
 
 		destroyFunction(
 			server,
@@ -209,8 +191,7 @@ StreamServer* createStreamServer(
 	assert(destroyFunction != NULL);
 	assert(isNetworkInitialized() == true);
 
-	StreamServer* server = malloc(
-		sizeof(StreamServer));
+	StreamServer* server = malloc(sizeof(StreamServer));
 
 	if (server == NULL)
 		return NULL;
@@ -336,6 +317,7 @@ size_t getStreamServerSessionBufferSize(
 	const StreamServer* server)
 {
 	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
 	return server->sessionBufferSize;
 }
 
@@ -343,6 +325,7 @@ StreamSessionReceive getStreamServerReceiveFunction(
 	const StreamServer* server)
 {
 	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
 	return server->receiveFunction;
 }
 
@@ -350,6 +333,7 @@ StreamSessionCreate getStreamServerCreateFunction(
 	const StreamServer* server)
 {
 	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
 	return server->createFunction;
 }
 
@@ -357,6 +341,7 @@ StreamSessionDestroy getStreamServerDestroyFunction(
 	const StreamServer* server)
 {
 	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
 	return server->destroyFunction;
 }
 
@@ -364,6 +349,7 @@ size_t getStreamServerReceiveBufferSize(
 	const StreamServer* server)
 {
 	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
 	return server->receiveBufferSize;
 }
 
@@ -371,6 +357,7 @@ double getStreamServerReceiveTimeoutTime(
 	const StreamServer* server)
 {
 	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
 	return server->receiveTimeoutTime;
 }
 
@@ -378,6 +365,7 @@ void* getStreamServerHandle(
 	const StreamServer* server)
 {
 	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
 	return server->handle;
 }
 
@@ -385,6 +373,7 @@ Socket* getStreamServerSocket(
 	const StreamServer* server)
 {
 	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
 	return server->acceptSocket;
 }
 
@@ -392,6 +381,7 @@ Socket* getStreamSessionSocket(
 	const StreamSession* session)
 {
 	assert(session != NULL);
+	assert(isNetworkInitialized() == true);
 	return session->receiveSocket;
 }
 
@@ -399,6 +389,7 @@ void* getStreamSessionHandle(
 	const StreamSession* session)
 {
 	assert(session != NULL);
+	assert(isNetworkInitialized() == true);
 	return session->handle;
 }
 
@@ -410,6 +401,7 @@ bool streamSessionSend(
 	assert(streamSession != NULL);
 	assert(buffer != NULL);
 	assert(count != 0);
+	assert(isNetworkInitialized() == true);
 
 	return socketSend(
 		streamSession->receiveSocket,

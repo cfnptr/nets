@@ -326,6 +326,14 @@ SocketAddress* createSocketAddress(
 SocketAddress* createEmptySocketAddress();
 
 /*
+ * Creates a new socket address copy.
+ * Returns address on success, otherwise NULL.
+ *
+ * address - pointer to the valid socket address.
+ */
+SocketAddress* createSocketAddressCopy(const SocketAddress* address);
+
+/*
  * Resolves a new socket addresses.
  * Returns address on success, otherwise NULL.
  *
@@ -347,12 +355,14 @@ SocketAddress* resolveSocketAddress(
 void destroySocketAddress(SocketAddress* address);
 
 /*
- * Creates a new socket address copy.
- * Returns address on success, otherwise NULL.
+ * Copies source socket address to the destination.
  *
- * address - pointer to the valid socket address.
+ * sourceAddress - pointer to the valid socket address.
+ * destinationAddress - pointer to the valid socket address.
  */
-SocketAddress* copySocketAddress(const SocketAddress* address);
+void copySocketAddress(
+	const SocketAddress* sourceAddress,
+	SocketAddress* destinationAddress);
 
 /*
  * Compares two addresses.

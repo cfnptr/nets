@@ -87,8 +87,7 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	const char* request =
-		"GET / HTTP/1.1\r\n\n\r\n";
+	const char* request = "GET / HTTP/1.1\r\n\n\r\n";
 
 	result = streamClientSend(
 		httpClient,

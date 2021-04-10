@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 
-static void serverReceiveHandler(
+static bool serverReceiveHandler(
 	DatagramServer* datagramServer,
 	const SocketAddress* socketAddress,
 	const uint8_t* receiveBuffer,
@@ -20,7 +20,7 @@ static void serverReceiveHandler(
 			serverName,
 			byteCount);
 		fflush(stdout);
-		return;
+		return false;
 	}
 
 	printf("%s: received request (%hhu)\n",
@@ -39,10 +39,13 @@ static void serverReceiveHandler(
 		printf("%s: failed to send response\n",
 			serverName);
 		fflush(stdout);
+		return false;
 	}
+
+	return true;
 }
 
-static void clientReceiveHandler(
+static bool clientReceiveHandler(
 	DatagramClient* datagramClient,
 	const uint8_t* receiveBuffer,
 	size_t byteCount)
@@ -56,13 +59,14 @@ static void clientReceiveHandler(
 			clientName,
 			byteCount);
 		fflush(stdout);
-		return;
+		return false;
 	}
 
 	printf("%s: received response (%hhu)\n",
 		clientName,
 		receiveBuffer[0]);
 	fflush(stdout);
+	return true;
 }
 
 int main()

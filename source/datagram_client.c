@@ -1,4 +1,6 @@
 #include "mpnw/datagram_client.h"
+
+#include "mpmt/sync.h"
 #include "mpmt/thread.h"
 
 #include <string.h>
@@ -11,28 +13,24 @@ struct DatagramClient
 	void* handle;
 	uint8_t* receiveBuffer;
 	Socket* receiveSocket;
+	Mutex* receiveMutex;
 	Thread* receiveThread;
 	volatile bool threadRunning;
 };
 
-static void datagramClientReceiveHandler(
-	void* argument)
+static void datagramClientReceiveHandler(void* argument)
 {
-	DatagramClient* client =
-		(DatagramClient*)argument;
-	DatagramClientReceive receiveFunction =
-		client->receiveFunction;
-	size_t receiveBufferSize =
-		client->receiveBufferSize;
-	uint8_t* receiveBuffer =
-		client->receiveBuffer;
-	Socket* receiveSocket =
-		client->receiveSocket;
+	DatagramClient* client = (DatagramClient*)argument;
+	DatagramClientReceive receiveFunction = client->receiveFunction;
+	size_t receiveBufferSize = client->receiveBufferSize;
+	uint8_t* receiveBuffer = client->receiveBuffer;
+	Socket* receiveSocket = client->receiveSocket;
+	Mutex* receiveMutex = client->receiveMutex;
 
 	bool result;
 	size_t byteCount;
 
-	while (client->threadRunning == true)
+	while (true)
 	{
 		result = socketReceive(
 			receiveSocket,
@@ -42,17 +40,31 @@ static void datagramClientReceiveHandler(
 
 		if (result == false)
 		{
-			sleepThread(0.001);
-			continue;
+			client->threadRunning = false;
+			return;
 		}
 
-		receiveFunction(
+		lockMutex(receiveMutex);
+
+		if (client->threadRunning == false)
+		{
+			unlockMutex(receiveMutex);
+			return;
+		}
+
+		result = receiveFunction(
 			client,
 			receiveBuffer,
 			byteCount);
-	}
 
-	client->threadRunning = false;
+		unlockMutex(receiveMutex);
+
+		if (result == false)
+		{
+			client->threadRunning = false;
+			return;
+		}
+	}
 }
 
 DatagramClient* createDatagramClient(
@@ -67,8 +79,7 @@ DatagramClient* createDatagramClient(
 	assert(receiveFunction != NULL);
 	assert(isNetworkInitialized() == true);
 
-	DatagramClient* client = malloc(
-		sizeof(DatagramClient));
+	DatagramClient* client = malloc(sizeof(DatagramClient));
 
 	if (client == NULL)
 		return NULL;
@@ -118,7 +129,7 @@ DatagramClient* createDatagramClient(
 		addressFamily,
 		localAddress,
 		false,
-		false,
+		true,
 		sslContext);
 
 	destroySocketAddress(localAddress);
@@ -142,11 +153,22 @@ DatagramClient* createDatagramClient(
 		return NULL;
 	}
 
+	Mutex* receiveMutex = createMutex();
+
+	if (receiveMutex == NULL)
+	{
+		destroySocket(receiveSocket);
+		free(receiveBuffer);
+		free(client);
+		return NULL;
+	}
+
 	client->receiveBufferSize = receiveBufferSize;
 	client->receiveFunction = receiveFunction;
 	client->handle = handle;
 	client->receiveBuffer = receiveBuffer;
 	client->receiveSocket = receiveSocket;
+	client->receiveMutex = receiveMutex;
 	client->threadRunning = true;
 
 	Thread* receiveThread = createThread(
@@ -155,6 +177,7 @@ DatagramClient* createDatagramClient(
 
 	if (receiveThread == NULL)
 	{
+		destroyMutex(receiveMutex);
 		destroySocket(receiveSocket);
 		free(receiveBuffer);
 		free(client);
@@ -172,16 +195,17 @@ void destroyDatagramClient(DatagramClient* client)
 	if (client == NULL)
 		return;
 
+	lockMutex(client->receiveMutex);
 	client->threadRunning = false;
-
-	joinThread(client->receiveThread);
-	destroyThread(client->receiveThread);
-
 	shutdownSocket(
 		client->receiveSocket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(client->receiveSocket);
+	unlockMutex(client->receiveMutex);
 
+	joinThread(client->receiveThread);
+	destroyThread(client->receiveThread);
+	destroyMutex(client->receiveMutex);
 	free(client->receiveBuffer);
 	free(client);
 }
@@ -190,6 +214,7 @@ size_t getDatagramClientReceiveBufferSize(
 	const DatagramClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->receiveBufferSize;
 }
 
@@ -197,6 +222,7 @@ DatagramClientReceive getDatagramClientReceiveFunction(
 	const DatagramClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->receiveFunction;
 }
 
@@ -204,6 +230,7 @@ void* getDatagramClientHandle(
 	const DatagramClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->handle;
 }
 
@@ -211,6 +238,7 @@ Socket* getDatagramClientSocket(
 	const DatagramClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->receiveSocket;
 }
 
@@ -218,6 +246,7 @@ bool isDatagramClientRunning(
 	const DatagramClient* client)
 {
 	assert(client != NULL);
+	assert(isNetworkInitialized() == true);
 	return client->threadRunning;
 }
 
@@ -229,6 +258,7 @@ bool datagramClientSend(
 	assert(client != NULL);
 	assert(buffer != NULL);
 	assert(count != 0);
+	assert(isNetworkInitialized() == true);
 
 	return socketSend(
 		client->receiveSocket,
