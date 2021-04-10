@@ -5,19 +5,28 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool clientReceiveHandler(
+// This example receives not complete data from the host,
+// to receive full data you need to parse HTTP header.
+
+static void clientReceiveHandler(
 	StreamClient* streamClient,
 	const uint8_t* receiveBuffer,
 	size_t byteCount)
 {
-	if (byteCount == 0)
-		return false;
+	bool* isDataReceived =
+		getStreamClientHandle(streamClient);
+	*isDataReceived = true;
 
-	printf("Received data: \n%.*s",
-		(int)byteCount,
-		receiveBuffer);
-	fflush(stdout);
-	return true;
+	if (byteCount == 0)
+	{
+		printf("Remote host has closed connection.\n");
+	}
+	else
+	{
+		printf("Received data: \n%.*s",
+			(int)byteCount,
+			receiveBuffer);
+	}
 }
 
 int main()
@@ -35,11 +44,13 @@ int main()
 	if (sslContext == NULL)
 		return EXIT_FAILURE;
 
+	bool isDataReceived = false;
+
 	StreamClient* httpClient = createStreamClient(
 		IP_V4_ADDRESS_FAMILY,
 		receiveBufferSize,
 		clientReceiveHandler,
-		NULL,
+		&isDataReceived,
 		sslContext);
 
 	if (httpClient == NULL)
@@ -100,7 +111,15 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	sleepThread(2.0);
+	double timeout = getCurrentClock() + 2.0;
+
+	while (getCurrentClock() < timeout)
+	{
+		if (isDataReceived == true)
+			break;
+
+		updateStreamClient(httpClient);
+	}
 
 	destroyStreamClient(httpClient);
 	destroySslContext(sslContext);

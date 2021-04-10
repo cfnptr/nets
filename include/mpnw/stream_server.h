@@ -10,22 +10,22 @@ typedef struct StreamServer StreamServer;
 typedef struct StreamSession StreamSession;
 
 /* Stream session message receive function */
-typedef bool(*StreamSessionReceive)(
-	StreamServer* streamServer,
-	StreamSession* streamSession,
-	const uint8_t* receiveBuffer,
+typedef bool(*OnStreamSessionReceive)(
+	StreamServer* server,
+	StreamSession* session,
+	const uint8_t* buffer,
 	size_t byteCount);
 
 /* Stream session create function */
-typedef bool(*StreamSessionCreate)(
-	StreamServer* streamServer,
-	Socket* streamSocket,
-	void** sessionHandle);
+typedef bool(*OnStreamSessionCreate)(
+	StreamServer* server,
+	Socket* socket,
+	void** handle);
 
 /* Stream session destroy function */
-typedef void(*StreamSessionDestroy)(
-	StreamServer* streamServer,
-	StreamSession* streamSession);
+typedef void(*OnStreamSessionDestroy)(
+	StreamServer* server,
+	StreamSession* session);
 
 /*
  * Creates a new stream server (TCP).
@@ -39,19 +39,19 @@ typedef void(*StreamSessionDestroy)(
  * receiveFunction - pointer to the valid receive function.
  * createFunction - pointer to the create function or NULL.
  * destroyFunction - pointer to the destroy function or NULL.
- * functionArgument - pointer to the receive function argument.
+ * handle - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
 StreamServer* createStreamServer(
 	uint8_t addressFamily,
-	const char* port,
+	const char* service,
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
-	double receiveTimeoutTime,
-	StreamSessionReceive receiveFunction,
-	StreamSessionCreate createFunction,
-	StreamSessionDestroy destroyFunction,
-	void* functionArgument,
+	double timeoutTime,
+	OnStreamSessionReceive onReceive,
+	OnStreamSessionCreate onCreate,
+	OnStreamSessionDestroy onDestroy,
+	void* handle,
 	SslContext* sslContext);
 
 /*
@@ -71,28 +71,28 @@ size_t getStreamServerSessionBufferSize(
  * Returns stream server receive function.
  * server - pointer to the valid stream server.
  */
-StreamSessionReceive getStreamServerReceiveFunction(
+OnStreamSessionReceive getStreamServerOnReceive(
 	const StreamServer* server);
 
 /*
  * Returns stream server create function.
  * server - pointer to the valid stream server.
  */
-StreamSessionCreate getStreamServerCreateFunction(
+OnStreamSessionCreate getStreamServerOnCreate(
 	const StreamServer* server);
 
 /*
  * Returns stream server destroy function.
  * server - pointer to the valid stream server.
  */
-StreamSessionDestroy getStreamServerDestroyFunction(
+OnStreamSessionDestroy getStreamServerOnDestroy(
 	const StreamServer* server);
 
 /*
  * Returns stream server receive timeout time (s).
  * server - pointer to the valid stream server.
  */
-double getStreamServerReceiveTimeoutTime(
+double getStreamServerTimeoutTime(
 	const StreamServer* server);
 
 /*
@@ -132,7 +132,7 @@ void* getStreamSessionHandle(
  * count - data buffer send byte count.
  */
 bool streamSessionSend(
-	StreamSession* streamSession,
+	StreamSession* session,
 	const void* buffer,
 	size_t count);
 

@@ -1,7 +1,7 @@
 #include "mpnw/stream_server.h"
-
-#include "mpmt/sync.h"
 #include "mpmt/thread.h"
+
+#include <stdio.h>
 
 struct StreamSession
 {
@@ -15,180 +15,36 @@ struct StreamServer
 {
 	size_t sessionBufferSize;
 	size_t receiveBufferSize;
-	double receiveTimeoutTime;
-	StreamSessionReceive receiveFunction;
-	StreamSessionCreate createFunction;
-	StreamSessionDestroy destroyFunction;
+	double timeoutTime;
+	OnStreamSessionReceive onReceive;
+	OnStreamSessionCreate onCreate;
+	OnStreamSessionDestroy onDestroy;
 	void* handle;
 	uint8_t* receiveBuffer;
 	StreamSession* sessionBuffer;
+	size_t sessionCount;
 	Socket* acceptSocket;
-	Thread* receiveThread;
-	volatile bool threadsRunning;
 };
-
-static void streamServerReceiveHandler(void* argument)
-{
-	StreamServer* server = (StreamServer*)argument;
-	size_t sessionBufferSize = server->sessionBufferSize;
-	size_t receiveBufferSize = server->receiveBufferSize;
-	double receiveTimeoutTime = server->receiveTimeoutTime;
-	StreamSessionReceive receiveFunction = server->receiveFunction;
-	StreamSessionCreate createFunction = server->createFunction;
-	StreamSessionDestroy destroyFunction = server->destroyFunction;
-	uint8_t* receiveBuffer = server->receiveBuffer;
-	StreamSession* sessionBuffer = server->sessionBuffer;
-	Socket* serverSocket = server->acceptSocket;
-	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
-
-	size_t sessionCount = 0;
-
-	while (server->threadsRunning == true)
-	{
-		bool shouldSleep = true;
-		double currentTime = getCurrentClock();
-
-		for (size_t i = 0; i < sessionCount; i++)
-		{
-			StreamSession* session = &sessionBuffer[i];
-			Socket* receiveSocket = session->receiveSocket;
-
-			if (currentTime - session->lastMessageTime > receiveTimeoutTime)
-				goto DESTROY_SESSION;
-
-			if (session->isSslAccepted == false)
-			{
-				bool result = acceptSslSocket(receiveSocket);
-
-				if(result == true)
-					session->isSslAccepted = true;
-				else
-					continue;
-			}
-
-			size_t byteCount;
-
-			bool result = socketReceive(
-				receiveSocket,
-				receiveBuffer,
-				receiveBufferSize,
-				&byteCount);
-
-			if (result == false)
-				continue;
-
-			result = receiveFunction(
-				server,
-				session,
-				receiveBuffer,
-				byteCount);
-
-			if (result == true)
-			{
-				session->lastMessageTime = currentTime;
-				shouldSleep = false;
-				continue;
-			}
-
-		DESTROY_SESSION:
-			destroyFunction(
-				server,
-				session);
-			shutdownSocket(
-				receiveSocket,
-				RECEIVE_SEND_SOCKET_SHUTDOWN);
-			destroySocket(receiveSocket);
-
-			for (size_t j = i + 1; j < sessionCount; j++)
-				sessionBuffer[j - 1] = sessionBuffer[j];
-
-			if (i > 0)
-				i--;
-
-			sessionCount--;
-			shouldSleep = false;
-		}
-
-		Socket* acceptedSocket = acceptSocket(serverSocket);
-
-		if (acceptedSocket != NULL)
-		{
-			if (sessionCount < sessionBufferSize)
-			{
-				void* session;
-
-				bool result = createFunction(
-					server,
-					acceptedSocket,
-					&session);
-
-				if (result == true)
-				{
-					StreamSession streamSession;
-					streamSession.receiveSocket = acceptedSocket;
-					streamSession.handle = session;
-					streamSession.lastMessageTime = getCurrentClock();
-					streamSession.isSslAccepted = !isServerSocketSsl;
-					sessionBuffer[sessionCount++] = streamSession;
-				}
-				else
-				{
-					shutdownSocket(
-						acceptedSocket,
-						RECEIVE_SEND_SOCKET_SHUTDOWN);
-					destroySocket(acceptedSocket);
-				}
-
-				shouldSleep = false;
-			}
-			else
-			{
-				shutdownSocket(
-					acceptedSocket,
-					RECEIVE_SEND_SOCKET_SHUTDOWN);
-				destroySocket(acceptedSocket);
-			}
-		}
-
-		if (shouldSleep == true)
-			sleepThread(0.001);
-	}
-
-	for (size_t i = 0; i < sessionCount; i++)
-	{
-		StreamSession* session = &sessionBuffer[i];
-		Socket* receiveSocket = session->receiveSocket;
-
-		destroyFunction(
-			server,
-			session);
-		shutdownSocket(
-			receiveSocket,
-			RECEIVE_SEND_SOCKET_SHUTDOWN);
-		destroySocket(receiveSocket);
-	}
-}
 
 StreamServer* createStreamServer(
 	uint8_t addressFamily,
-	const char* port,
+	const char* service,
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
-	double receiveTimeoutTime,
-	StreamSessionReceive receiveFunction,
-	StreamSessionCreate createFunction,
-	StreamSessionDestroy destroyFunction,
+	double timeoutTime,
+	OnStreamSessionReceive onReceive,
+	OnStreamSessionCreate onCreate,
+	OnStreamSessionDestroy onDestroy,
 	void* handle,
 	SslContext* sslContext)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(port != NULL);
 	assert(sessionBufferSize != 0);
 	assert(receiveBufferSize != 0);
-	assert(receiveTimeoutTime != 0);
-	assert(receiveFunction != NULL);
-	assert(createFunction != NULL);
-	assert(destroyFunction != NULL);
+	assert(timeoutTime != 0);
+	assert(onReceive != NULL);
+	assert(onCreate != NULL);
+	assert(onDestroy != NULL);
 	assert(isNetworkInitialized() == true);
 
 	StreamServer* server = malloc(sizeof(StreamServer));
@@ -221,13 +77,13 @@ StreamServer* createStreamServer(
 	{
 		localAddress = createSocketAddress(
 			ANY_IP_ADDRESS_V4,
-			port);
+			service);
 	}
 	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
 	{
 		localAddress = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
-			port);
+			service);
 	}
 	else
 	{
@@ -265,30 +121,15 @@ StreamServer* createStreamServer(
 
 	server->sessionBufferSize = sessionBufferSize;
 	server->receiveBufferSize = receiveBufferSize;
-	server->receiveTimeoutTime = receiveTimeoutTime;
-	server->receiveFunction = receiveFunction;
-	server->createFunction = createFunction;
-	server->destroyFunction = destroyFunction;
+	server->timeoutTime = timeoutTime;
+	server->onReceive = onReceive;
+	server->onCreate = onCreate;
+	server->onDestroy = onDestroy;
 	server->handle = handle;
 	server->sessionBuffer = sessionBuffer;
+	server->sessionCount = 0;
 	server->receiveBuffer = receiveBuffer;
 	server->acceptSocket = acceptSocket;
-	server->threadsRunning = true;
-
-	Thread* receiveThread = createThread(
-		streamServerReceiveHandler,
-		server);
-
-	if (receiveThread == NULL)
-	{
-		destroySocket(acceptSocket);
-		free(sessionBuffer);
-		free(receiveBuffer);
-		free(server);
-		return NULL;
-	}
-
-	server->receiveThread = receiveThread;
 	return server;
 }
 
@@ -299,17 +140,30 @@ void destroyStreamServer(StreamServer* server)
 	if (server == NULL)
 		return;
 
-	server->threadsRunning = false;
-	joinThread(server->receiveThread);
-	destroyThread(server->receiveThread);
+	StreamSession* sessionBuffer = server->sessionBuffer;
+	size_t sessionCount = server->sessionCount;
+	OnStreamSessionDestroy onDestroy = server->onDestroy;
+
+	for (size_t i = 0; i < sessionCount; i++)
+	{
+		StreamSession* session = &sessionBuffer[i];
+		Socket* receiveSocket = session->receiveSocket;
+
+		onDestroy(
+			server,
+			session);
+		shutdownSocket(
+			receiveSocket,
+			RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(receiveSocket);
+	}
 
 	shutdownSocket(
 		server->acceptSocket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(server->acceptSocket);
-
 	free(server->receiveBuffer);
-	free(server->sessionBuffer);
+	free(sessionBuffer);
 	free(server);
 }
 
@@ -321,28 +175,28 @@ size_t getStreamServerSessionBufferSize(
 	return server->sessionBufferSize;
 }
 
-StreamSessionReceive getStreamServerReceiveFunction(
+OnStreamSessionReceive getStreamServerOnReceive(
 	const StreamServer* server)
 {
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->receiveFunction;
+	return server->onReceive;
 }
 
-StreamSessionCreate getStreamServerCreateFunction(
+OnStreamSessionCreate getStreamServerOnCreate(
 	const StreamServer* server)
 {
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->createFunction;
+	return server->onCreate;
 }
 
-StreamSessionDestroy getStreamServerDestroyFunction(
+OnStreamSessionDestroy getStreamServerOnDestroy(
 	const StreamServer* server)
 {
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->destroyFunction;
+	return server->onDestroy;
 }
 
 size_t getStreamServerReceiveBufferSize(
@@ -353,12 +207,12 @@ size_t getStreamServerReceiveBufferSize(
 	return server->receiveBufferSize;
 }
 
-double getStreamServerReceiveTimeoutTime(
+double getStreamServerTimeoutTime(
 	const StreamServer* server)
 {
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->receiveTimeoutTime;
+	return server->timeoutTime;
 }
 
 void* getStreamServerHandle(
@@ -393,18 +247,137 @@ void* getStreamSessionHandle(
 	return session->handle;
 }
 
+void updateStreamServer(
+	StreamServer* server)
+{
+	assert(server != NULL);
+
+	StreamSession* sessionBuffer = server->sessionBuffer;
+	size_t sessionBufferSize = server->sessionBufferSize;
+	size_t sessionCount = server->sessionCount;
+	double timeoutTime = server->timeoutTime;
+	double currentTime = getCurrentClock();
+	uint8_t* receiveBuffer = server->receiveBuffer;
+	size_t receiveBufferSize = server->receiveBufferSize;
+	OnStreamSessionReceive onReceive = server->onReceive;
+	OnStreamSessionCreate onCreate = server->onCreate;
+	OnStreamSessionDestroy onDestroy = server->onDestroy;
+	Socket* serverSocket = server->acceptSocket;
+	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
+
+	for (size_t i = 0; i < sessionCount; i++)
+	{
+		StreamSession* session = &sessionBuffer[i];
+		Socket* receiveSocket = session->receiveSocket;
+
+		if (currentTime - session->lastMessageTime > timeoutTime)
+			goto DESTROY_SESSION;
+
+		if (session->isSslAccepted == false)
+		{
+			bool result = acceptSslSocket(receiveSocket);
+
+			if(result == true)
+				session->isSslAccepted = true;
+			else
+				continue;
+		}
+
+		size_t byteCount;
+
+		bool result = socketReceive(
+			receiveSocket,
+			receiveBuffer,
+			receiveBufferSize,
+			&byteCount);
+
+		if (result == false)
+			continue;
+
+		result = onReceive(
+			server,
+			session,
+			receiveBuffer,
+			byteCount);
+
+		if (result == true)
+		{
+			session->lastMessageTime = currentTime;
+			continue;
+		}
+
+	DESTROY_SESSION:
+		onDestroy(
+			server,
+			session);
+		shutdownSocket(
+			receiveSocket,
+			RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(receiveSocket);
+
+		for (size_t j = i + 1; j < sessionCount; j++)
+			sessionBuffer[j - 1] = sessionBuffer[j];
+
+		if (i > 0)
+			i--;
+
+		sessionCount--;
+	}
+
+	Socket* acceptedSocket = acceptSocket(serverSocket);
+
+	if (acceptedSocket != NULL)
+	{
+		if (sessionCount < sessionBufferSize)
+		{
+			void* session;
+
+			bool result = onCreate(
+				server,
+				acceptedSocket,
+				&session);
+
+			if (result == true)
+			{
+				StreamSession streamSession;
+				streamSession.receiveSocket = acceptedSocket;
+				streamSession.handle = session;
+				streamSession.lastMessageTime = getCurrentClock();
+				streamSession.isSslAccepted = !isServerSocketSsl;
+				sessionBuffer[sessionCount++] = streamSession;
+			}
+			else
+			{
+				shutdownSocket(
+					acceptedSocket,
+					RECEIVE_SEND_SOCKET_SHUTDOWN);
+				destroySocket(acceptedSocket);
+			}
+		}
+		else
+		{
+			shutdownSocket(
+				acceptedSocket,
+				RECEIVE_SEND_SOCKET_SHUTDOWN);
+			destroySocket(acceptedSocket);
+		}
+	}
+
+	server->sessionCount = sessionCount;
+}
+
 bool streamSessionSend(
-	StreamSession* streamSession,
+	StreamSession* session,
 	const void* buffer,
 	size_t count)
 {
-	assert(streamSession != NULL);
+	assert(session != NULL);
 	assert(buffer != NULL);
 	assert(count != 0);
 	assert(isNetworkInitialized() == true);
 
 	return socketSend(
-		streamSession->receiveSocket,
+		session->receiveSocket,
 		buffer,
 		count);
 }

@@ -5,9 +5,9 @@
 typedef struct StreamClient StreamClient;
 
 /* Stream client message receive function */
-typedef bool(*StreamClientReceive)(
-	StreamClient* streamClient,
-	const uint8_t* receiveBuffer,
+typedef void(*OnStreamClientReceive)(
+	StreamClient* client,
+	const uint8_t* buffer,
 	size_t byteCount);
 
 /*
@@ -15,15 +15,15 @@ typedef bool(*StreamClientReceive)(
  * Returns stream client on success, otherwise NULL.
  *
  * addressFamily - local stream socket address family.
- * receiveBufferSize - socket message receive buffer size.
- * receiveFunction - pointer to the valid receive function.
- * functionArgument - pointer to the receive function argument.
+ * bufferSize - socket message receive buffer size.
+ * onReceive - pointer to the valid receive function.
+ * handle - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
 StreamClient* createStreamClient(
 	uint8_t addressFamily,
-	size_t receiveBufferSize,
-	StreamClientReceive receiveFunction,
+	size_t bufferSize,
+	OnStreamClientReceive onReceive,
 	void* handle,
 	SslContext* sslContext);
 
@@ -37,14 +37,14 @@ void destroyStreamClient(StreamClient* client);
 * Returns stream client receive buffer size.
 * client - pointer to the valid stream client.
 */
-size_t getStreamClientReceiveBufferSize(
+size_t getStreamClientBufferSize(
 	const StreamClient* client);
 
 /*
 * Returns stream client receive function.
 * client - pointer to the valid stream client.
 */
-StreamClientReceive getStreamClientReceiveFunction(
+OnStreamClientReceive getStreamClientOnReceive(
 	const StreamClient* client);
 
 /*
@@ -62,13 +62,6 @@ Socket* getStreamClientSocket(
 	const StreamClient* client);
 
 /*
- * Returns current stream client running state
- * client - pointer to the valid stream client.
- */
-bool isStreamClientRunning(
-	const StreamClient* client);
-
-/*
  * Connects stream client to the server.
  * Returns true on success.
  *
@@ -77,9 +70,16 @@ bool isStreamClientRunning(
  * timeoutTime - attempt time out time (ms).
  */
 bool connectStreamClient(
-	StreamClient* streamClient,
+	StreamClient* client,
 	const SocketAddress* address,
-	double timeoutTime);
+	double timeout);
+
+/*
+ * Received buffered datagrams.
+ * server - pointer to the valid datagram client.
+ */
+void updateStreamClient(
+	StreamClient* client);
 
 /*
  * Sends message to the stream server.

@@ -1,67 +1,27 @@
 #include "mpnw/stream_client.h"
 #include "mpmt/thread.h"
 
-#include <time.h>
 #include <assert.h>
 
 struct StreamClient
 {
-	size_t receiveBufferSize;
-	StreamClientReceive receiveFunction;
+	size_t bufferSize;
+	OnStreamClientReceive onReceive;
 	void* handle;
-	uint8_t* receiveBuffer;
-	Socket* receiveSocket;
-	Thread* receiveThread;
-	volatile bool threadRunning;
+	uint8_t* buffer;
+	Socket* socket;
 };
-
-static void streamClientReceiveHandler(void* argument)
-{
-	StreamClient* client = (StreamClient*)argument;
-	StreamClientReceive receiveFunction = client->receiveFunction;
-	size_t receiveBufferSize = client->receiveBufferSize;
-	uint8_t* receiveBuffer = client->receiveBuffer;
-	Socket* receiveSocket = client->receiveSocket;
-
-	bool result;
-	size_t byteCount;
-
-	while (client->threadRunning == true)
-	{
-		result = socketReceive(
-			receiveSocket,
-			receiveBuffer,
-			receiveBufferSize,
-			&byteCount);
-
-		if (result == false)
-		{
-			sleepThread(0.001);
-			continue;
-		}
-
-		result = receiveFunction(
-			client,
-			receiveBuffer,
-			byteCount);
-
-		if (result == false)
-			break;
-	}
-
-	client->threadRunning = false;
-}
 
 StreamClient* createStreamClient(
 	uint8_t addressFamily,
-	size_t receiveBufferSize,
-	StreamClientReceive receiveFunction,
+	size_t bufferSize,
+	OnStreamClientReceive onReceive,
 	void* handle,
 	SslContext* sslContext)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(receiveBufferSize != 0);
-	assert(receiveFunction != NULL);
+	assert(bufferSize != 0);
+	assert(onReceive != NULL);
 	assert(isNetworkInitialized() == true);
 
 	StreamClient* client = malloc(sizeof(StreamClient));
@@ -69,80 +29,65 @@ StreamClient* createStreamClient(
 	if (client == NULL)
 		return NULL;
 
-	uint8_t* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(uint8_t));
+	uint8_t* buffer = malloc(
+		bufferSize * sizeof(uint8_t));
 
-	if (receiveBuffer == NULL)
+	if (buffer == NULL)
 	{
 		free(client);
 		return NULL;
 	}
 
-	SocketAddress* localAddress;
+	SocketAddress* address;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
-		localAddress = createSocketAddress(
+		address = createSocketAddress(
 			ANY_IP_ADDRESS_V4,
 			ANY_IP_ADDRESS_PORT);
 	}
 	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
 	{
-		localAddress = createSocketAddress(
+		address = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
 			ANY_IP_ADDRESS_PORT);
 	}
 	else
 	{
-		free(receiveBuffer);
+		free(buffer);
 		free(client);
 		return NULL;
 	}
 
-	if (localAddress == NULL)
+	if (address == NULL)
 	{
-		free(receiveBuffer);
+		free(buffer);
 		free(client);
 		return NULL;
 	}
 
-	Socket* receiveSocket = createSocket(
+	Socket* socket = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
-		localAddress,
+		address,
 		false,
 		false,
 		sslContext);
 
-	destroySocketAddress(localAddress);
+	destroySocketAddress(address);
 
-	if (receiveSocket == NULL)
+	if (socket == NULL)
 	{
-		free(receiveBuffer);
+		free(buffer);
 		free(client);
 		return NULL;
 	}
 
-	client->receiveBufferSize = receiveBufferSize;
-	client->receiveFunction = receiveFunction;
+	client->bufferSize = bufferSize;
+	client->onReceive = onReceive;
 	client->handle = handle;
-	client->receiveBuffer = receiveBuffer;
-	client->receiveSocket = receiveSocket;
-	client->threadRunning = true;
-
-	Thread* receiveThread = createThread(
-		streamClientReceiveHandler,
-		client);
-
-	if (receiveThread == NULL)
-	{
-		destroySocket(receiveSocket);
-		free(receiveBuffer);
-		free(client);
-		return NULL;
-	}
-
-	client->receiveThread = receiveThread;
+	client->buffer = buffer;
+	client->socket = socket;
 	return client;
 }
 
@@ -153,34 +98,28 @@ void destroyStreamClient(StreamClient* client)
 	if (client == NULL)
 		return;
 
-	client->threadRunning = false;
-
-	joinThread(client->receiveThread);
-	destroyThread(client->receiveThread);
-
 	shutdownSocket(
-		client->receiveSocket,
+		client->socket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(client->receiveSocket);
-
-	free(client->receiveBuffer);
+	destroySocket(client->socket);
+	free(client->buffer);
 	free(client);
 }
 
-size_t getStreamClientReceiveBufferSize(
+size_t getStreamClientBufferSize(
 	const StreamClient* client)
 {
 	assert(client != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->receiveBufferSize;
+	return client->bufferSize;
 }
 
-StreamClientReceive getStreamClientReceiveFunction(
+OnStreamClientReceive getStreamClientOnReceive(
 	const StreamClient* client)
 {
 	assert(client != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->receiveFunction;
+	return client->onReceive;
 }
 
 void* getStreamClientHandle(
@@ -196,28 +135,20 @@ Socket* getStreamClientSocket(
 {
 	assert(client != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->receiveSocket;
-}
-
-bool isStreamClientRunning(
-	const StreamClient* client)
-{
-	assert(client != NULL);
-	assert(isNetworkInitialized() == true);
-	return client->threadRunning;
+	return client->socket;
 }
 
 bool connectStreamClient(
-	StreamClient* streamClient,
+	StreamClient* client,
 	const SocketAddress* address,
 	double timeoutTime)
 {
-	assert(streamClient != NULL);
+	assert(client != NULL);
 	assert(address != NULL);
 	assert(timeoutTime >= 0.0);
 	assert(isNetworkInitialized() == true);
 
-	Socket* socket = streamClient->receiveSocket;
+	Socket* socket = client->socket;
 	double timeout = getCurrentClock() + timeoutTime;
 
 	while (getCurrentClock() < timeout)
@@ -249,6 +180,31 @@ CONNECT_SSL:
 	return false;
 }
 
+void updateStreamClient(
+	StreamClient * client)
+{
+	assert(client != NULL);
+
+	uint8_t* receiveBuffer =
+		client->buffer;
+
+	size_t byteCount;
+
+	bool result = socketReceive(
+		client->socket,
+		receiveBuffer,
+		client->bufferSize,
+		&byteCount);
+
+	if (result == false)
+		return;
+
+	client->onReceive(
+		client,
+		receiveBuffer,
+		byteCount);
+}
+
 bool streamClientSend(
 	StreamClient* client,
 	const void* buffer,
@@ -260,7 +216,7 @@ bool streamClientSend(
 	assert(isNetworkInitialized() == true);
 
 	return socketSend(
-		client->receiveSocket,
+		client->socket,
 		buffer,
 		count);
 }

@@ -5,9 +5,9 @@
 typedef struct DatagramClient DatagramClient;
 
 /* Datagram client datagram receive function */
-typedef bool(*DatagramClientReceive)(
-	DatagramClient* datagramClient,
-	const uint8_t* receiveBuffer,
+typedef void(*OnDatagramClientReceive)(
+	DatagramClient* client,
+	const uint8_t* buffer,
 	size_t byteCount);
 
 /*
@@ -16,15 +16,15 @@ typedef bool(*DatagramClientReceive)(
  *
  * remoteAddress - pointer to the valid server address.
  * bufferSize - socket datagram receive buffer size.
- * receiveFunction - pointer to the valid receive function.
- * functionArgument - pointer to the receive function argument.
+ * onReceive - pointer to the valid receive function.
+ * handle - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
 DatagramClient* createDatagramClient(
 	const SocketAddress* remoteAddress,
-	size_t receiveBufferSize,
-	DatagramClientReceive receiveFunction,
-	void* handle,
+	size_t bufferSize,
+	OnDatagramClientReceive onReceive,
+	void* functionArgument,
 	SslContext* sslContext);
 
 /*
@@ -37,14 +37,14 @@ void destroyDatagramClient(DatagramClient* client);
  * Returns datagram client receive buffer size.
  * client - pointer to the valid datagram client.
  */
-size_t getDatagramClientReceiveBufferSize(
+size_t getDatagramClientBufferSize(
 	const DatagramClient* client);
 
 /*
  * Returns datagram client receive function.
  * client - pointer to the valid datagram client.
  */
-DatagramClientReceive getDatagramClientReceiveFunction(
+OnDatagramClientReceive getDatagramClientOnReceive(
 	const DatagramClient* client);
 
 /*
@@ -62,11 +62,11 @@ Socket* getDatagramClientSocket(
 	const DatagramClient* client);
 
 /*
- * Returns current datagram client running state.
+ * Receive buffered datagrams.
  * client - pointer to the valid datagram client.
  */
-bool isDatagramClientRunning(
-	const DatagramClient* client);
+void updateDatagramClient(
+	DatagramClient* client);
 
 /*
  * Sends message to the datagram server.

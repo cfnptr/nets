@@ -2,107 +2,217 @@
 #include "mpnw/datagram_client.h"
 
 #include "mpmt/thread.h"
-
 #include <stdio.h>
 
-static bool serverReceiveHandler(
-	DatagramServer* datagramServer,
-	const SocketAddress* socketAddress,
-	const uint8_t* receiveBuffer,
+#define SERVER_PORT "12345"
+#define RECEIVE_BUFFER_SIZE 4
+
+
+typedef struct Server
+{
+	DatagramServer* server;
+	Thread* thread;
+	volatile bool isRunning;
+} Server;
+
+typedef struct Client
+{
+	DatagramClient* client;
+	Thread* thread;
+	volatile bool isRunning;
+} Client;
+
+static void onServerReceive(
+	DatagramServer* server,
+	const SocketAddress* address,
+	const uint8_t* buffer,
 	size_t byteCount)
 {
-	const char* serverName = (const char*)
-		getDatagramServerHandle(datagramServer);
-
 	if (byteCount != 1)
 	{
-		printf("%s: incorrect datagram size (%zu)\n",
-			serverName,
+		printf("Server: incorrect datagram size (%zu)\n",
 			byteCount);
 		fflush(stdout);
-		return false;
+		return;
 	}
 
-	printf("%s: received request (%hhu)\n",
-		serverName,
-		receiveBuffer[0]);
+	printf("Server: received request (%hhu)\n",
+		buffer[0]);
 	fflush(stdout);
 
 	bool result = datagramServerSend(
-		datagramServer,
-		receiveBuffer,
+		server,
+		buffer,
 		1,
-		socketAddress);
+		address);
 
 	if (result == false)
 	{
-		printf("%s: failed to send response\n",
-			serverName);
+		printf("Server: failed to send response\n");
 		fflush(stdout);
-		return false;
 	}
+}
+static void serverHandler(void* argument)
+{
+	Server* server = (Server*)argument;
 
-	return true;
+	while (server->isRunning == true)
+	{
+		updateDatagramServer(server->server);
+		sleepThread(0.001);
+	}
 }
 
-static bool clientReceiveHandler(
-	DatagramClient* datagramClient,
-	const uint8_t* receiveBuffer,
-	size_t byteCount)
+inline static Server* createServer()
 {
-	const char* clientName = (const char*)
-		getDatagramClientHandle(datagramClient);
+	Server* server = malloc(sizeof(Server));
 
-	if (byteCount != 1)
+	if (server == NULL)
+		return NULL;
+
+	DatagramServer* datagramServer = createDatagramServer(
+		IP_V4_ADDRESS_FAMILY,
+		SERVER_PORT,
+		RECEIVE_BUFFER_SIZE,
+		onServerReceive,
+		NULL,
+		NULL);
+
+	if (datagramServer == NULL)
 	{
-		printf("%s: incorrect datagram size (%zu)\n",
-			clientName,
-			byteCount);
-		fflush(stdout);
-		return false;
+		free(server);
+		return NULL;
 	}
 
-	printf("%s: received response (%hhu)\n",
-		clientName,
-		receiveBuffer[0]);
+	server->server = datagramServer;
+	server->isRunning = true;
+
+	Thread* thread = createThread(
+		serverHandler,
+		server);
+
+	if (thread == NULL)
+	{
+		destroyDatagramServer(datagramServer);
+		free(server);
+		return NULL;
+	}
+
+	server->thread = thread;
+	return server;
+}
+inline static void destroyServer(Server* server)
+{
+	if (server == NULL)
+		return;
+
+	server->isRunning = false;
+	joinThread(server->thread);
+	destroyThread(server->thread);
+	destroyDatagramServer(server->server);
+	free(server);
+}
+
+static void onClientReceive(
+	DatagramClient* client,
+	const uint8_t* buffer,
+	size_t byteCount)
+{
+	if (byteCount != 1)
+	{
+		printf("Client: incorrect datagram size (%zu)\n",
+			byteCount);
+		fflush(stdout);
+		return;
+	}
+
+	printf("Client: received response (%hhu)\n",
+		buffer[0]);
 	fflush(stdout);
-	return true;
+}
+static void clientHandler(void* argument)
+{
+	Client* client = (Client*)argument;
+
+	while (client->isRunning == true)
+	{
+		updateDatagramClient(client->client);
+		sleepThread(0.001);
+	}
+}
+
+inline static Client* createClient()
+{
+	Client* client = malloc(sizeof(Client));
+
+	if (client == NULL)
+		return NULL;
+
+	SocketAddress* remoteAddress = createSocketAddress(
+		LOOPBACK_IP_ADDRESS_V4,
+		SERVER_PORT);
+
+	if (remoteAddress == NULL)
+	{
+		free(client);
+		return NULL;
+	}
+
+	DatagramClient* datagramClient = createDatagramClient(
+		remoteAddress,
+		RECEIVE_BUFFER_SIZE,
+		onClientReceive,
+		NULL,
+		NULL);
+
+	destroySocketAddress(remoteAddress);
+
+	if (datagramClient == NULL)
+	{
+		free(client);
+		return NULL;
+	}
+
+	client->client = datagramClient;
+	client->isRunning = true;
+
+	Thread* thread = createThread(
+		clientHandler,
+		client);
+
+	if (thread == NULL)
+	{
+		destroyDatagramClient(datagramClient);
+		free(client);
+		return NULL;
+	}
+
+	client->thread = thread;
+	return client;
+}
+inline static void destroyClient(Client* client)
+{
+	if (client == NULL)
+		return;
+
+	client->isRunning = false;
+	joinThread(client->thread);
+	destroyThread(client->thread);
+	destroyDatagramClient(client->client);
+	free(client);
 }
 
 int main()
 {
-	const char* serverPort = "12345";
-	size_t receiveBufferSize = 4;
-
 	if (initializeNetwork() == false)
 		return EXIT_FAILURE;
 
-	DatagramServer* server = createDatagramServer(
-		IP_V4_ADDRESS_FAMILY,
-		serverPort,
-		receiveBufferSize,
-		serverReceiveHandler,
-		"Server",
-		NULL);
+	Server* server = createServer();
 
 	if (server == NULL)
 		return EXIT_FAILURE;
 
-	SocketAddress* serverAddress = createSocketAddress(
-		LOOPBACK_IP_ADDRESS_V4,
-		serverPort);
-
-	if (serverAddress == NULL)
-		return EXIT_FAILURE;
-
-	DatagramClient* client = createDatagramClient(
-		serverAddress,
-		receiveBufferSize,
-		clientReceiveHandler,
-		"Client",
-		NULL);
-
-	destroySocketAddress(serverAddress);
+	Client* client = createClient();
 
 	if (client == NULL)
 		return EXIT_FAILURE;
@@ -110,7 +220,7 @@ int main()
 	uint8_t message = 1;
 
 	bool result = datagramClientSend(
-		client,
+		client->client,
 		&message,
 		sizeof(uint8_t));
 
@@ -119,8 +229,8 @@ int main()
 
 	sleepThread(0.1);
 
-	destroyDatagramClient(client);
-	destroyDatagramServer(server);
+	destroyClient(client);
+	destroyServer(server);
 	terminateNetwork();
 	return EXIT_SUCCESS;
 }
