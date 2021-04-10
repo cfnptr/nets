@@ -1,6 +1,6 @@
 #include "mpnw/stream_server.h"
 
-#include "mpmt/mutex.h"
+#include "mpmt/sync.h"
 #include "mpmt/thread.h"
 
 struct StreamSession
