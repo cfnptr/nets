@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
-if(${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
+if (${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
 	message(FATAL_ERROR "Prevented in-tree build")
-endif()
+endif ()
 
 project(mpnw 
 	VERSION 0.7.2
@@ -16,29 +16,30 @@ set(CMAKE_C_STANDARD_REQUIRED TRUE)
 option(MPNW_BUILD_EXAMPLES "Build MPNW examples" ON)
 option(MPNW_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 
-if(MPNW_USE_OPENSSL)
+if (MPNW_USE_OPENSSL)
 	set(MPNW_HAS_OPENSSL 1)
 
-	if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+	if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
 		set(OPENSSL_ROOT_DIR /usr/local/Cellar/openssl@1.1/1.1.1k CACHE FILEPATH "" FORCE)
 		set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.a CACHE FILEPATH "" FORCE)
 		set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.a CACHE FILEPATH "" FORCE)
-	endif()
+	endif ()
 
 	find_package(OpenSSL REQUIRED)
-else()
+else ()
 	set(MPNW_HAS_OPENSSL 0)
-endif()
+endif ()
 
 include(TestBigEndian)
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 
-if(IS_BIG_ENDIAN)
+if (IS_BIG_ENDIAN)
 	set(MPNW_IS_LITTLE_ENDIAN 0)
-else()
+else ()
 	set(MPNW_IS_LITTLE_ENDIAN 1)
-endif()
+endif ()
 
+set(MPMT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/mpmt)
 
 configure_file(
@@ -52,7 +53,7 @@ if(MPNW_USE_OPENSSL)
 	list(APPEND MPNW_LINK_LIBRARIES
 		OpenSSL::SSL
 		OpenSSL::Crypto)
-endif()
+endif ()
 
 add_library(mpnw STATIC
 	source/datagram_client.c
@@ -82,4 +83,4 @@ if (MPNW_BUILD_EXAMPLES)
 	target_include_directories(mpnw-https-example PRIVATE
 		${PROJECT_BINARY_DIR}
 		${PROJECT_SOURCE_DIR}/include)
-endif()
+endif ()
