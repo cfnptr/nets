@@ -5,7 +5,7 @@
 * Secure socket layer (OpenSSL)
 
 ## Supported operating systems
-* Linux
+* Ubuntu
 * MacOS
 * Windows
 
@@ -15,7 +15,7 @@
 * [OpenSSL](https://openssl.org/)
 
 ## OpenSSL installation
-* Linux: sudo apt install libssl-dev
+* Ubuntu: sudo apt install libssl-dev
 * MacOS: [brew](https://brew.sh/) install openssl
 * Windows: [choco](https://chocolatey.org/) install openssl
 
