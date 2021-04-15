@@ -9,21 +9,23 @@ typedef struct StreamServer StreamServer;
 /* Stream server session instance handle (TCP) */
 typedef struct StreamSession StreamSession;
 
+/* Stream session create function */
+typedef bool(*OnStreamSessionCreate)(
+	StreamServer* server,
+	Socket* socket,
+	void** handle);
+/* Stream session destroy function */
+typedef void(*OnStreamSessionDestroy)(
+	StreamServer* server,
+	StreamSession* session);
 /* Stream session message receive function */
 typedef bool(*OnStreamSessionReceive)(
 	StreamServer* server,
 	StreamSession* session,
 	const uint8_t* buffer,
 	size_t byteCount);
-
-/* Stream session create function */
-typedef bool(*OnStreamSessionCreate)(
-	StreamServer* server,
-	Socket* socket,
-	void** handle);
-
-/* Stream session destroy function */
-typedef void(*OnStreamSessionDestroy)(
+/* Stream session update function */
+typedef bool(*OnStreamSessionUpdate)(
 	StreamServer* server,
 	StreamSession* session);
 
@@ -48,9 +50,10 @@ StreamServer* createStreamServer(
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
 	double timeoutTime,
-	OnStreamSessionReceive onReceive,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
+	OnStreamSessionUpdate onUpdate,
+	OnStreamSessionReceive onReceive,
 	void* handle,
 	SslContext* sslContext);
 
@@ -68,13 +71,6 @@ size_t getStreamServerSessionBufferSize(
 	const StreamServer* server);
 
 /*
- * Returns stream server receive function.
- * server - pointer to the valid stream server.
- */
-OnStreamSessionReceive getStreamServerOnReceive(
-	const StreamServer* server);
-
-/*
  * Returns stream server create function.
  * server - pointer to the valid stream server.
  */
@@ -86,6 +82,20 @@ OnStreamSessionCreate getStreamServerOnCreate(
  * server - pointer to the valid stream server.
  */
 OnStreamSessionDestroy getStreamServerOnDestroy(
+	const StreamServer* server);
+
+/*
+ * Returns stream server update function.
+ * server - pointer to the valid stream server.
+ */
+OnStreamSessionUpdate getStreamServerOnUpdate(
+	const StreamServer* server);
+
+/*
+ * Returns stream server receive function.
+ * server - pointer to the valid stream server.
+ */
+OnStreamSessionReceive getStreamServerOnReceive(
 	const StreamServer* server);
 
 /*

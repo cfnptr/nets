@@ -16,9 +16,10 @@ struct StreamServer
 	size_t sessionBufferSize;
 	size_t receiveBufferSize;
 	double timeoutTime;
-	OnStreamSessionReceive onReceive;
 	OnStreamSessionCreate onCreate;
 	OnStreamSessionDestroy onDestroy;
+	OnStreamSessionReceive onReceive;
+	OnStreamSessionUpdate onUpdate;
 	void* handle;
 	uint8_t* receiveBuffer;
 	StreamSession* sessionBuffer;
@@ -32,9 +33,10 @@ StreamServer* createStreamServer(
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
 	double timeoutTime,
-	OnStreamSessionReceive onReceive,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
+	OnStreamSessionUpdate onUpdate,
+	OnStreamSessionReceive onReceive,
 	void* handle,
 	SslContext* sslContext)
 {
@@ -42,9 +44,10 @@ StreamServer* createStreamServer(
 	assert(sessionBufferSize != 0);
 	assert(receiveBufferSize != 0);
 	assert(timeoutTime != 0);
-	assert(onReceive != NULL);
 	assert(onCreate != NULL);
 	assert(onDestroy != NULL);
+	assert(onUpdate != NULL);
+	assert(onReceive != NULL);
 	assert(isNetworkInitialized() == true);
 
 	StreamServer* server = malloc(sizeof(StreamServer));
@@ -122,9 +125,10 @@ StreamServer* createStreamServer(
 	server->sessionBufferSize = sessionBufferSize;
 	server->receiveBufferSize = receiveBufferSize;
 	server->timeoutTime = timeoutTime;
-	server->onReceive = onReceive;
 	server->onCreate = onCreate;
 	server->onDestroy = onDestroy;
+	server->onUpdate = onUpdate;
+	server->onReceive = onReceive;
 	server->handle = handle;
 	server->sessionBuffer = sessionBuffer;
 	server->sessionCount = 0;
@@ -175,14 +179,6 @@ size_t getStreamServerSessionBufferSize(
 	return server->sessionBufferSize;
 }
 
-OnStreamSessionReceive getStreamServerOnReceive(
-	const StreamServer* server)
-{
-	assert(server != NULL);
-	assert(isNetworkInitialized() == true);
-	return server->onReceive;
-}
-
 OnStreamSessionCreate getStreamServerOnCreate(
 	const StreamServer* server)
 {
@@ -197,6 +193,22 @@ OnStreamSessionDestroy getStreamServerOnDestroy(
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
 	return server->onDestroy;
+}
+
+OnStreamSessionUpdate getStreamServerOnUpdate(
+	const StreamServer* server)
+{
+	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
+	return server->onUpdate;
+}
+
+OnStreamSessionReceive getStreamServerOnReceive(
+	const StreamServer* server)
+{
+	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
+	return server->onReceive;
 }
 
 size_t getStreamServerReceiveBufferSize(
@@ -259,9 +271,10 @@ void updateStreamServer(
 	double currentTime = getCurrentClock();
 	uint8_t* receiveBuffer = server->receiveBuffer;
 	size_t receiveBufferSize = server->receiveBufferSize;
-	OnStreamSessionReceive onReceive = server->onReceive;
 	OnStreamSessionCreate onCreate = server->onCreate;
 	OnStreamSessionDestroy onDestroy = server->onDestroy;
+	OnStreamSessionUpdate onUpdate = server->onUpdate;
+	OnStreamSessionReceive onReceive = server->onReceive;
 	Socket* serverSocket = server->acceptSocket;
 	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
 
@@ -283,9 +296,16 @@ void updateStreamServer(
 				continue;
 		}
 
+		bool result = onUpdate(
+			server,
+			session);
+
+		if (result == false)
+			goto DESTROY_SESSION;
+
 		size_t byteCount;
 
-		bool result = socketReceive(
+		result = socketReceive(
 			receiveSocket,
 			receiveBuffer,
 			receiveBufferSize,

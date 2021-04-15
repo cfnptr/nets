@@ -19,6 +19,11 @@
 * MacOS: [brew](https://brew.sh/) install openssl
 * Windows: [choco](https://chocolatey.org/) install openssl
 
+## Cloning
+1. git clone https://github.com/cfnptr/mpnw
+2. cd mpnw
+3. git submodule update --init --recursive
+
 ## Third-party
 * [mpmt](https://github.com/cfnptr/mpmt/) (BSD-3-Clause License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache 2.0 License)
