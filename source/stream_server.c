@@ -259,8 +259,7 @@ void* getStreamSessionHandle(
 	return session->handle;
 }
 
-void updateStreamServer(
-	StreamServer* server)
+void updateStreamServer(StreamServer* server)
 {
 	assert(server != NULL);
 

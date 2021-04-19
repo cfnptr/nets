@@ -18,16 +18,16 @@ typedef bool(*OnStreamSessionCreate)(
 typedef void(*OnStreamSessionDestroy)(
 	StreamServer* server,
 	StreamSession* session);
+/* Stream session update function */
+typedef bool(*OnStreamSessionUpdate)(
+	StreamServer* server,
+	StreamSession* session);
 /* Stream session message receive function */
 typedef bool(*OnStreamSessionReceive)(
 	StreamServer* server,
 	StreamSession* session,
 	const uint8_t* buffer,
 	size_t byteCount);
-/* Stream session update function */
-typedef bool(*OnStreamSessionUpdate)(
-	StreamServer* server,
-	StreamSession* session);
 
 /*
  * Creates a new stream server (TCP).
@@ -132,6 +132,12 @@ Socket* getStreamSessionSocket(
  */
 void* getStreamSessionHandle(
 	const StreamSession* session);
+
+/*
+ * Receive buffered datagrams.
+ * server - pointer to the valid stream server.
+ */
+void updateStreamServer(StreamServer* server);
 
 /*
  * Sends datagram to the specified session.

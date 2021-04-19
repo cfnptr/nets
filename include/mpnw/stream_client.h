@@ -75,8 +75,8 @@ bool connectStreamClient(
 	double timeout);
 
 /*
- * Received buffered datagrams.
- * server - pointer to the valid datagram client.
+ * Receive buffered datagrams.
+ * client - pointer to the valid datagram client.
  */
 void updateStreamClient(
 	StreamClient* client);
