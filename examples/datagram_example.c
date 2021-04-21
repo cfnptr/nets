@@ -58,8 +58,11 @@ static void serverHandler(void* argument)
 
 	while (server->isRunning == true)
 	{
-		updateDatagramServer(server->server);
-		sleepThread(0.001);
+		bool result = updateDatagramServer(
+			server->server);
+
+		if (result == false)
+			sleepThread(0.001);
 	}
 }
 
@@ -136,8 +139,11 @@ static void clientHandler(void* argument)
 
 	while (client->isRunning == true)
 	{
-		updateDatagramClient(client->client);
-		sleepThread(0.001);
+		bool result = updateDatagramClient(
+			client->client);
+
+		if (result == false)
+			sleepThread(0.001);
 	}
 }
 

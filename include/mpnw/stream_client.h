@@ -76,9 +76,11 @@ bool connectStreamClient(
 
 /*
  * Receive buffered datagrams.
+ * Returns true if message received.
+ *
  * client - pointer to the valid datagram client.
  */
-void updateStreamClient(
+bool updateStreamClient(
 	StreamClient* client);
 
 /*

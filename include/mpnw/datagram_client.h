@@ -63,9 +63,11 @@ Socket* getDatagramClientSocket(
 
 /*
  * Receive buffered datagrams.
+ * Returns true if datagram received.
+ *
  * client - pointer to the valid datagram client.
  */
-void updateDatagramClient(
+bool updateDatagramClient(
 	DatagramClient* client);
 
 /*

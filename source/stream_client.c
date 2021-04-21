@@ -180,7 +180,7 @@ CONNECT_SSL:
 	return false;
 }
 
-void updateStreamClient(
+bool updateStreamClient(
 	StreamClient * client)
 {
 	assert(client != NULL);
@@ -197,12 +197,13 @@ void updateStreamClient(
 		&byteCount);
 
 	if (result == false)
-		return;
+		return false;
 
 	client->onReceive(
 		client,
 		receiveBuffer,
 		byteCount);
+	return true;
 }
 
 bool streamClientSend(

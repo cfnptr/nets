@@ -151,7 +151,7 @@ Socket* getDatagramClientSocket(
 	return client->socket;
 }
 
-void updateDatagramClient(
+bool updateDatagramClient(
 	DatagramClient* client)
 {
 	assert(client != NULL);
@@ -166,12 +166,13 @@ void updateDatagramClient(
 		&byteCount);
 
 	if (result == false)
-		return;
+		return false;
 
 	client->onReceive(
 		client,
 		buffer,
 		byteCount);
+	return true;
 }
 
 bool datagramClientSend(

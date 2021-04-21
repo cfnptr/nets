@@ -259,9 +259,11 @@ void* getStreamSessionHandle(
 	return session->handle;
 }
 
-void updateStreamServer(StreamServer* server)
+bool updateStreamServer(StreamServer* server)
 {
 	assert(server != NULL);
+
+	bool isUpdated = false;
 
 	StreamSession* sessionBuffer = server->sessionBuffer;
 	size_t sessionBufferSize = server->sessionBufferSize;
@@ -290,9 +292,14 @@ void updateStreamServer(StreamServer* server)
 			bool result = acceptSslSocket(receiveSocket);
 
 			if(result == true)
+			{
 				session->isSslAccepted = true;
+				isUpdated = true;
+			}
 			else
+			{
 				continue;
+			}
 		}
 
 		bool result = onUpdate(
@@ -322,6 +329,7 @@ void updateStreamServer(StreamServer* server)
 		if (result == true)
 		{
 			session->lastMessageTime = currentTime;
+			isUpdated = true;
 			continue;
 		}
 
@@ -341,6 +349,7 @@ void updateStreamServer(StreamServer* server)
 			i--;
 
 		sessionCount--;
+		isUpdated = true;
 	}
 
 	Socket* acceptedSocket = acceptSocket(serverSocket);
@@ -380,9 +389,12 @@ void updateStreamServer(StreamServer* server)
 				RECEIVE_SEND_SOCKET_SHUTDOWN);
 			destroySocket(acceptedSocket);
 		}
+
+		isUpdated = true;
 	}
 
 	server->sessionCount = sessionCount;
+	return isUpdated;
 }
 
 bool streamSessionSend(

@@ -9,20 +9,32 @@ typedef struct StreamServer StreamServer;
 /* Stream server session instance handle (TCP) */
 typedef struct StreamSession StreamSession;
 
-/* Stream session create function */
+/*
+ * Stream session create function.
+ * Destroys session on false return result.
+ */
 typedef bool(*OnStreamSessionCreate)(
 	StreamServer* server,
 	Socket* socket,
 	void** handle);
+
 /* Stream session destroy function */
 typedef void(*OnStreamSessionDestroy)(
 	StreamServer* server,
 	StreamSession* session);
-/* Stream session update function */
+
+/*
+ * Stream session update function.
+ * Destroys session on false return result.
+ */
 typedef bool(*OnStreamSessionUpdate)(
 	StreamServer* server,
 	StreamSession* session);
-/* Stream session message receive function */
+
+/*
+ * Stream session message receive function
+ * Destroys session on false return result.
+ */
 typedef bool(*OnStreamSessionReceive)(
 	StreamServer* server,
 	StreamSession* session,
@@ -135,9 +147,11 @@ void* getStreamSessionHandle(
 
 /*
  * Receive buffered datagrams.
+ * Returns true if update actions occurred.
+ *
  * server - pointer to the valid stream server.
  */
-void updateStreamServer(StreamServer* server);
+bool updateStreamServer(StreamServer* server);
 
 /*
  * Sends datagram to the specified session.

@@ -141,7 +141,7 @@ Socket* getDatagramServerSocket(
 	return server->socket;
 }
 
-void updateDatagramServer(
+bool updateDatagramServer(
 	DatagramServer* server)
 {
 	assert(server != NULL);
@@ -157,13 +157,14 @@ void updateDatagramServer(
 		&byteCount);
 
 	if (result == false)
-		return;
+		return false;
 
 	server->onReceive(
 		server,
 		server->address,
 		buffer,
 		byteCount);
+	return true;
 }
 
 bool datagramServerSend(
