@@ -1,13 +1,10 @@
 #include "mpnw/stream_server.h"
-#include "mpmt/thread.h"
-
 #include <stdio.h>
 
 struct StreamSession
 {
 	Socket* receiveSocket;
 	void* handle;
-	double lastMessageTime;
 	bool isSslAccepted;
 };
 
@@ -15,7 +12,6 @@ struct StreamServer
 {
 	size_t sessionBufferSize;
 	size_t receiveBufferSize;
-	double timeoutTime;
 	OnStreamSessionCreate onCreate;
 	OnStreamSessionDestroy onDestroy;
 	OnStreamSessionReceive onReceive;
@@ -32,7 +28,6 @@ StreamServer* createStreamServer(
 	const char* service,
 	size_t sessionBufferSize,
 	size_t receiveBufferSize,
-	double timeoutTime,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
 	OnStreamSessionUpdate onUpdate,
@@ -43,7 +38,6 @@ StreamServer* createStreamServer(
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(sessionBufferSize != 0);
 	assert(receiveBufferSize != 0);
-	assert(timeoutTime != 0);
 	assert(onCreate != NULL);
 	assert(onDestroy != NULL);
 	assert(onUpdate != NULL);
@@ -124,7 +118,6 @@ StreamServer* createStreamServer(
 
 	server->sessionBufferSize = sessionBufferSize;
 	server->receiveBufferSize = receiveBufferSize;
-	server->timeoutTime = timeoutTime;
 	server->onCreate = onCreate;
 	server->onDestroy = onDestroy;
 	server->onUpdate = onUpdate;
@@ -179,6 +172,14 @@ size_t getStreamServerSessionBufferSize(
 	return server->sessionBufferSize;
 }
 
+size_t getStreamServerReceiveBufferSize(
+	const StreamServer* server)
+{
+	assert(server != NULL);
+	assert(isNetworkInitialized() == true);
+	return server->receiveBufferSize;
+}
+
 OnStreamSessionCreate getStreamServerOnCreate(
 	const StreamServer* server)
 {
@@ -209,22 +210,6 @@ OnStreamSessionReceive getStreamServerOnReceive(
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
 	return server->onReceive;
-}
-
-size_t getStreamServerReceiveBufferSize(
-	const StreamServer* server)
-{
-	assert(server != NULL);
-	assert(isNetworkInitialized() == true);
-	return server->receiveBufferSize;
-}
-
-double getStreamServerTimeoutTime(
-	const StreamServer* server)
-{
-	assert(server != NULL);
-	assert(isNetworkInitialized() == true);
-	return server->timeoutTime;
 }
 
 void* getStreamServerHandle(
@@ -268,8 +253,6 @@ bool updateStreamServer(StreamServer* server)
 	StreamSession* sessionBuffer = server->sessionBuffer;
 	size_t sessionBufferSize = server->sessionBufferSize;
 	size_t sessionCount = server->sessionCount;
-	double timeoutTime = server->timeoutTime;
-	double currentTime = getCurrentClock();
 	uint8_t* receiveBuffer = server->receiveBuffer;
 	size_t receiveBufferSize = server->receiveBufferSize;
 	OnStreamSessionCreate onCreate = server->onCreate;
@@ -283,9 +266,6 @@ bool updateStreamServer(StreamServer* server)
 	{
 		StreamSession* session = &sessionBuffer[i];
 		Socket* receiveSocket = session->receiveSocket;
-
-		if (currentTime - session->lastMessageTime > timeoutTime)
-			goto DESTROY_SESSION;
 
 		if (session->isSslAccepted == false)
 		{
@@ -328,7 +308,6 @@ bool updateStreamServer(StreamServer* server)
 
 		if (result == true)
 		{
-			session->lastMessageTime = currentTime;
 			isUpdated = true;
 			continue;
 		}
@@ -370,7 +349,6 @@ bool updateStreamServer(StreamServer* server)
 				StreamSession streamSession;
 				streamSession.receiveSocket = acceptedSocket;
 				streamSession.handle = session;
-				streamSession.lastMessageTime = getCurrentClock();
 				streamSession.isSslAccepted = !isServerSocketSsl;
 				sessionBuffer[sessionCount++] = streamSession;
 			}

@@ -24,7 +24,7 @@ DatagramClient* createDatagramClient(
 	const SocketAddress* remoteAddress,
 	size_t bufferSize,
 	OnDatagramClientReceive onReceive,
-	void* functionArgument,
+	void* handle,
 	SslContext* sslContext);
 
 /*
