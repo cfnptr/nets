@@ -1,9 +1,5 @@
 #include "mpnw/socket.h"
 
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-
 #if __linux__ || __APPLE__
 #include <netdb.h>
 #include <fcntl.h>

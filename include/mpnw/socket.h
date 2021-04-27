@@ -1,8 +1,10 @@
 #pragma once
 #include "mpnw/defines.h"
 
+#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
 #include <stdbool.h>
 
 #if __linux__
@@ -530,3 +532,186 @@ void destroySslContext(SslContext* context);
  */
 uint8_t getSslContextSecurityProtocol(
 	const SslContext* context);
+
+/*
+ * Splits and handles received stream data to the datagrams.
+ * Returns true on all handle success
+ *
+ * receiveBuffer - pointer to the valid receive buffer.
+ * byteCount - receive buffer byte count.
+ * datagramBuffer - pointer to the valid datagram buffer.
+ * datagramByteCount - pointer to the valid datagram buffer byte count.
+ * datagramLengthSize - datagram length header size.
+ * receiveFunction - pointer to the valid receive handler.
+ * functionHandle - pointer to the function handle or NULL.
+ */
+inline static bool handleStreamDatagram(
+	const uint8_t* receiveBuffer,
+	size_t byteCount,
+	uint8_t* datagramBuffer,
+	size_t datagramBufferSize,
+	size_t* datagramByteCount,
+	size_t datagramLengthSize,
+	bool(*receiveFunction)(const uint8_t*, size_t, void*),
+	void* functionHandle)
+{
+	assert(receiveBuffer != NULL);
+	assert(byteCount != 0);
+	assert(datagramBuffer != NULL);
+	assert(datagramBufferSize != 0);
+	assert(datagramByteCount != NULL);
+
+	assert(
+		datagramLengthSize == sizeof(uint8_t) ||
+		datagramLengthSize == sizeof(uint16_t) ||
+		datagramLengthSize == sizeof(uint32_t) ||
+		datagramLengthSize == sizeof(uint64_t));
+	assert(datagramBufferSize >= datagramLengthSize);
+
+	size_t _datagramByteCount =
+		*datagramByteCount;
+
+	size_t pointer = 0;
+
+	// Handle received data with buffered data
+	if (_datagramByteCount > 0)
+	{
+		// Datagram buffer has not full size
+		if (_datagramByteCount < datagramLengthSize)
+		{
+			size_t datagramSizePart =
+				datagramLengthSize - _datagramByteCount;
+
+			// Received not full datagram size
+			if (datagramSizePart > byteCount)
+			{
+				// Store part of the received datagram size
+				memcpy(
+					datagramBuffer + _datagramByteCount,
+					receiveBuffer,
+					byteCount);
+				*datagramByteCount += byteCount;
+				return true;
+			}
+
+			// Copy remaining datagram size part
+			memcpy(
+				datagramBuffer + _datagramByteCount,
+				receiveBuffer,
+				datagramSizePart);
+			pointer += datagramSizePart;
+			_datagramByteCount += datagramSizePart;
+		}
+
+		// Decode received datagram size
+		uint64_t datagramSize;
+
+		if (datagramLengthSize == sizeof(uint8_t))
+			datagramSize = datagramBuffer[0];
+		else if (datagramLengthSize == sizeof(uint16_t))
+			datagramSize = netToHost16(*(uint16_t*)datagramBuffer);
+		else if (datagramLengthSize == sizeof(uint32_t))
+			datagramSize = netToHost32(*(uint32_t*)datagramBuffer);
+		else if (datagramLengthSize == sizeof(uint64_t))
+			datagramSize = netToHost64(*(uint64_t*)datagramBuffer);
+		else
+			abort();
+
+		// Received datagram is bigger than buffer
+		if (datagramSize > datagramBufferSize - datagramLengthSize)
+			return false;
+
+		size_t neededPartSize = datagramSize -
+			(_datagramByteCount - datagramLengthSize);
+
+		// Received not full datagram
+		if (neededPartSize > byteCount - pointer)
+		{
+			size_t datagramPartSize = byteCount - pointer;
+
+			memcpy(
+				datagramBuffer + _datagramByteCount,
+				receiveBuffer + pointer,
+				datagramPartSize);
+			*datagramByteCount = _datagramByteCount + datagramPartSize;
+			return true;
+		}
+
+		memcpy(
+			datagramBuffer + _datagramByteCount,
+			receiveBuffer + pointer,
+			neededPartSize);
+
+		bool result = receiveFunction(
+			datagramBuffer + datagramLengthSize,
+			datagramSize,
+			functionHandle);
+
+		if (result == false)
+			return false;
+
+		*datagramByteCount = 0;
+		pointer += neededPartSize;
+	}
+
+	// Continue until all received data handled
+	while (pointer < byteCount)
+	{
+		// Received not full datagram size
+		if (datagramLengthSize > byteCount - pointer)
+		{
+			size_t datagramSizePart = byteCount - pointer;
+
+			memcpy(
+				datagramBuffer,
+				receiveBuffer + pointer,
+				datagramSizePart);
+			*datagramByteCount += datagramSizePart;
+			return true;
+		}
+
+		// Decode received datagram size
+		uint64_t datagramSize;
+
+		if (datagramLengthSize == sizeof(uint8_t))
+			datagramSize = receiveBuffer[pointer];
+		else if (datagramLengthSize == sizeof(uint16_t))
+			datagramSize = netToHost16(*(uint16_t*)(receiveBuffer + pointer));
+		else if (datagramLengthSize == sizeof(uint32_t))
+			datagramSize = netToHost32(*(uint32_t*)(receiveBuffer + pointer));
+		else if (datagramLengthSize == sizeof(uint64_t))
+			datagramSize = netToHost64(*(uint64_t*)(receiveBuffer + pointer));
+		else
+			abort();
+
+		// Received datagram is bigger than buffer
+		if (datagramSize > datagramBufferSize - datagramLengthSize)
+			return false;
+
+		// Received not full datagram
+		if (datagramSize > (byteCount - pointer) - datagramLengthSize)
+		{
+			size_t datagramPartSize = byteCount - pointer;
+
+			memcpy(
+				datagramBuffer,
+				receiveBuffer + pointer,
+				datagramPartSize);
+			*datagramByteCount += datagramPartSize;
+			return true;
+		}
+
+		// Handle received datagram data
+		bool result = receiveFunction(
+			receiveBuffer + pointer + datagramLengthSize,
+			datagramSize,
+			functionHandle);
+
+		if (result == false)
+			return false;
+
+		pointer += datagramLengthSize + datagramSize;
+	}
+
+	return true;
+}
