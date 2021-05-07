@@ -78,7 +78,6 @@ inline static Server* createServer()
 		SERVER_PORT,
 		RECEIVE_BUFFER_SIZE,
 		onServerReceive,
-		NULL,
 		NULL);
 
 	if (datagramServer == NULL)
@@ -168,7 +167,6 @@ inline static Client* createClient()
 		remoteAddress,
 		RECEIVE_BUFFER_SIZE,
 		onClientReceive,
-		NULL,
 		NULL);
 
 	destroySocketAddress(remoteAddress);
