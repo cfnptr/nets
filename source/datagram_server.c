@@ -18,8 +18,7 @@ DatagramServer* createDatagramServer(
 	const char* service,
 	size_t bufferSize,
 	OnDatagramServerReceive onReceive,
-	void* handle,
-	SslContext* sslContext)
+	void* handle)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(bufferSize != 0);
@@ -74,7 +73,7 @@ DatagramServer* createDatagramServer(
 		address,
 		false,
 		false,
-		sslContext);
+		NULL);
 
 	if (socket == NULL)
 	{

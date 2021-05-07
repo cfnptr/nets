@@ -20,15 +20,13 @@ typedef void(*OnDatagramServerReceive)(
  * bufferSize - socket datagram receive buffer size.
  * onReceive - pointer to the valid receive function.
  * handle - pointer to the receive function argument.
- * sslContext - pointer to the SSL context or NULL.
  */
 DatagramServer* createDatagramServer(
 	uint8_t addressFamily,
 	const char* service,
 	size_t bufferSize,
 	OnDatagramServerReceive onReceive,
-	void* handle,
-	SslContext* sslContext);
+	void* handle);
 
 /*
  * Destroys specified datagram server.

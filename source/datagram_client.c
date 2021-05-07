@@ -14,8 +14,7 @@ DatagramClient* createDatagramClient(
 	const SocketAddress* remoteAddress,
 	size_t bufferSize,
 	OnDatagramClientReceive onReceive,
-	void* handle,
-	SslContext* sslContext)
+	void* handle)
 {
 	assert(remoteAddress != NULL);
 	assert(bufferSize != 0);
@@ -73,7 +72,7 @@ DatagramClient* createDatagramClient(
 		address,
 		false,
 		false,
-		sslContext);
+		NULL);
 
 	destroySocketAddress(address);
 

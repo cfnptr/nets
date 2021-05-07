@@ -18,14 +18,12 @@ typedef void(*OnDatagramClientReceive)(
  * bufferSize - socket datagram receive buffer size.
  * onReceive - pointer to the valid receive function.
  * handle - pointer to the receive function argument.
- * sslContext - pointer to the SSL context or NULL.
  */
 DatagramClient* createDatagramClient(
 	const SocketAddress* remoteAddress,
 	size_t bufferSize,
 	OnDatagramClientReceive onReceive,
-	void* handle,
-	SslContext* sslContext);
+	void* handle);
 
 /*
  * Destroys specified datagram client.
