@@ -159,6 +159,8 @@ bool connectStreamClient(
 
 		if (result == true)
 			goto CONNECT_SSL;
+
+		sleepThread(0.001);
 	}
 
 	return false;
@@ -170,11 +172,12 @@ CONNECT_SSL:
 
 	while (getCurrentClock() < timeout)
 	{
-		bool result = connectSslSocket(
-			socket);
+		bool result = connectSslSocket(socket);
 
 		if (result == true)
 			return true;
+
+		sleepThread(0.001);
 	}
 
 	return false;
