@@ -2,11 +2,11 @@
 #include "mpnw/socket.h"
 
 /* Datagram client instance handle (UDP) */
-typedef struct DatagramClient DatagramClient;
+typedef struct DatagramClient* DatagramClient;
 
 /* Datagram client datagram receive function */
 typedef void(*OnDatagramClientReceive)(
-	DatagramClient* client,
+	DatagramClient client,
 	const uint8_t* buffer,
 	size_t byteCount);
 
@@ -19,8 +19,8 @@ typedef void(*OnDatagramClientReceive)(
  * onReceive - pointer to the valid receive function.
  * handle - pointer to the receive function argument.
  */
-DatagramClient* createDatagramClient(
-	const SocketAddress* remoteAddress,
+DatagramClient createDatagramClient(
+	SocketAddress remoteAddress,
 	size_t bufferSize,
 	OnDatagramClientReceive onReceive,
 	void* handle);
@@ -29,35 +29,31 @@ DatagramClient* createDatagramClient(
  * Destroys specified datagram client.
  * client - pointer to the datagram client or NULL.
  */
-void destroyDatagramClient(DatagramClient* client);
+void destroyDatagramClient(DatagramClient client);
 
 /*
  * Returns datagram client receive buffer size.
  * client - pointer to the valid datagram client.
  */
-size_t getDatagramClientBufferSize(
-	const DatagramClient* client);
+size_t getDatagramClientBufferSize(DatagramClient client);
 
 /*
  * Returns datagram client receive function.
  * client - pointer to the valid datagram client.
  */
-OnDatagramClientReceive getDatagramClientOnReceive(
-	const DatagramClient* client);
+OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient client);
 
 /*
  * Returns datagram client handle.
  * client - pointer to the valid datagram client.
  */
-void* getDatagramClientHandle(
-	const DatagramClient* client);
+void* getDatagramClientHandle(DatagramClient client);
 
 /*
  * Returns datagram client socket.
  * client - pointer to the valid datagram client.
  */
-Socket* getDatagramClientSocket(
-	const DatagramClient* client);
+Socket getDatagramClientSocket(DatagramClient client);
 
 /*
  * Receive buffered datagrams.
@@ -65,8 +61,7 @@ Socket* getDatagramClientSocket(
  *
  * client - pointer to the valid datagram client.
  */
-bool updateDatagramClient(
-	DatagramClient* client);
+bool updateDatagramClient(DatagramClient client);
 
 /*
  * Sends message to the datagram server.
@@ -77,6 +72,6 @@ bool updateDatagramClient(
  * count - data buffer send byte count.
  */
 bool datagramClientSend(
-	DatagramClient* client,
+	DatagramClient client,
 	const void* buffer,
 	size_t count);

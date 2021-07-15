@@ -7,11 +7,11 @@ struct DatagramClient
 	OnDatagramClientReceive onReceive;
 	void* handle;
 	uint8_t* buffer;
-	Socket* socket;
+	Socket socket;
 };
 
-DatagramClient* createDatagramClient(
-	const SocketAddress* remoteAddress,
+DatagramClient createDatagramClient(
+	SocketAddress remoteAddress,
 	size_t bufferSize,
 	OnDatagramClientReceive onReceive,
 	void* handle)
@@ -21,7 +21,8 @@ DatagramClient* createDatagramClient(
 	assert(onReceive != NULL);
 	assert(isNetworkInitialized() == true);
 
-	DatagramClient* client = malloc(sizeof(DatagramClient));
+	DatagramClient client = malloc(
+		sizeof(struct DatagramClient));
 
 	if (client == NULL)
 		return NULL;
@@ -38,7 +39,7 @@ DatagramClient* createDatagramClient(
 	uint8_t addressFamily = getSocketAddressFamily(
 		remoteAddress);
 
-	SocketAddress* address;
+	SocketAddress address;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -66,7 +67,7 @@ DatagramClient* createDatagramClient(
 		return NULL;
 	}
 
-	Socket* socket = createSocket(
+	Socket socket = createSocket(
 		DATAGRAM_SOCKET_TYPE,
 		addressFamily,
 		address,
@@ -103,7 +104,7 @@ DatagramClient* createDatagramClient(
 	return client;
 }
 
-void destroyDatagramClient(DatagramClient* client)
+void destroyDatagramClient(DatagramClient client)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -118,40 +119,35 @@ void destroyDatagramClient(DatagramClient* client)
 	free(client);
 }
 
-size_t getDatagramClientBufferSize(
-	const DatagramClient* client)
+size_t getDatagramClientBufferSize(DatagramClient client)
 {
 	assert(client != NULL);
 	assert(isNetworkInitialized() == true);
 	return client->bufferSize;
 }
 
-OnDatagramClientReceive getDatagramClientOnReceive(
-	const DatagramClient* client)
+OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient client)
 {
 	assert(client != NULL);
 	assert(isNetworkInitialized() == true);
 	return client->onReceive;
 }
 
-void* getDatagramClientHandle(
-	const DatagramClient* client)
+void* getDatagramClientHandle(DatagramClient client)
 {
 	assert(client != NULL);
 	assert(isNetworkInitialized() == true);
 	return client->handle;
 }
 
-Socket* getDatagramClientSocket(
-	const DatagramClient* client)
+Socket getDatagramClientSocket(DatagramClient client)
 {
 	assert(client != NULL);
 	assert(isNetworkInitialized() == true);
 	return client->socket;
 }
 
-bool updateDatagramClient(
-	DatagramClient* client)
+bool updateDatagramClient(DatagramClient client)
 {
 	assert(client != NULL);
 
@@ -175,7 +171,7 @@ bool updateDatagramClient(
 }
 
 bool datagramClientSend(
-	DatagramClient* client,
+	DatagramClient client,
 	const void* buffer,
 	size_t count)
 {

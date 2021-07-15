@@ -7,24 +7,23 @@
 #define SERVER_PORT "12345"
 #define RECEIVE_BUFFER_SIZE 4
 
-
 typedef struct Server
 {
-	DatagramServer* server;
-	Thread* thread;
+	DatagramServer server;
+	Thread thread;
 	volatile bool isRunning;
 } Server;
 
 typedef struct Client
 {
-	DatagramClient* client;
-	Thread* thread;
+	DatagramClient client;
+	Thread thread;
 	volatile bool isRunning;
 } Client;
 
 static void onServerReceive(
-	DatagramServer* server,
-	const SocketAddress* address,
+	DatagramServer server,
+	SocketAddress address,
 	const uint8_t* buffer,
 	size_t byteCount)
 {
@@ -73,7 +72,7 @@ inline static Server* createServer()
 	if (server == NULL)
 		return NULL;
 
-	DatagramServer* datagramServer = createDatagramServer(
+	DatagramServer datagramServer = createDatagramServer(
 		IP_V4_ADDRESS_FAMILY,
 		SERVER_PORT,
 		RECEIVE_BUFFER_SIZE,
@@ -89,7 +88,7 @@ inline static Server* createServer()
 	server->server = datagramServer;
 	server->isRunning = true;
 
-	Thread* thread = createThread(
+	Thread thread = createThread(
 		serverHandler,
 		server);
 
@@ -116,7 +115,7 @@ inline static void destroyServer(Server* server)
 }
 
 static void onClientReceive(
-	DatagramClient* client,
+	DatagramClient client,
 	const uint8_t* buffer,
 	size_t byteCount)
 {
@@ -153,7 +152,7 @@ inline static Client* createClient()
 	if (client == NULL)
 		return NULL;
 
-	SocketAddress* remoteAddress = createSocketAddress(
+	SocketAddress remoteAddress = createSocketAddress(
 		LOOPBACK_IP_ADDRESS_V4,
 		SERVER_PORT);
 
@@ -163,7 +162,7 @@ inline static Client* createClient()
 		return NULL;
 	}
 
-	DatagramClient* datagramClient = createDatagramClient(
+	DatagramClient datagramClient = createDatagramClient(
 		remoteAddress,
 		RECEIVE_BUFFER_SIZE,
 		onClientReceive,
@@ -180,7 +179,7 @@ inline static Client* createClient()
 	client->client = datagramClient;
 	client->isRunning = true;
 
-	Thread* thread = createThread(
+	Thread thread = createThread(
 		clientHandler,
 		client);
 

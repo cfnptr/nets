@@ -2,12 +2,12 @@
 #include "mpnw/socket.h"
 
 /* Datagram server instance handle (UDP) */
-typedef struct DatagramServer DatagramServer;
+typedef struct DatagramServer* DatagramServer;
 
 /* Datagram server datagram receive function */
 typedef void(*OnDatagramServerReceive)(
-	DatagramServer* server,
-	const SocketAddress* address,
+	DatagramServer server,
+	SocketAddress address,
 	const uint8_t* buffer,
 	size_t byteCount);
 
@@ -21,7 +21,7 @@ typedef void(*OnDatagramServerReceive)(
  * onReceive - pointer to the valid receive function.
  * handle - pointer to the receive function argument.
  */
-DatagramServer* createDatagramServer(
+DatagramServer createDatagramServer(
 	uint8_t addressFamily,
 	const char* service,
 	size_t bufferSize,
@@ -32,35 +32,31 @@ DatagramServer* createDatagramServer(
  * Destroys specified datagram server.
  * server - pointer to the datagram server or NULL.
  */
-void destroyDatagramServer(DatagramServer* server);
+void destroyDatagramServer(DatagramServer server);
 
 /*
  * Returns datagram server receive buffer size.
  * server - pointer to the valid datagram server.
  */
-size_t getDatagramServerBufferSize(
-	const DatagramServer* server);
+size_t getDatagramServerBufferSize(DatagramServer server);
 
 /*
  * Returns datagram server receive function.
  * server - pointer to the valid datagram server.
  */
-OnDatagramServerReceive getDatagramServerOnReceive(
-	const DatagramServer* server);
+OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer server);
 
 /*
  * Returns datagram server handle.
  * server - pointer to the valid datagram server.
  */
-void* getDatagramServerHandle(
-	const DatagramServer* server);
+void* getDatagramServerHandle(DatagramServer server);
 
 /*
  * Returns datagram server socket.
  * server - pointer to the valid datagram server.
  */
-Socket* getDatagramServerSocket(
-	const DatagramServer* server);
+Socket getDatagramServerSocket(DatagramServer server);
 
 /*
  * Receive buffered datagrams.
@@ -68,8 +64,7 @@ Socket* getDatagramServerSocket(
  *
  * server - pointer to the valid datagram server.
  */
-bool updateDatagramServer(
-	DatagramServer* server);
+bool updateDatagramServer(DatagramServer server);
 
 /*
  * Sends message to the specified address.
@@ -81,7 +76,7 @@ bool updateDatagramServer(
  * address - destination datagram address.
  */
 bool datagramServerSend(
-	DatagramServer* server,
+	DatagramServer server,
 	const void* buffer,
 	size_t count,
-	const SocketAddress* address);
+	SocketAddress address);

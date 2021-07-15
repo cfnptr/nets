@@ -2,39 +2,39 @@
 #include "mpnw/socket.h"
 
 /* Stream server instance handle (TCP) */
-typedef struct StreamServer StreamServer;
+typedef struct StreamServer* StreamServer;
 /* Stream server session instance handle (TCP) */
-typedef struct StreamSession StreamSession;
+typedef struct StreamSession* StreamSession;
 
 /*
  * Stream session create function.
  * Destroys session on false return result.
  */
 typedef bool(*OnStreamSessionCreate)(
-	StreamServer* server,
-	Socket* socket,
+	StreamServer server,
+	Socket socket,
 	void** handle);
 
 /* Stream session destroy function */
 typedef void(*OnStreamSessionDestroy)(
-	StreamServer* server,
-	StreamSession* session);
+	StreamServer server,
+	StreamSession session);
 
 /*
  * Stream session update function.
  * Destroys session on false return result.
  */
 typedef bool(*OnStreamSessionUpdate)(
-	StreamServer* server,
-	StreamSession* session);
+	StreamServer server,
+	StreamSession session);
 
 /*
  * Stream session message receive function
  * Destroys session on false return result.
  */
 typedef bool(*OnStreamSessionReceive)(
-	StreamServer* server,
-	StreamSession* session,
+	StreamServer server,
+	StreamSession session,
 	const uint8_t* buffer,
 	size_t byteCount);
 
@@ -53,7 +53,7 @@ typedef bool(*OnStreamSessionReceive)(
  * handle - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
-StreamServer* createStreamServer(
+StreamServer createStreamServer(
 	uint8_t addressFamily,
 	const char* service,
 	size_t sessionBufferSize,
@@ -63,83 +63,73 @@ StreamServer* createStreamServer(
 	OnStreamSessionUpdate onUpdate,
 	OnStreamSessionReceive onReceive,
 	void* handle,
-	SslContext* sslContext);
+	SslContext sslContext);
 
 /*
  * Destroys specified stream server.
  * server - pointer to the stream server or NULL.
  */
-void destroyStreamServer(StreamServer* server);
+void destroyStreamServer(StreamServer server);
 
 /*
  * Returns stream server session buffer size.
  * server - pointer to the valid stream server.
  */
-size_t getStreamServerSessionBufferSize(
-	const StreamServer* server);
+size_t getStreamServerSessionBufferSize(StreamServer server);
 
 /*
  * Returns stream server receive buffer size.
  * server - pointer to the valid stream server.
  */
-size_t getStreamServerReceiveBufferSize(
-	const StreamServer* server);
+size_t getStreamServerReceiveBufferSize(StreamServer server);
 
 /*
  * Returns stream server create function.
  * server - pointer to the valid stream server.
  */
-OnStreamSessionCreate getStreamServerOnCreate(
-	const StreamServer* server);
+OnStreamSessionCreate getStreamServerOnCreate(StreamServer server);
 
 /*
  * Returns stream server destroy function.
  * server - pointer to the valid stream server.
  */
-OnStreamSessionDestroy getStreamServerOnDestroy(
-	const StreamServer* server);
+OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer server);
 
 /*
  * Returns stream server update function.
  * server - pointer to the valid stream server.
  */
-OnStreamSessionUpdate getStreamServerOnUpdate(
-	const StreamServer* server);
+OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer server);
 
 /*
  * Returns stream server receive function.
  * server - pointer to the valid stream server.
  */
-OnStreamSessionReceive getStreamServerOnReceive(
-	const StreamServer* server);
+OnStreamSessionReceive getStreamServerOnReceive(StreamServer server);
 
 /*
  * Returns stream server handle.
  * server - pointer to the valid stream server.
  */
-void* getStreamServerHandle(
-	const StreamServer* server);
+void* getStreamServerHandle(StreamServer server);
 
 /*
  * Returns stream server socket.
  * server - pointer to the valid stream server.
  */
-Socket* getStreamServerSocket(
-	const StreamServer* server);
+Socket getStreamServerSocket(StreamServer server);
 
 /*
  * Returns stream server session socket.
  * session - pointer to the valid stream server session.
  */
-Socket* getStreamSessionSocket(
-	const StreamSession* session);
+Socket getStreamSessionSocket(StreamSession session);
 
 /*
  * Returns stream server session handle.
  * session - pointer to the valid stream server session.
  */
-void* getStreamSessionHandle(
-	const StreamSession* session);
+void* getStreamSessionHandle(StreamSession session);
 
 /*
  * Receive buffered datagrams.
@@ -147,7 +137,7 @@ void* getStreamSessionHandle(
  *
  * server - pointer to the valid stream server.
  */
-bool updateStreamServer(StreamServer* server);
+bool updateStreamServer(StreamServer server);
 
 /*
  * Sends datagram to the specified session.
@@ -158,6 +148,6 @@ bool updateStreamServer(StreamServer* server);
  * count - data buffer send byte count.
  */
 bool streamSessionSend(
-	StreamSession* session,
+	StreamSession session,
 	const void* buffer,
 	size_t count);

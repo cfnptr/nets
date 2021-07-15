@@ -9,11 +9,11 @@ struct DatagramServer
 	OnDatagramServerReceive onReceive;
 	void* handle;
 	uint8_t* buffer;
-	SocketAddress* address;
-	Socket* socket;
+	SocketAddress address;
+	Socket socket;
 };
 
-DatagramServer* createDatagramServer(
+DatagramServer createDatagramServer(
 	uint8_t addressFamily,
 	const char* service,
 	size_t bufferSize,
@@ -25,7 +25,8 @@ DatagramServer* createDatagramServer(
 	assert(onReceive != NULL);
 	assert(isNetworkInitialized() == true);
 
-	DatagramServer* server = malloc(sizeof(DatagramServer));
+	DatagramServer server = malloc(
+		sizeof(struct DatagramServer));
 
 	if (server == NULL)
 		return NULL;
@@ -39,7 +40,7 @@ DatagramServer* createDatagramServer(
 		return NULL;
 	}
 
-	SocketAddress* address;
+	SocketAddress address;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -67,7 +68,7 @@ DatagramServer* createDatagramServer(
 		return NULL;
 	}
 
-	Socket* socket = createSocket(
+	Socket socket = createSocket(
 		DATAGRAM_SOCKET_TYPE,
 		addressFamily,
 		address,
@@ -92,7 +93,7 @@ DatagramServer* createDatagramServer(
 	return server;
 }
 
-void destroyDatagramServer(DatagramServer* server)
+void destroyDatagramServer(DatagramServer server)
 {
 	assert(isNetworkInitialized() == true);
 
@@ -108,40 +109,35 @@ void destroyDatagramServer(DatagramServer* server)
 	free(server);
 }
 
-size_t getDatagramServerBufferSize(
-	const DatagramServer* server)
+size_t getDatagramServerBufferSize(DatagramServer server)
 {
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
 	return server->bufferSize;
 }
 
-OnDatagramServerReceive getDatagramServerOnReceive(
-	const DatagramServer* server)
+OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer server)
 {
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
 	return server->onReceive;
 }
 
-void* getDatagramServerHandle(
-	const DatagramServer* server)
+void* getDatagramServerHandle(DatagramServer server)
 {
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
 	return server->handle;
 }
 
-Socket* getDatagramServerSocket(
-	const DatagramServer* server)
+Socket getDatagramServerSocket(DatagramServer server)
 {
 	assert(server != NULL);
 	assert(isNetworkInitialized() == true);
 	return server->socket;
 }
 
-bool updateDatagramServer(
-	DatagramServer* server)
+bool updateDatagramServer(DatagramServer server)
 {
 	assert(server != NULL);
 
@@ -167,10 +163,10 @@ bool updateDatagramServer(
 }
 
 bool datagramServerSend(
-	DatagramServer* server,
+	DatagramServer server,
 	const void* buffer,
 	size_t count,
-	const SocketAddress* address)
+	SocketAddress address)
 {
 	assert(server != NULL);
 	assert(buffer != NULL);

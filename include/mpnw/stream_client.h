@@ -2,11 +2,11 @@
 #include "mpnw/socket.h"
 
 /* Stream client instance handle (TCP) */
-typedef struct StreamClient StreamClient;
+typedef struct StreamClient* StreamClient;
 
 /* Stream client message receive function */
 typedef void(*OnStreamClientReceive)(
-	StreamClient* client,
+	StreamClient client,
 	const uint8_t* buffer,
 	size_t byteCount);
 
@@ -20,46 +20,42 @@ typedef void(*OnStreamClientReceive)(
  * handle - pointer to the receive function argument.
  * sslContext - pointer to the SSL context or NULL.
  */
-StreamClient* createStreamClient(
+StreamClient createStreamClient(
 	uint8_t addressFamily,
 	size_t bufferSize,
 	OnStreamClientReceive onReceive,
 	void* handle,
-	SslContext* sslContext);
+	SslContext sslContext);
 
 /*
  * Destroys specified stream client.
  * client - pointer to the stream client or NULL.
  */
-void destroyStreamClient(StreamClient* client);
+void destroyStreamClient(StreamClient client);
 
 /*
 * Returns stream client receive buffer size.
 * client - pointer to the valid stream client.
 */
-size_t getStreamClientBufferSize(
-	const StreamClient* client);
+size_t getStreamClientBufferSize(StreamClient client);
 
 /*
 * Returns stream client receive function.
 * client - pointer to the valid stream client.
 */
-OnStreamClientReceive getStreamClientOnReceive(
-	const StreamClient* client);
+OnStreamClientReceive getStreamClientOnReceive(StreamClient client);
 
 /*
  * Returns stream client handle.
  * client - pointer to the valid stream client.
  */
-void* getStreamClientHandle(
-	const StreamClient* client);
+void* getStreamClientHandle(StreamClient client);
 
 /*
  * Returns stream client socket.
  * client - pointer to the valid stream client.
  */
-Socket* getStreamClientSocket(
-	const StreamClient* client);
+Socket getStreamClientSocket(StreamClient client);
 
 /*
  * Connects stream client to the server.
@@ -70,8 +66,8 @@ Socket* getStreamClientSocket(
  * timeoutTime - attempt time out time (ms).
  */
 bool connectStreamClient(
-	StreamClient* client,
-	const SocketAddress* address,
+	StreamClient client,
+	SocketAddress address,
 	double timeout);
 
 /*
@@ -80,8 +76,7 @@ bool connectStreamClient(
  *
  * client - pointer to the valid datagram client.
  */
-bool updateStreamClient(
-	StreamClient* client);
+bool updateStreamClient(StreamClient client);
 
 /*
  * Sends message to the stream server.
@@ -92,6 +87,6 @@ bool updateStreamClient(
  * count - data buffer send byte count.
  */
 bool streamClientSend(
-	StreamClient* client,
+	StreamClient client,
 	const void* buffer,
 	size_t count);

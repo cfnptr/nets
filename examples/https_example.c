@@ -9,7 +9,7 @@
 // to receive full data you need to parse HTTP header.
 
 static void clientReceiveHandler(
-	StreamClient* streamClient,
+	StreamClient streamClient,
 	const uint8_t* receiveBuffer,
 	size_t byteCount)
 {
@@ -37,7 +37,7 @@ int main()
 	if (initializeNetwork() == false)
 		return EXIT_FAILURE;
 
-	SslContext* sslContext = createSslContext(
+	SslContext sslContext = createSslContext(
 		TLS_SECURITY_PROTOCOL,
 		NULL);
 
@@ -46,7 +46,7 @@ int main()
 
 	bool isDataReceived = false;
 
-	StreamClient* httpClient = createStreamClient(
+	StreamClient httpClient = createStreamClient(
 		IP_V4_ADDRESS_FAMILY,
 		receiveBufferSize,
 		clientReceiveHandler,
@@ -56,7 +56,7 @@ int main()
 	if (httpClient == NULL)
 		return EXIT_FAILURE;
 
-	SocketAddress* address = resolveSocketAddress(
+	SocketAddress address = resolveSocketAddress(
 		hostName,
 		"https",
 		IP_V4_ADDRESS_FAMILY,
