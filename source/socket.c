@@ -637,7 +637,14 @@ bool connectSocket(
 		(const struct sockaddr*)&address->handle,
 		length);
 
-	return result == 0 || errno == EISCONN;
+	if (result == 0)
+		return true;
+
+#if __linux__ || __APPLE__
+	return errno == EISCONN;
+#elif _WIN32
+	return WSAGetLastError() == WSAEISCONN;
+#endif
 }
 
 bool connectSslSocket(Socket socket)
