@@ -37,8 +37,9 @@ int main()
 	if (initializeNetwork() == false)
 		return EXIT_FAILURE;
 
-	SslContext sslContext = createSslContext(
+	SslContext sslContext = createPublicSslContext(
 		TLS_SECURITY_PROTOCOL,
+		NULL,
 		NULL);
 
 	if (sslContext == NULL)
