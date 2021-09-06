@@ -1321,9 +1321,10 @@ bool getSocketAddressHostService(
 		flags) == 0;
 }
 
-SslContext createSslContext(
+SslContext createPublicSslContext(
 	uint8_t securityProtocol,
-	const char* certificateVerifyPath)
+	const char* certificateFilePath,
+	const char* certificatesDirectory)
 {
 #if MPNW_HAS_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
@@ -1358,17 +1359,17 @@ SslContext createSslContext(
 
 	int result;
 
-	if (certificateVerifyPath != NULL)
+	if (certificateFilePath != NULL ||
+		certificatesDirectory != NULL)
 	{
 		result = SSL_CTX_load_verify_locations(
 			handle,
-			NULL,
-			certificateVerifyPath);
+			certificateFilePath,
+			certificatesDirectory);
 	}
 	else
 	{
-		result = SSL_CTX_set_default_verify_paths(
-			handle);
+		result = SSL_CTX_set_default_verify_paths(handle);
 	}
 
 	if (result != 1)
@@ -1385,7 +1386,7 @@ SslContext createSslContext(
 #endif
 }
 
-SslContext createSslContextFromFile(
+SslContext createPrivateSslContext(
 	uint8_t securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,

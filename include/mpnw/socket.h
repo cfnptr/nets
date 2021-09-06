@@ -196,6 +196,7 @@ bool isSocketNoDelay(Socket socket);
 /*
  * Sets socket no delay mode.
  * socket - pointer to the valid socket.
+ * value - no delay mode value.
  */
 void setSocketNoDelay(
 	Socket socket,
@@ -491,25 +492,28 @@ bool getSocketAddressHostService(
 	size_t serviceLength);
 
 /*
- * Creates a new SSL context.
+ * Creates a new public SSL context.
  * Returns SSL context on success, otherwise NULL.
  *
  * socketType - target socket type value.
- * certificateVerifyPath - valid trusted certificates location.
+ * certificateFilePath - certificate file path string.
+ * certificatesDirectory - certificate's directory path string.
  */
-SslContext createSslContext(
+SslContext createPublicSslContext(
 	uint8_t securityProtocol,
-	const char* certificateVerifyPath);
+	const char* certificateFilePath,
+	const char* certificatesDirectory);
 
 /*
- * Creates a new SSL context.
+ * Creates a new private SSL context.
  * Returns SSL context on success, otherwise NULL.
  *
  * socketType - target socket type value.
- * certificateFilePath - valid certificate file path string.
- * privateKeyFilePath - valid private key file path string.
+ * certificateFilePath - certificates file path string.
+ * privateKeyFilePath - private key file path string.
+ * certificateChain - file path is certificate chain.
  */
-SslContext createSslContextFromFile(
+SslContext createPrivateSslContext(
 	uint8_t securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,
