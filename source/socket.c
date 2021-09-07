@@ -65,9 +65,7 @@ bool initializeNetwork()
 	if (networkInitialized == true)
 		return false;
 
-#if __linux__ || __APPLE__
-	signal(SIGPIPE, SIG_IGN);
-#elif _WIN32
+#if _WIN32
 	int result = WSAStartup(
 		MAKEWORD(2,2),
 		&wsaData);
