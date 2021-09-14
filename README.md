@@ -26,6 +26,12 @@ cd mpnw
 git submodule update --init --recursive
 ```
 
+## Building
+```
+cmake -DCMAKE_BUILD_TYPE=Release -S . -B build/
+cmake --build build/
+```
+
 ## Third-party
 * [mpmt](https://github.com/cfnptr/mpmt/) (BSD-3-Clause License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache 2.0 License)
