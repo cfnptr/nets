@@ -13,7 +13,7 @@ project(mpnw
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
-option(MPNW_BUILD_EXAMPLES "Build MPNW examples" ON)
+option(MPNW_BUILD_EXAMPLES "Build MPNW usage examples" ON)
 option(MPNW_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 
 if (MPNW_USE_OPENSSL)
