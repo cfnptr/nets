@@ -12,7 +12,7 @@
 ## Build requirements
 * C99 compiler
 * [CMake 3.10+](https://cmake.org/)
-* [OpenSSL](https://openssl.org/)
+* [OpenSSL](https://openssl.org/) (Optional)
 
 ## OpenSSL installation
 * Ubuntu: sudo apt install libssl-dev
