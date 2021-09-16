@@ -29,7 +29,7 @@ static WSADATA wsaData;
 #error Unknown operating system
 #endif
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 #include "openssl/ssl.h"
 #include "openssl/err.h"
 #else
@@ -42,7 +42,7 @@ struct Socket
 	bool listening;
 	bool blocking;
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	SslContext sslContext;
 	SSL* ssl;
 #endif
@@ -74,7 +74,7 @@ bool initializeNetwork()
 		return false;
 #endif
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
 #endif
@@ -96,7 +96,7 @@ void terminateNetwork()
 		abort();
 #endif
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	EVP_cleanup();
 #endif
 
@@ -120,7 +120,7 @@ Socket createSocket(
 	assert(address != NULL);
 	assert(networkInitialized == true);
 
-#if !MPNW_HAS_OPENSSL
+#if !MPNW_SUPPORT_OPENSSL
 	assert(sslContext == NULL);
 #endif
 
@@ -244,7 +244,7 @@ Socket createSocket(
 	_socket->listening = listening;
 	_socket->blocking = blocking;
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	if (sslContext != NULL)
 	{
 		SSL* ssl = SSL_new(
@@ -288,7 +288,7 @@ void destroySocket(Socket socket)
 	if (socket == NULL)
 		return;
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext != NULL)
 		SSL_free(socket->ssl);
 #endif
@@ -414,7 +414,7 @@ bool getSocketRemoteAddress(
 
 bool isSocketSsl(Socket socket)
 {
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(socket != NULL);
 	assert(networkInitialized == true);
 	return socket->sslContext == NULL;
@@ -425,7 +425,7 @@ bool isSocketSsl(Socket socket)
 
 SslContext getSocketSslContext(Socket socket)
 {
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(socket != NULL);
 	assert(networkInitialized == true);
 	return socket->sslContext;
@@ -560,7 +560,7 @@ Socket acceptSocket(Socket socket)
 	acceptedSocket->listening = false;
 	acceptedSocket->blocking = socket->blocking;
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext != NULL)
 	{
 		SSL* ssl = SSL_new(
@@ -603,7 +603,7 @@ bool acceptSslSocket(Socket socket)
 	assert(socket != NULL);
 	assert(networkInitialized == true);
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(socket->sslContext != NULL);
 	return SSL_accept(socket->ssl) == 1;
 #else
@@ -650,7 +650,7 @@ bool connectSslSocket(Socket socket)
 	assert(socket != NULL);
 	assert(networkInitialized == true);
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(socket->sslContext != NULL);
 	return SSL_connect(socket->ssl) == 1;
 #else
@@ -706,7 +706,7 @@ bool socketReceive(
 	assert(count != NULL);
 	assert(networkInitialized == true);
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext != NULL)
 	{
 		int result = SSL_read(
@@ -744,7 +744,7 @@ bool socketSend(
 	assert(buffer != NULL);
 	assert(networkInitialized == true);
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext != NULL)
 	{
 		return SSL_write(
@@ -774,7 +774,7 @@ bool socketReceiveFrom(
 	assert(_count != NULL);
 	assert(networkInitialized == true);
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(socket->sslContext == NULL);
 #endif
 
@@ -815,7 +815,7 @@ bool socketSendTo(
 	assert(address != NULL);
 	assert(networkInitialized == true);
 
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(socket->sslContext == NULL);
 #endif
 
@@ -1324,7 +1324,7 @@ SslContext createPublicSslContext(
 	const char* certificateFilePath,
 	const char* certificatesDirectory)
 {
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(networkInitialized == true);
 
@@ -1380,7 +1380,7 @@ SslContext createPublicSslContext(
 	context->handle = handle;
 	return context;
 #else
-	abort();
+	return NULL;
 #endif
 }
 
@@ -1390,7 +1390,7 @@ SslContext createPrivateSslContext(
 	const char* privateKeyFilePath,
 	bool certificateChain)
 {
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(certificateFilePath != NULL);
 	assert(privateKeyFilePath != NULL);
@@ -1471,13 +1471,13 @@ SslContext createPrivateSslContext(
 	context->handle = handle;
 	return context;
 #else
-	abort();
+	return NULL;
 #endif
 }
 
 void destroySslContext(SslContext context)
 {
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(networkInitialized == true);
 
 	if (context == NULL)
@@ -1492,7 +1492,7 @@ void destroySslContext(SslContext context)
 
 uint8_t getSslContextSecurityProtocol(SslContext context)
 {
-#if MPNW_HAS_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
 	assert(context != NULL);
 	assert(networkInitialized == true);
 

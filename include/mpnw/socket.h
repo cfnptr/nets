@@ -24,7 +24,7 @@
 #define swapBytes64(x) _byteswap_uint64(x)
 #endif
 
-#if MPNW_IS_LITTLE_ENDIAN
+#if MPNW_LITTLE_ENDIAN
 #define hostToNet16(x) swapBytes16(x)
 #define hostToNet32(x) swapBytes32(x)
 #define hostToNet64(x) swapBytes64(x)

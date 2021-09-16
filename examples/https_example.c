@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#if !MPNW_SUPPORT_OPENSSL
+#error OpenSSL is not supported
+#endif
+
 // This example receives not complete data from the host,
 // to receive full data you need to parse HTTP header.
 
