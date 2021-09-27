@@ -18,7 +18,7 @@ option(MPNW_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 
 if (MPNW_USE_OPENSSL)
 	if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-		set(OPENSSL_ROOT_DIR /usr/local/Cellar/openssl@1.1/1.1.1l CACHE FILEPATH "" FORCE)
+		set(OPENSSL_ROOT_DIR /usr/local/Cellar/openssl@3/3.0.0 CACHE FILEPATH "" FORCE)
 		set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.a CACHE FILEPATH "" FORCE)
 		set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.a CACHE FILEPATH "" FORCE)
 	endif ()
