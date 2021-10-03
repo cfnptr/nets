@@ -675,15 +675,37 @@ inline static bool handleStreamDatagram(
 		uint64_t datagramSize;
 
 		if (datagramLengthSize == sizeof(uint8_t))
+		{
 			datagramSize = receiveBuffer[pointer];
+		}
 		else if (datagramLengthSize == sizeof(uint16_t))
-			datagramSize = netToHost16(*(uint16_t*)(receiveBuffer + pointer));
+		{
+#if MPNW_LITTLE_ENDIAN
+			datagramSize = *(uint16_t*)(receiveBuffer + pointer);
+#else
+			datagramSize = swapBytes16(*(uint16_t*)(receiveBuffer + pointer));
+#endif
+		}
 		else if (datagramLengthSize == sizeof(uint32_t))
-			datagramSize = netToHost32(*(uint32_t*)(receiveBuffer + pointer));
+		{
+#if MPNW_LITTLE_ENDIAN
+			datagramSize = *(uint32_t*)(receiveBuffer + pointer);
+#else
+			datagramSize = swapBytes32(*(uint32_t*)(receiveBuffer + pointer));
+#endif
+		}
 		else if (datagramLengthSize == sizeof(uint64_t))
-			datagramSize = netToHost64(*(uint64_t*)(receiveBuffer + pointer));
+		{
+#if MPNW_LITTLE_ENDIAN
+			datagramSize = *(uint64_t*)(receiveBuffer + pointer);
+#else
+			datagramSize = swapBytes64(*(uint64_t*)(receiveBuffer + pointer));
+#endif
+		}
 		else
+		{
 			abort();
+		}
 
 		// Received datagram is bigger than buffer
 		if (datagramSize > datagramBufferSize - datagramLengthSize)
