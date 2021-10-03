@@ -72,14 +72,17 @@ inline static Server* createServer()
 	if (server == NULL)
 		return NULL;
 
-	DatagramServer datagramServer = createDatagramServer(
+	DatagramServer datagramServer;
+
+	MpnwResult mpnwResult = createDatagramServer(
 		IP_V4_ADDRESS_FAMILY,
 		SERVER_PORT,
 		RECEIVE_BUFFER_SIZE,
 		onServerReceive,
-		NULL);
+		NULL,
+		&datagramServer);
 
-	if (datagramServer == NULL)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		free(server);
 		return NULL;
@@ -121,13 +124,13 @@ static void onClientReceive(
 {
 	if (byteCount != 1)
 	{
-		printf("Client: incorrect datagram size (%zu)\n",
+		printf("Client: incorrect datagram size (%zu).\n",
 			byteCount);
 		fflush(stdout);
 		return;
 	}
 
-	printf("Client: received response (%hhu)\n",
+	printf("Client: received response (%hhu).\n",
 		buffer[0]);
 	fflush(stdout);
 }
@@ -152,25 +155,31 @@ inline static Client* createClient()
 	if (client == NULL)
 		return NULL;
 
-	SocketAddress remoteAddress = createSocketAddress(
-		LOOPBACK_IP_ADDRESS_V4,
-		SERVER_PORT);
+	SocketAddress remoteAddress;
 
-	if (remoteAddress == NULL)
+	MpnwResult mpnwResult = createSocketAddress(
+		LOOPBACK_IP_ADDRESS_V4,
+		SERVER_PORT,
+		&remoteAddress);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		free(client);
 		return NULL;
 	}
 
-	DatagramClient datagramClient = createDatagramClient(
+	DatagramClient datagramClient;
+
+	mpnwResult = createDatagramClient(
 		remoteAddress,
 		RECEIVE_BUFFER_SIZE,
 		onClientReceive,
-		NULL);
+		NULL,
+		&datagramClient);
 
 	destroySocketAddress(remoteAddress);
 
-	if (datagramClient == NULL)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		free(client);
 		return NULL;

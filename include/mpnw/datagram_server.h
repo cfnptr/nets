@@ -4,7 +4,7 @@
 /* Datagram server instance handle (UDP) */
 typedef struct DatagramServer* DatagramServer;
 
-/* Datagram server datagram receive function */
+/* Datagram server receive function */
 typedef void(*OnDatagramServerReceive)(
 	DatagramServer server,
 	SocketAddress address,
@@ -13,48 +13,49 @@ typedef void(*OnDatagramServerReceive)(
 
 /*
  * Creates a new datagram server (UDP).
- * Returns datagram server on success, otherwise NULL.
+ * Returns operation MPNW result.
  *
- * addressFamily - local datagram socket address family.
- * port - pointer to the valid local address port string.
- * bufferSize - socket datagram receive buffer size.
- * onReceive - pointer to the valid receive function.
- * handle - pointer to the receive function argument.
+ * addressFamily - local socket address family.
+ * service - local address service string.
+ * bufferSize - datagram receive buffer size.
+ * onReceive - datagram receive function.
+ * handle - receive function argument.
  */
-DatagramServer createDatagramServer(
+MpnwResult createDatagramServer(
 	uint8_t addressFamily,
 	const char* service,
 	size_t bufferSize,
 	OnDatagramServerReceive onReceive,
-	void* handle);
+	void* handle,
+	DatagramServer* datagramServer);
 
 /*
- * Destroys specified datagram server.
- * server - pointer to the datagram server or NULL.
+ * Destroy datagram server instance.
+ * server - datagram server instance or NULL.
  */
 void destroyDatagramServer(DatagramServer server);
 
 /*
  * Returns datagram server receive buffer size.
- * server - pointer to the valid datagram server.
+ * server - datagram server instance.
  */
 size_t getDatagramServerBufferSize(DatagramServer server);
 
 /*
  * Returns datagram server receive function.
- * server - pointer to the valid datagram server.
+ * server - datagram server instance.
  */
 OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer server);
 
 /*
  * Returns datagram server handle.
- * server - pointer to the valid datagram server.
+ * server - datagram server instance.
  */
 void* getDatagramServerHandle(DatagramServer server);
 
 /*
  * Returns datagram server socket.
- * server - pointer to the valid datagram server.
+ * server - datagram server instance.
  */
 Socket getDatagramServerSocket(DatagramServer server);
 
@@ -62,18 +63,18 @@ Socket getDatagramServerSocket(DatagramServer server);
  * Receive buffered datagrams.
  * Returns true if datagram received.
  *
- * server - pointer to the valid datagram server.
+ * server - datagram server instance.
  */
 bool updateDatagramServer(DatagramServer server);
 
 /*
- * Sends message to the specified address.
+ * Send message to the specified address.
  * Returns true on success.
  *
- * server - pointer to the valid datagram server.
- * buffer - pointer to the valid data buffer.
- * count - data buffer send byte count.
- * address - destination datagram address.
+ * server - datagram server instance.
+ * buffer - datagram send buffer.
+ * count - send byte count.
+ * address - destination socket address.
  */
 bool datagramServerSend(
 	DatagramServer server,

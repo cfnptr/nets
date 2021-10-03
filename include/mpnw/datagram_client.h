@@ -4,54 +4,56 @@
 /* Datagram client instance handle (UDP) */
 typedef struct DatagramClient* DatagramClient;
 
-/* Datagram client datagram receive function */
+/* Datagram client receive function */
 typedef void(*OnDatagramClientReceive)(
 	DatagramClient client,
 	const uint8_t* buffer,
 	size_t byteCount);
 
 /*
- * Creates a new datagram client (UDP).
- * Returns datagram client on success, otherwise NULL.
+ * Create a new datagram client instance (UDP).
+ * Returns operation MPNW result.
  *
- * remoteAddress - pointer to the valid server address.
- * bufferSize - socket datagram receive buffer size.
- * onReceive - pointer to the valid receive function.
- * handle - pointer to the receive function argument.
+ * remoteAddress - remote socket address.
+ * bufferSize - datagram receive buffer size.
+ * onReceive - datagram receive function.
+ * handle - receive function argument.
+ * datagramClient - pointer to the datagramClient value.
  */
-DatagramClient createDatagramClient(
+MpnwResult createDatagramClient(
 	SocketAddress remoteAddress,
 	size_t bufferSize,
 	OnDatagramClientReceive onReceive,
-	void* handle);
+	void* handle,
+	DatagramClient* datagramClient);
 
 /*
- * Destroys specified datagram client.
- * client - pointer to the datagram client or NULL.
+ * Destroy datagram client instance.
+ * client - datagram client instance or NULL.
  */
 void destroyDatagramClient(DatagramClient client);
 
 /*
  * Returns datagram client receive buffer size.
- * client - pointer to the valid datagram client.
+ * client - datagram client instance.
  */
 size_t getDatagramClientBufferSize(DatagramClient client);
 
 /*
  * Returns datagram client receive function.
- * client - pointer to the valid datagram client.
+ * client - datagram client instance.
  */
 OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient client);
 
 /*
  * Returns datagram client handle.
- * client - pointer to the valid datagram client.
+ * client - datagram client instance.
  */
 void* getDatagramClientHandle(DatagramClient client);
 
 /*
  * Returns datagram client socket.
- * client - pointer to the valid datagram client.
+ * client - datagram client instance.
  */
 Socket getDatagramClientSocket(DatagramClient client);
 
@@ -59,17 +61,17 @@ Socket getDatagramClientSocket(DatagramClient client);
  * Receive buffered datagrams.
  * Returns true if datagram received.
  *
- * client - pointer to the valid datagram client.
+ * client - datagram client instance.
  */
 bool updateDatagramClient(DatagramClient client);
 
 /*
- * Sends message to the datagram server.
+ * Send message to the datagram server.
  * Returns true on success.
  *
- * client - pointer to the valid datagram client.
- * buffer - pointer to the valid data buffer.
- * count - data buffer send byte count.
+ * client - datagram client instance.
+ * buffer - datagram send buffer.
+ * count - send byte count.
  */
 bool datagramClientSend(
 	DatagramClient client,

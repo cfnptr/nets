@@ -41,35 +41,50 @@ int main()
 	if (initializeNetwork() == false)
 		return EXIT_FAILURE;
 
-	SslContext sslContext = createPublicSslContext(
+	SslContext sslContext;
+
+	MpnwResult mpnwResult = createPublicSslContext(
 		TLS_SECURITY_PROTOCOL,
 		NULL,
-		NULL);
+		NULL,
+		&sslContext);
 
-	if (sslContext == NULL)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	{
+		printf("ERROR: %s.\n", mpnwResultToString(mpnwResult));
 		return EXIT_FAILURE;
+	}
 
 	bool isDataReceived = false;
 
-	StreamClient httpClient = createStreamClient(
+	StreamClient httpClient;
+
+	mpnwResult = createStreamClient(
 		IP_V4_ADDRESS_FAMILY,
 		receiveBufferSize,
 		clientReceiveHandler,
 		&isDataReceived,
-		sslContext);
+		sslContext,
+		&httpClient);
 
-	if (httpClient == NULL)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	{
+		printf("ERROR: %s.\n", mpnwResultToString(mpnwResult));
 		return EXIT_FAILURE;
+	}
 
-	SocketAddress address = resolveSocketAddress(
+	SocketAddress address;
+
+	mpnwResult = resolveSocketAddress(
 		hostName,
 		"https",
 		IP_V4_ADDRESS_FAMILY,
-		STREAM_SOCKET_TYPE);
+		STREAM_SOCKET_TYPE,
+		&address);
 
-	if (address == NULL)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		printf("Failed to resolve host name\n");
+		printf("ERROR: %s.\n", mpnwResultToString(mpnwResult));
 		return EXIT_FAILURE;
 	}
 
@@ -86,7 +101,7 @@ int main()
 	if (result == false)
 		return EXIT_FAILURE;
 
-	printf("Resolved host name: %s:%s\n",
+	printf("Resolved host name: %s:%s.\n",
 		host,
 		service);
 
@@ -99,7 +114,7 @@ int main()
 
 	if (result == false)
 	{
-		printf("Failed to connect to the host\n");
+		printf("Failed to connect to the host.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -112,7 +127,7 @@ int main()
 
 	if (result == false)
 	{
-		printf("Failed to send request to the host\n");
+		printf("Failed to send request to the host.\n");
 		return EXIT_FAILURE;
 	}
 

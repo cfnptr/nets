@@ -8,88 +8,92 @@ struct StreamClient
 	size_t bufferSize;
 	OnStreamClientReceive onReceive;
 	void* handle;
-	uint8_t* buffer;
+	uint8_t* receiveBuffer;
 	Socket socket;
 };
 
-StreamClient createStreamClient(
-	uint8_t addressFamily,
+MpnwResult createStreamClient(
+	AddressFamily addressFamily,
 	size_t bufferSize,
 	OnStreamClientReceive onReceive,
 	void* handle,
-	SslContext sslContext)
+	SslContext sslContext,
+	StreamClient* _streamClient)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(bufferSize != 0);
 	assert(onReceive != NULL);
+	assert(_streamClient != NULL);
 	assert(isNetworkInitialized() == true);
 
-	StreamClient client = malloc(
+	StreamClient streamClient = malloc(
 		sizeof(struct StreamClient));
 
-	if (client == NULL)
-		return NULL;
+	if (streamClient == NULL)
+		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
-	uint8_t* buffer = malloc(
+	uint8_t* receiveBuffer = malloc(
 		bufferSize * sizeof(uint8_t));
 
-	if (buffer == NULL)
+	if (receiveBuffer == NULL)
 	{
-		free(client);
-		return NULL;
+		free(streamClient);
+		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
 
-	SocketAddress address;
+	MpnwResult mpnwResult;
+	SocketAddress socketAddress;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
-		address = createSocketAddress(
+		mpnwResult = createSocketAddress(
 			ANY_IP_ADDRESS_V4,
-			ANY_IP_ADDRESS_PORT);
-	}
-	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
-	{
-		address = createSocketAddress(
-			ANY_IP_ADDRESS_V6,
-			ANY_IP_ADDRESS_PORT);
+			ANY_IP_ADDRESS_PORT,
+			&socketAddress);
 	}
 	else
 	{
-		free(buffer);
-		free(client);
-		return NULL;
+		mpnwResult = createSocketAddress(
+			ANY_IP_ADDRESS_V6,
+			ANY_IP_ADDRESS_PORT,
+			&socketAddress);
 	}
 
-	if (address == NULL)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(buffer);
-		free(client);
-		return NULL;
+		free(receiveBuffer);
+		free(streamClient);
+		return mpnwResult;
 	}
 
-	Socket socket = createSocket(
+	Socket socket;
+
+	mpnwResult = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
-		address,
+		socketAddress,
 		false,
 		false,
-		sslContext);
+		sslContext,
+		&socket);
 
-	destroySocketAddress(address);
+	destroySocketAddress(socketAddress);
 
-	if (socket == NULL)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(buffer);
-		free(client);
-		return NULL;
+		free(receiveBuffer);
+		free(streamClient);
+		return mpnwResult;
 	}
 
-	client->bufferSize = bufferSize;
-	client->onReceive = onReceive;
-	client->handle = handle;
-	client->buffer = buffer;
-	client->socket = socket;
-	return client;
+	streamClient->bufferSize = bufferSize;
+	streamClient->onReceive = onReceive;
+	streamClient->handle = handle;
+	streamClient->receiveBuffer = receiveBuffer;
+	streamClient->socket = socket;
+
+	*_streamClient = streamClient;
+	return SUCCESS_MPNW_RESULT;
 }
 
 void destroyStreamClient(StreamClient client)
@@ -103,7 +107,7 @@ void destroyStreamClient(StreamClient client)
 		client->socket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(client->socket);
-	free(client->buffer);
+	free(client->receiveBuffer);
 	free(client);
 }
 
@@ -184,7 +188,9 @@ bool updateStreamClient(StreamClient client)
 {
 	assert(client != NULL);
 
-	uint8_t* receiveBuffer = client->buffer;
+	uint8_t* receiveBuffer =
+		client->receiveBuffer;
+
 	size_t byteCount;
 
 	bool result = socketReceive(

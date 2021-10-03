@@ -1,44 +1,12 @@
 #pragma once
 #include "mpnw/defines.h"
+#include "mpnw/byte_swap.h"
 
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdbool.h>
-
-#if __linux__
-#include <byteswap.h>
-#define swapBytes16(x) bswap_16(x)
-#define swapBytes32(x) bswap_32(x)
-#define swapBytes64(x) bswap_64(x)
-#elif __APPLE__
-#include <libkern/OSByteOrder.h>
-#define swapBytes16(x) OSSwapInt16(x)
-#define swapBytes32(x) OSSwapInt32(x)
-#define swapBytes64(x) OSSwapInt64(x)
-#elif _WIN32
-#include <stdlib.h>
-#define swapBytes16(x) _byteswap_ushort(x)
-#define swapBytes32(x) _byteswap_ulong(x)
-#define swapBytes64(x) _byteswap_uint64(x)
-#endif
-
-#if MPNW_LITTLE_ENDIAN
-#define hostToNet16(x) swapBytes16(x)
-#define hostToNet32(x) swapBytes32(x)
-#define hostToNet64(x) swapBytes64(x)
-#define netToHost16(x) swapBytes16(x)
-#define netToHost32(x) swapBytes32(x)
-#define netToHost64(x) swapBytes64(x)
-#else
-#define hostToNet16(x) (x)
-#define hostToNet32(x) (x)
-#define hostToNet64(x) (x)
-#define netToHost16(x) (x)
-#define netToHost32(x) (x)
-#define netToHost64(x) (x)
-#endif
 
 /* Internet Protocol V4 any address */
 #define ANY_IP_ADDRESS_V4 "0.0.0.0"
@@ -70,19 +38,17 @@ typedef struct SslContext* SslContext;
 /* Socket internet protocol address family */
 typedef enum AddressFamily
 {
-	UNKNOWN_ADDRESS_FAMILY = 0,
-	IP_V4_ADDRESS_FAMILY = 1,
-	IP_V6_ADDRESS_FAMILY = 2,
-	ADDRESS_FAMILY_COUNT = 3,
+	IP_V4_ADDRESS_FAMILY = 0,
+	IP_V6_ADDRESS_FAMILY = 1,
+	ADDRESS_FAMILY_COUNT = 2,
 } AddressFamily;
 
 /* Socket communication type */
 typedef enum SocketType
 {
-	UNKNOWN_SOCKET_TYPE = 0,
-	STREAM_SOCKET_TYPE = 1,
-	DATAGRAM_SOCKET_TYPE = 2,
-	SOCKET_TYPE_COUNT = 3,
+	STREAM_SOCKET_TYPE = 0,
+	DATAGRAM_SOCKET_TYPE = 1,
+	SOCKET_TYPE_COUNT = 2,
 } SocketType;
 
 /* Socket connection shutdown */
@@ -97,79 +63,89 @@ typedef enum SocketShutdown
 /* Socket security protocol */
 typedef enum SecurityProtocol
 {
-	UNKNOWN_SECURITY_PROTOCOL = 0,
-	TLS_SECURITY_PROTOCOL = 1,
-	TLS_1_2_SECURITY_PROTOCOL = 2,
-	SECURITY_PROTOCOL_COUNT = 3,
+	TLS_SECURITY_PROTOCOL = 0,
+	TLS_1_2_SECURITY_PROTOCOL = 1,
+	SECURITY_PROTOCOL_COUNT = 2,
 } SecurityProtocol;
 
-/* Returns true if network was initialized. */
+/*
+ * Initialize network libraries.
+ * Returns true on success.
+ */
 bool initializeNetwork();
-/* Terminates network. */
+
+/*
+ * Terminate network libraries.
+ */
 void terminateNetwork();
-/* Returns true if network is initialized */
+
+/*
+ * Returns true if network is initialized.
+*/
 bool isNetworkInitialized();
 
 /*
- * Creates a new socket.
- * Returns socket on success, otherwise NULL.
+ * Create a new socket instance.
+ * Returns operation MPNW result.
  *
  * type - socket communication type.
  * family - internet protocol address family.
  * address - socket local bind address.
  * listening - socket listening state.
- * blocking - socket blocking mode.
- * sslContext - pointer to the SSL context or NULL.
+ * blocking - socket in blocking mode.
+ * sslContext - SSL context or NULL.
+ * socket - pointer to the socket value.
  */
-Socket createSocket(
-	uint8_t type,
-	uint8_t family,
+MpnwResult createSocket(
+	SocketType type,
+	AddressFamily family,
 	SocketAddress address,
 	bool listening,
 	bool blocking,
-	SslContext sslContext);
+	SslContext sslContext,
+	Socket* socket);
 
 /*
- * Destroys specified socket.
- * socket - pointer to the socket or NULL.
+ * Destroy socket instance.
+ * socket - socket instance or NULL.
  */
 void destroySocket(Socket socket);
 
 /*
  * Returns socket connection type.
- * socket - pointer to the valid socket.
+ * socket - socket instance.
  */
-uint8_t getSocketType(Socket socket);
+SocketType getSocketType(Socket socket);
 
 /*
  * Returns true if socket is in listening state.
- * socket - pointer to the valid socket.
+ * socket - socket instance.
  */
 bool isSocketListening(Socket socket);
 
 /*
  * Returns true if socket blocking mode.
- * socket - pointer to the valid socket.
+ * socket - socket instance.
  */
 bool isSocketBlocking(Socket socket);
 
 /*
- * Returns local socket address.
- * Returns true on success
+ * Get local socket address.
+ * Returns true on success.
  *
- * socket - pointer to the valid socket.
- * address - pointer to the valid socket address.
+ * socket - socket instance.
+ * address - socket address instance.
  */
 bool getSocketLocalAddress(
 	Socket socket,
 	SocketAddress address);
 
 /*
- * Returns remote socket address.
- * Returns true on success
+ * Get remote socket address.
+ * Returns true on success.
  *
- * socket - pointer to the valid socket.
- * address - pointer to the valid socket address.
+ * socket - socket instance.
+ * address - socket address instance.
  */
 bool getSocketRemoteAddress(
 	Socket socket,
@@ -177,25 +153,26 @@ bool getSocketRemoteAddress(
 
 /*
  * Returns true if socket uses SSL.
- * socket - pointer to the valid socket.
+ * socket - socket instance.
  */
 bool isSocketSsl(Socket socket);
 
 /*
  * Returns socket SSL context.
- * socket - pointer to the valid socket.
+ * socket - socket instance.
  */
 SslContext getSocketSslContext(Socket socket);
 
 /*
- * Returns true if socket in no delay mode.
- * socket - pointer to the valid socket.
+ * Returns true if socket is in no delay mode.
+ * socket - socket instance.
  */
 bool isSocketNoDelay(Socket socket);
 
 /*
- * Sets socket no delay mode.
- * socket - pointer to the valid socket.
+ * Set socket no delay mode.
+ *
+ * socket - socket instance.
  * value - no delay mode value.
  */
 void setSocketNoDelay(
@@ -203,24 +180,26 @@ void setSocketNoDelay(
 	bool value);
 
 /*
- * Accepts a new socket connection.
- * Returns socket on success, otherwise NULL.
+ * Accept a new socket connection.
+ * Returns operation MPNW result.
  *
- * socket - pointer to the valid socket.
- * timeoutTime - accept attempt timeout time.
+ * socket - socket instance.
+ * accepted - pointer to the accepted value.
  */
-Socket acceptSocket(Socket socket);
+MpnwResult acceptSocket(
+	Socket socket,
+	Socket* accepted);
 
 /*
- * Accepts socket SSL connection.
+ * Accept socket SSL connection.
  * Returns true on success.
  *
- * socket - pointer to the valid socket.
+ * socket - socket instance.
  */
 bool acceptSslSocket(Socket socket);
 
 /*
- * Connects socket to the specified address.
+ * Connect socket to the address.
  * Returns true on success.
  *
  * socket - pointer to the valid socket.
@@ -246,16 +225,16 @@ bool connectSslSocket(Socket socket);
  */
 bool shutdownSocket(
 	Socket socket,
-	uint8_t type);
+	SocketShutdown type);
 
 /*
- * Receives socket message.
+ * Receive socket message.
  * Returns true on success.
  *
- * socket - pointer to the valid socket.
- * buffer - pointer to the valid receive buffer.
+ * socket - socket instance.
+ * buffer - message receive buffer.
  * size - message receive buffer size.
- * count - pointer to the valid receive byte count.
+ * count - pointer to the count value.
  */
 bool socketReceive(
 	Socket socket,
@@ -264,12 +243,12 @@ bool socketReceive(
 	size_t* count);
 
 /*
- * Sends socket message.
+ * Send socket message.
  * Returns true on success.
  *
- * socket - pointer to the valid socket.
- * buffer - pointer to the valid send buffer.
- * count - message byte count to send.
+ * socket - socket instance.
+ * buffer - message send buffer.
+ * count - send byte count.
  */
 bool socketSend(
 	Socket socket,
@@ -277,30 +256,30 @@ bool socketSend(
 	size_t count);
 
 /*
- * Receives socket message.
+ * Receive socket message from address.
  * Returns true on success.
  *
- * socket - pointer to the valid socket.
- * buffer - pointer to the valid receive buffer.
+ * socket - socket instance.
+ * address - remote socket address.
+ * buffer - message receive buffer.
  * size - message receive buffer size.
- * address - pointer to the valid address.
- * count - pointer to the valid receive byte count.
+ * count - pointer to the count value.
  */
 bool socketReceiveFrom(
 	Socket socket,
+	SocketAddress address,
 	void* buffer,
 	size_t size,
-	SocketAddress address,
 	size_t* count);
 
 /*
- * Receives socket message to the specified address.
+ * Send socket message to the address.
  * Returns true on success.
  *
- * socket - pointer to the valid socket.
- * buffer - pointer to the valid send buffer.
+ * socket - socket instance.
+ * buffer - message send buffer.
  * count - message byte count to send.
- * address - pointer to the valid socket address.
+ * address - remote socket address.
  */
 bool socketSendTo(
 	Socket socket,
@@ -309,66 +288,65 @@ bool socketSendTo(
 	SocketAddress address);
 
 /*
- * Creates a new socket address.
- * Returns address on success, otherwise NULL.
+ * Create a new socket address.
+ * Returns operation MPNW result.
  *
- * host - pointer to the valid host name.
- * service - pointer to the valid service name.
+ * host - address host name string.
+ * service - address service name string.
+ * address - pointer to the address value.
  */
-SocketAddress createSocketAddress(
-	const char* host,
-	const char* service);
-
-/*
- * Creates a new empty socket address.
- * Returns address on success, otherwise NULL.
- */
-SocketAddress createEmptySocketAddress();
-
-/*
- * Creates a new socket address copy.
- * Returns address on success, otherwise NULL.
- *
- * address - pointer to the valid socket address.
- */
-SocketAddress createSocketAddressCopy(SocketAddress address);
-
-/*
- * Resolves a new socket addresses.
- * Returns address on success, otherwise NULL.
- *
- * host - pointer to the valid host name.
- * service - pointer to the valid service name.
- * family - socket address family.
- * type - socket connection type.
- */
-SocketAddress resolveSocketAddress(
+MpnwResult createSocketAddress(
 	const char* host,
 	const char* service,
-	uint8_t family,
-	uint8_t type);
+	SocketAddress* address);
 
 /*
- * Destroys specified socket endpoint address.
- * address - pointer to the socket address or NULL.
+ * Create a new socket address copy.
+ * Returns address on success, otherwise NULL.
+ *
+ * address - socket address instance.
+ */
+SocketAddress createSocketAddressCopy(
+	SocketAddress address);
+
+/*
+ * Resolve a new socket addresses.
+ * Returns operation MPNW result.
+ *
+ * host - address host name string.
+ * service - address service name string.
+ * family - socket address family.
+ * type - socket connection type.
+ * address - pointer to the address value.
+ */
+MpnwResult resolveSocketAddress(
+	const char* host,
+	const char* service,
+	AddressFamily family,
+	SocketType type,
+	SocketAddress* address);
+
+/*
+ * Destroy socket address instance.
+ * address - socket address or NULL.
  */
 void destroySocketAddress(SocketAddress address);
 
 /*
- * Copies source socket address to the destination.
+ * Copy source socket address to the destination.
  *
- * sourceAddress - pointer to the valid socket address.
- * destinationAddress - pointer to the valid socket address.
+ * sourceAddress - socket address instance.
+ * destinationAddress - socket address instance.
  */
 void copySocketAddress(
 	SocketAddress sourceAddress,
 	SocketAddress destinationAddress);
 
 /*
- * Compares two addresses.
+ * Compare two addresses.
  *
- * a - pointer to the valid socket address.
- * b - pointer to the valid socket address.
+ * a - socket address instance.
+ * b - socket address instance.
  */
 int compareSocketAddress(
 	SocketAddress a,
@@ -376,49 +354,50 @@ int compareSocketAddress(
 
 /*
  * Returns socket address family.
- * address - pointer to the valid socket address.
+ * address - socket address instance.
  */
-uint8_t getSocketAddressFamily(SocketAddress address);
+AddressFamily getSocketAddressFamily(
+	SocketAddress address);
 
 /*
- * Sets socket address family.
+ * Set socket address family.
  *
- * address - pointer to the valid socket address.
+ * address - socket address instance.
  * addressFamily - socket address family.
  */
 void setSocketAddressFamily(
 	SocketAddress address,
-	uint8_t addressFamily);
+	AddressFamily addressFamily);
 
 /*
  * Returns socket address family IP byte array size.
  * addressFamily - socket address family.
  */
-size_t getSocketAddressFamilyIpSize(uint8_t addressFamily);
+size_t getSocketAddressFamilyIpSize(
+	AddressFamily addressFamily);
 
 /*
  * Returns socket IP address byte array size.
- * address - pointer to the valid socket address.
+ * address - socket address instance.
  */
-size_t getSocketAddressIpSize(SocketAddress address);
+size_t getSocketAddressIpSize(
+	SocketAddress address);
 
 /*
  * Returns socket IP address byte array.
- * Returns true on success.
  *
- * address - pointer to the valid socket address.
- * ip - pointer to the valid IP byte array.
+ * address - socket address instance.
+ * ip - pointer to the IP copy array.
  */
-bool getSocketAddressIp(
-	SocketAddress address,
-	uint8_t* ip);
+const uint8_t* getSocketAddressIp(
+	SocketAddress address);
 
 /*
- * Sets socket IP address byte array.
+ * Set socket IP address byte array.
  * Returns true on success.
  *
- * address - pointer to the valid socket address.
- * ip - pointer to the valid IP byte array.
+ * address - socket address instance.
+ * ip - IP byte array.
  * size - IP byte array size.
  */
 bool setSocketAddressIp(
@@ -428,32 +407,29 @@ bool setSocketAddressIp(
 
 /*
  * Returns socket address port number.
- * Returns true on success.
  *
- * address - pointer to the valid socket address.
- * port - pointer to the valid socket address port.
+ * address - socket address instance.
+ * port - pointer to the port value.
  */
-bool getSocketAddressPort(
-	SocketAddress address,
-	uint16_t* port);
+uint16_t getSocketAddressPort(
+	SocketAddress address);
 
 /*
- * Sets socket address port number.
- * Returns true on success.
+ * Set socket address port number.
  *
- * address - pointer to the valid socket address.
+ * address - socket address instance.
  * port - socket address port.
  */
-bool setSocketAddressPort(
+void setSocketAddressPort(
 	SocketAddress address,
 	uint16_t port);
 
 /*
- * Returns socket address host name.
- * Returns true on successful get.
+ * Get socket address host name.
+ * Returns true on success.
  *
- * address - pointer to the valid socket address.
- * host - pointer to the valid socket host name.
+ * address - socket address instance.
+ * host - pointer to the host name value.
  * length - host name string length.
  */
 bool getSocketAddressHost(
@@ -463,10 +439,10 @@ bool getSocketAddressHost(
 
 /*
  * Returns socket address service name.
- * Returns true on successful get.
+ * Returns true on success.
  *
- * address - pointer to the valid socket address.
- * service - pointer to the valid socket service name.
+ * address - socket address instance.
+ * service - pointer to the service name.
  * length - service name string length.
  */
 bool getSocketAddressService(
@@ -475,13 +451,13 @@ bool getSocketAddressService(
 	size_t length);
 
 /*
- * Returns socket address host and service name.
- * Returns true on successful get.
+ * Get socket address host and service name.
+ * Returns true on success.
  *
- * address - pointer to the valid socket address.
- * host - pointer to the valid host name string.
+ * address - socket address instance.
+ * host - pointer to the host name.
  * hostLength - host name string length.
- * service - pointer to the valid host name string.
+ * service - pointer to the service name.
  * serviceLength - service name string length.
  */
 bool getSocketAddressHostService(
@@ -492,56 +468,61 @@ bool getSocketAddressHostService(
 	size_t serviceLength);
 
 /*
- * Creates a new public SSL context.
- * Returns SSL context on success, otherwise NULL.
+ * Create a new public SSL context.
+ * Returns operation MPNW result.
  *
- * socketType - target socket type value.
- * certificateFilePath - certificate file path string.
- * certificatesDirectory - certificate's directory path string.
+ * socketType - socket connection type.
+ * certificateFilePath - certificate file path string or NULL.
+ * certificatesDirectory - certificate's directory path string or NULL.
+ * sslContext - pointer to the sslContext value.
  */
-SslContext createPublicSslContext(
-	uint8_t securityProtocol,
+MpnwResult createPublicSslContext(
+	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
-	const char* certificatesDirectory);
+	const char* certificatesDirectory,
+	SslContext* sslContext);
 
 /*
  * Creates a new private SSL context.
- * Returns SSL context on success, otherwise NULL.
+ * Returns operation MPNW result.
  *
  * socketType - target socket type value.
  * certificateFilePath - certificates file path string.
  * privateKeyFilePath - private key file path string.
  * certificateChain - file path is certificate chain.
  */
-SslContext createPrivateSslContext(
-	uint8_t securityProtocol,
+MpnwResult createPrivateSslContext(
+	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,
-	bool certificateChain);
+	bool certificateChain,
+	SslContext* sslContext);
 
 /*
- * Destroys specified SSL context.
- * context - pointer to the SSL context or NULL.
+ * Destroys SSL context instance.
+ * context - SSL context instance or NULL.
  */
 void destroySslContext(SslContext context);
 
 /*
- * Destroys SSL context security protocol.
- * context - pointer to the valid SSL context.
+ * Returns SSL context security protocol.
+ * context - SSL context instance.
  */
-uint8_t getSslContextSecurityProtocol(SslContext context);
+SecurityProtocol getSslContextSecurityProtocol(
+	SslContext context);
 
 /*
  * Splits and handles received stream data to the datagrams.
  * Returns true on all handle success
  *
- * receiveBuffer - pointer to the valid receive buffer.
- * byteCount - receive buffer byte count.
- * datagramBuffer - pointer to the valid datagram buffer.
- * datagramByteCount - pointer to the valid datagram buffer byte count.
+ * receiveBuffer - message receive buffer.
+ * byteCount - message received byte count.
+ * datagramBuffer - receive datagram buffer.
+ * datagramBufferSiz - receive datagram buffer size.
+ * datagramByteCount - pointer to the datagram buffer byte count.
  * datagramLengthSize - datagram length header size.
- * receiveFunction - pointer to the valid receive handler.
- * functionHandle - pointer to the function handle or NULL.
+ * receiveFunction - pointer to the receive handler.
+ * functionHandle - receive function handle or NULL.
  */
 inline static bool handleStreamDatagram(
 	const uint8_t* receiveBuffer,
@@ -605,15 +586,37 @@ inline static bool handleStreamDatagram(
 		uint64_t datagramSize;
 
 		if (datagramLengthSize == sizeof(uint8_t))
+		{
 			datagramSize = datagramBuffer[0];
+		}
 		else if (datagramLengthSize == sizeof(uint16_t))
-			datagramSize = netToHost16(*(uint16_t*)datagramBuffer);
+		{
+#if MPNW_LITTLE_ENDIAN
+			datagramSize = *(uint16_t*)datagramBuffer;
+#else
+			datagramSize = swapBytes16(*(uint16_t*)datagramBuffer);
+#endif
+		}
 		else if (datagramLengthSize == sizeof(uint32_t))
-			datagramSize = netToHost32(*(uint32_t*)datagramBuffer);
+		{
+#if MPNW_LITTLE_ENDIAN
+			datagramSize = *(uint32_t*)datagramBuffer;
+#else
+			datagramSize = swapBytes32(*(uint32_t*)datagramBuffer);
+#endif
+		}
 		else if (datagramLengthSize == sizeof(uint64_t))
-			datagramSize = netToHost64(*(uint64_t*)datagramBuffer);
+		{
+#if MPNW_LITTLE_ENDIAN
+			datagramSize = *(uint64_t*)datagramBuffer;
+#else
+			datagramSize = swapBytes64(*(uint64_t*)datagramBuffer);
+#endif
+		}
 		else
+		{
 			abort();
+		}
 
 		// Received datagram is bigger than buffer
 		if (datagramSize > datagramBufferSize - datagramLengthSize)

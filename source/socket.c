@@ -38,9 +38,10 @@ static WSADATA wsaData;
 
 struct Socket
 {
-	SOCKET handle;
+	SocketType type;
 	bool listening;
 	bool blocking;
+	SOCKET handle;
 
 #if MPNW_SUPPORT_OPENSSL
 	SslContext sslContext;
@@ -107,28 +108,30 @@ bool isNetworkInitialized()
 	return networkInitialized;
 }
 
-Socket createSocket(
-	uint8_t _type,
-	uint8_t _family,
+MpnwResult createSocket(
+	SocketType _type,
+	AddressFamily _family,
 	SocketAddress address,
 	bool listening,
 	bool blocking,
-	SslContext sslContext)
+	SslContext sslContext,
+	Socket* _socket)
 {
 	assert(_type < SOCKET_TYPE_COUNT);
 	assert(_family < ADDRESS_FAMILY_COUNT);
 	assert(address != NULL);
+	assert(_socket != NULL);
 	assert(networkInitialized == true);
 
 #if !MPNW_SUPPORT_OPENSSL
 	assert(sslContext == NULL);
 #endif
 
-	Socket _socket = malloc(
+	Socket socketInstance = malloc(
 		sizeof(struct Socket));
 
-	if (_socket == NULL)
-		return NULL;
+	if (socketInstance == NULL)
+		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	int type, protocol, family;
 	SOCKET_LENGTH length;
@@ -145,8 +148,7 @@ Socket createSocket(
 	}
 	else
 	{
-		free(_socket);
-		return NULL;
+		abort();
 	}
 
 	if (_family == IP_V4_ADDRESS_FAMILY)
@@ -161,8 +163,7 @@ Socket createSocket(
 	}
 	else
 	{
-		free(_socket);
-		return NULL;
+		abort();
 	}
 
 	SOCKET handle = socket(
@@ -172,8 +173,8 @@ Socket createSocket(
 
 	if (handle == INVALID_SOCKET)
 	{
-		free(_socket);
-		return NULL;
+		free(socketInstance);
+		return FAILED_TO_CREATE_SOCKET_MPNW_RESULT;
 	}
 
 	int result = bind(
@@ -184,8 +185,8 @@ Socket createSocket(
 	if (result != 0)
 	{
 		closesocket(handle);
-		free(_socket);
-		return NULL;
+		free(socketInstance);
+		return FAILED_TO_BIND_SOCKET_MPNW_RESULT;
 	}
 
 	if (listening == true)
@@ -199,8 +200,8 @@ Socket createSocket(
 		if (result != 0)
 		{
 			closesocket(handle);
-			free(_socket);
-			return NULL;
+			free(socketInstance);
+			return FAILED_TO_LISTEN_SOCKET_MPNW_RESULT;
 		}
 	}
 
@@ -215,8 +216,8 @@ Socket createSocket(
 		if (flags == -1)
 		{
 			closesocket(handle);
-			free(_socket);
-			return NULL;
+			free(socketInstance);
+			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
 		}
 
 		result = fcntl(
@@ -235,14 +236,15 @@ Socket createSocket(
 		if (result != 0)
 		{
 			closesocket(handle);
-			free(_socket);
-			return NULL;
+			free(socketInstance);
+			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
 		}
 	}
 
-	_socket->handle = handle;
-	_socket->listening = listening;
-	_socket->blocking = blocking;
+	socketInstance->type = _type;
+	socketInstance->listening = listening;
+	socketInstance->blocking = blocking;
+	socketInstance->handle = handle;
 
 #if MPNW_SUPPORT_OPENSSL
 	if (sslContext != NULL)
@@ -253,8 +255,8 @@ Socket createSocket(
 		if (ssl == NULL)
 		{
 			closesocket(handle);
-			free(_socket);
-			return NULL;
+			free(socketInstance);
+			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
 		result = SSL_set_fd(
@@ -265,20 +267,21 @@ Socket createSocket(
 		{
 			SSL_free(ssl);
 			closesocket(handle);
-			free(_socket);
-			return NULL;
+			free(socketInstance);
+			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
-		_socket->sslContext = sslContext;
-		_socket->ssl = ssl;
+		socketInstance->sslContext = sslContext;
+		socketInstance->ssl = ssl;
 	}
 	else
 	{
-		_socket->sslContext = NULL;
+		socketInstance->sslContext = NULL;
 	}
 #endif
 
-	return _socket;
+	*_socket = socketInstance;
+	return SUCCESS_MPNW_RESULT;
 }
 
 void destroySocket(Socket socket)
@@ -302,32 +305,11 @@ void destroySocket(Socket socket)
 	free(socket);
 }
 
-uint8_t getSocketType(Socket socket)
+SocketType getSocketType(Socket socket)
 {
 	assert(socket != NULL);
 	assert(networkInitialized == true);
-
-	int type;
-
-	SOCKET_LENGTH length =
-		sizeof(int);
-
-	int result = getsockopt(
-		socket->handle,
-		SOL_SOCKET,
-		SO_TYPE,
-		(char*)&type,
-		&length);
-
-	if (result != 0)
-		abort();
-
-	if (type == SOCK_STREAM)
-		return STREAM_SOCKET_TYPE;
-	else if (type == SOCK_DGRAM)
-		return DATAGRAM_SOCKET_TYPE;
-	else
-		return UNKNOWN_SOCKET_TYPE;
+	return socket->type;
 }
 
 bool isSocketListening(Socket socket)
@@ -496,18 +478,21 @@ void setSocketNoDelay(
 		abort();
 }
 
-Socket acceptSocket(Socket socket)
+MpnwResult acceptSocket(
+	Socket socket,
+	Socket* _accepted)
 {
 	assert(socket != NULL);
+	assert(_accepted != NULL);
 	assert(isSocketListening(socket) == true);
 	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
 	assert(networkInitialized == true);
 
-	Socket acceptedSocket = malloc(
+	Socket accepted = malloc(
 		sizeof(struct Socket));
 
-	if (acceptedSocket == NULL)
-		return NULL;
+	if (accepted == NULL)
+		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	SOCKET handle = accept(
 		socket->handle,
@@ -516,8 +501,8 @@ Socket acceptSocket(Socket socket)
 
 	if (handle == INVALID_SOCKET)
 	{
-		free(acceptedSocket);
-		return NULL;
+		free(accepted);
+		return FAILED_TO_ACCEPT_SOCKET_MPNW_RESULT;
 	}
 
 	if (socket->blocking == false)
@@ -531,8 +516,8 @@ Socket acceptSocket(Socket socket)
 		if (flags == -1)
 		{
 			closesocket(handle);
-			free(acceptedSocket);
-			return NULL;
+			free(accepted);
+			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
 		}
 
 		int result = fcntl(
@@ -551,14 +536,15 @@ Socket acceptSocket(Socket socket)
 		if (result != 0)
 		{
 			closesocket(handle);
-			free(acceptedSocket);
-			return NULL;
+			free(accepted);
+			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
 		}
 	}
 
-	acceptedSocket->handle = handle;
-	acceptedSocket->listening = false;
-	acceptedSocket->blocking = socket->blocking;
+	accepted->type = socket->type;
+	accepted->listening = false;
+	accepted->blocking = socket->blocking;
+	accepted->handle = handle;
 
 #if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext != NULL)
@@ -569,8 +555,8 @@ Socket acceptSocket(Socket socket)
 		if (ssl == NULL)
 		{
 			closesocket(handle);
-			free(acceptedSocket);
-			return NULL;
+			free(accepted);
+			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
 		int result = SSL_set_fd(
@@ -581,21 +567,22 @@ Socket acceptSocket(Socket socket)
 		{
 			SSL_free(ssl);
 			closesocket(handle);
-			free(acceptedSocket);
-			return NULL;
+			free(accepted);
+			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
-		acceptedSocket->sslContext =
+		accepted->sslContext =
 			socket->sslContext;
-		acceptedSocket->ssl = ssl;
+		accepted->ssl = ssl;
 	}
 	else
 	{
-		acceptedSocket->sslContext = NULL;
+		accepted->sslContext = NULL;
 	}
 #endif
 
-	return acceptedSocket;
+	*_accepted = accepted;
+	return SUCCESS_MPNW_RESULT;
 }
 
 bool acceptSslSocket(Socket socket)
@@ -628,7 +615,7 @@ bool connectSocket(
 	else if (family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
-		return false;
+		abort();
 
 	int result = connect(
 		socket->handle,
@@ -660,7 +647,7 @@ bool connectSslSocket(Socket socket)
 
 bool shutdownSocket(
 	Socket socket,
-	uint8_t _type)
+	SocketShutdown _type)
 {
 	assert(socket != NULL);
 	assert(_type < SOCKET_SHUTDOWN_COUNT);
@@ -703,6 +690,7 @@ bool socketReceive(
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
+	assert(size != 0);
 	assert(count != NULL);
 	assert(networkInitialized == true);
 
@@ -763,14 +751,15 @@ bool socketSend(
 
 bool socketReceiveFrom(
 	Socket socket,
+	SocketAddress address,
 	void* buffer,
 	size_t size,
-	SocketAddress address,
 	size_t* _count)
 {
 	assert(socket != NULL);
-	assert(buffer != NULL);
 	assert(address != NULL);
+	assert(buffer != NULL);
+	assert(size != 0);
 	assert(_count != NULL);
 	assert(networkInitialized == true);
 
@@ -837,19 +826,21 @@ bool socketSendTo(
 		length) == count;
 }
 
-SocketAddress createSocketAddress(
+MpnwResult createSocketAddress(
 	const char* host,
-	const char* service)
+	const char* service,
+	SocketAddress* _address)
 {
 	assert(host != NULL);
 	assert(service != NULL);
+	assert(_address != NULL);
 	assert(networkInitialized == true);
 
 	SocketAddress address = malloc(
 		sizeof(struct SocketAddress));
 
 	if (address == NULL)
-		return NULL;
+		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	struct addrinfo hints;
 
@@ -873,7 +864,7 @@ SocketAddress createSocketAddress(
 	if (result != 0)
 	{
 		free(address);
-		return NULL;
+		return FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT;
 	}
 
 	memset(
@@ -886,28 +877,13 @@ SocketAddress createSocketAddress(
 		addressInfos->ai_addrlen);
 
 	freeaddrinfo(addressInfos);
-	return address;
+
+	*_address = address;
+	return SUCCESS_MPNW_RESULT;
 }
 
-SocketAddress createEmptySocketAddress()
-{
-	assert(networkInitialized == true);
-
-	SocketAddress address = malloc(
-		sizeof(struct SocketAddress));
-
-	if (address == NULL)
-		return NULL;
-
-	memset(
-		&address->handle,
-		0,
-		sizeof(struct sockaddr_storage));
-
-	return address;
-}
-
-SocketAddress createSocketAddressCopy(SocketAddress address)
+SocketAddress createSocketAddressCopy(
+	SocketAddress address)
 {
 	assert(address != NULL);
 
@@ -925,23 +901,25 @@ SocketAddress createSocketAddressCopy(SocketAddress address)
 	return _address;
 }
 
-SocketAddress resolveSocketAddress(
+MpnwResult resolveSocketAddress(
 	const char* host,
 	const char* service,
-	uint8_t family,
-	uint8_t type)
+	AddressFamily family,
+	SocketType type,
+	SocketAddress* _address)
 {
 	assert(host != NULL);
 	assert(service != NULL);
 	assert(family < ADDRESS_FAMILY_COUNT);
 	assert(type < SOCKET_TYPE_COUNT);
+	assert(_address != NULL);
 	assert(networkInitialized == true);
 
 	SocketAddress address = malloc(
 		sizeof(struct SocketAddress));
 
 	if (address == NULL)
-		return NULL;
+		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	struct addrinfo hints;
 
@@ -964,8 +942,7 @@ SocketAddress resolveSocketAddress(
 	}
 	else
 	{
-		free(address);
-		return NULL;
+		abort();
 	}
 
 	if(type == STREAM_SOCKET_TYPE)
@@ -980,8 +957,7 @@ SocketAddress resolveSocketAddress(
 	}
 	else
 	{
-		free(address);
-		return NULL;
+		abort();
 	}
 
 	struct addrinfo* addressInfos;
@@ -995,7 +971,7 @@ SocketAddress resolveSocketAddress(
 	if (result != 0)
 	{
 		free(address);
-		return NULL;
+		return FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT;
 	}
 
 	memset(
@@ -1008,7 +984,9 @@ SocketAddress resolveSocketAddress(
 		addressInfos->ai_addrlen);
 
 	freeaddrinfo(addressInfos);
-	return address;
+
+	*_address = address;
+	return SUCCESS_MPNW_RESULT;
 }
 
 void destroySocketAddress(SocketAddress address)
@@ -1064,7 +1042,8 @@ int compareSocketAddress(
 	}
 }
 
-uint8_t getSocketAddressFamily(SocketAddress address)
+AddressFamily getSocketAddressFamily(
+	SocketAddress address)
 {
 	assert(address != NULL);
 	assert(networkInitialized == true);
@@ -1076,12 +1055,12 @@ uint8_t getSocketAddressFamily(SocketAddress address)
 	else if (family == AF_INET6)
 		return IP_V6_ADDRESS_FAMILY;
 	else
-		return UNKNOWN_ADDRESS_FAMILY;
+		abort();
 }
 
 void setSocketAddressFamily(
 	SocketAddress address,
-	uint8_t addressFamily)
+	AddressFamily addressFamily)
 {
 	assert(address != NULL);
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
@@ -1089,26 +1068,24 @@ void setSocketAddressFamily(
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 		address->handle.ss_family = AF_INET;
-	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
-		address->handle.ss_family = AF_INET6;
 	else
-		address->handle.ss_family = AF_UNSPEC;
+		address->handle.ss_family = AF_INET6;
 }
 
-size_t getSocketAddressFamilyIpSize(uint8_t addressFamily)
+size_t getSocketAddressFamilyIpSize(
+	AddressFamily addressFamily)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(networkInitialized == true);
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 		return sizeof(struct sockaddr_in);
-	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
-		return sizeof(struct sockaddr_in6);
 	else
-		return 0;
+		return sizeof(struct sockaddr_in6);
 }
 
-size_t getSocketAddressIpSize(SocketAddress address)
+size_t getSocketAddressIpSize(
+	SocketAddress address)
 {
 	assert(address != NULL);
 	assert(networkInitialized == true);
@@ -1117,42 +1094,16 @@ size_t getSocketAddressIpSize(SocketAddress address)
 
 	if (family == AF_INET)
 		return sizeof(struct sockaddr_in);
-	else if (family == AF_INET6)
-		return sizeof(struct sockaddr_in6);
 	else
-		return 0;
+		return sizeof(struct sockaddr_in6);
 }
 
-bool getSocketAddressIp(
-	SocketAddress address,
-	uint8_t* ip)
+const uint8_t* getSocketAddressIp(
+	SocketAddress address)
 {
 	assert(address != NULL);
-	assert(ip != NULL);
 	assert(networkInitialized == true);
-
-	int family = address->handle.ss_family;
-
-	if (family == AF_INET)
-	{
-		memcpy(
-			ip,
-			(const struct sockaddr_in*)&address->handle,
-			sizeof(struct sockaddr_in));
-		return true;
-	}
-	else if (family == AF_INET6)
-	{
-		memcpy(
-			ip,
-			(const struct sockaddr_in6*)&address->handle,
-			sizeof(struct sockaddr_in6));
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return (const uint8_t*)&address->handle;
 }
 
 bool setSocketAddressIp(
@@ -1174,7 +1125,7 @@ bool setSocketAddressIp(
 			sizeof(struct sockaddr_in));
 		return true;
 	}
-	else if (family == AF_INET6 && size == sizeof(struct sockaddr_in6))
+	else if (size == sizeof(struct sockaddr_in6))
 	{
 		memcpy(
 			(struct sockaddr_in6*)&address->handle,
@@ -1188,12 +1139,10 @@ bool setSocketAddressIp(
 	}
 }
 
-bool getSocketAddressPort(
-	SocketAddress address,
-	uint16_t* port)
+uint16_t getSocketAddressPort(
+	SocketAddress address)
 {
 	assert(address != NULL);
-	assert(port != NULL);
 	assert(networkInitialized == true);
 
 	int family = address->handle.ss_family;
@@ -1202,23 +1151,17 @@ bool getSocketAddressPort(
 	{
 		struct sockaddr_in* address4 =
 			(struct sockaddr_in*)&address->handle;
-		*port = ntohs(address4->sin_port);
-		return true;
-	}
-	else if (family == AF_INET6)
-	{
-		struct sockaddr_in6* address6 =
-			(struct sockaddr_in6*)&address->handle;
-		*port = ntohs(address6->sin6_port);
-		return true;
+		return ntohs(address4->sin_port);
 	}
 	else
 	{
-		return false;
+		struct sockaddr_in6* address6 =
+			(struct sockaddr_in6*)&address->handle;
+		return ntohs(address6->sin6_port);
 	}
 }
 
-bool setSocketAddressPort(
+void setSocketAddressPort(
 	SocketAddress address,
 	uint16_t port)
 {
@@ -1232,18 +1175,12 @@ bool setSocketAddressPort(
 		struct sockaddr_in* address4 =
 			(struct sockaddr_in*)&address->handle;
 		address4->sin_port = htons(port);
-		return true;
 	}
-	else if (family == AF_INET6)
+	else
 	{
 		struct sockaddr_in6* address6 =
 			(struct sockaddr_in6*)&address->handle;
 		address6->sin6_port = htons(port);
-		return true;
-	}
-	else
-	{
-		return false;
 	}
 }
 
@@ -1319,28 +1256,29 @@ bool getSocketAddressHostService(
 		flags) == 0;
 }
 
-SslContext createPublicSslContext(
-	uint8_t securityProtocol,
+MpnwResult createPublicSslContext(
+	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
-	const char* certificatesDirectory)
+	const char* certificatesDirectory,
+	SslContext* _sslContext)
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
+	assert(_sslContext != NULL);
 	assert(networkInitialized == true);
 
-	SslContext context = malloc(
+	SslContext sslContext = malloc(
 		sizeof(struct SslContext));
 
-	if (context == NULL)
-		return NULL;
+	if (sslContext == NULL)
+		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	SSL_CTX* handle;
 
 	switch (securityProtocol)
 	{
 	default:
-		free(context);
-		return NULL;
+		abort();
 	case TLS_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
 		break;
@@ -1351,8 +1289,8 @@ SslContext createPublicSslContext(
 
 	if (handle == NULL)
 	{
-		free(context);
-		return NULL;
+		free(sslContext);
+		return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 	}
 
 	int result;
@@ -1373,42 +1311,45 @@ SslContext createPublicSslContext(
 	if (result != 1)
 	{
 		SSL_CTX_free(handle);
-		free(context);
-		return NULL;
+		free(sslContext);
+		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
-	context->handle = handle;
-	return context;
+	sslContext->handle = handle;
+
+	*_sslContext = sslContext;
+	return SUCCESS_MPNW_RESULT;
 #else
 	return NULL;
 #endif
 }
 
-SslContext createPrivateSslContext(
-	uint8_t securityProtocol,
+MpnwResult createPrivateSslContext(
+	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,
-	bool certificateChain)
+	bool certificateChain,
+	SslContext* _sslContext)
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(certificateFilePath != NULL);
 	assert(privateKeyFilePath != NULL);
+	assert(_sslContext != NULL);
 	assert(networkInitialized == true);
 
-	SslContext context = malloc(
+	SslContext sslContext = malloc(
 		sizeof(struct SslContext));
 
-	if (context == NULL)
-		return NULL;
+	if (sslContext == NULL)
+		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	SSL_CTX* handle;
 
 	switch (securityProtocol)
 	{
 	default:
-		free(context);
-		return NULL;
+		abort();
 	case TLS_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
 		break;
@@ -1419,8 +1360,8 @@ SslContext createPrivateSslContext(
 
 	if (handle == NULL)
 	{
-		free(context);
-		return NULL;
+		free(sslContext);
+		return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 	}
 
 	int result;
@@ -1442,8 +1383,8 @@ SslContext createPrivateSslContext(
 	if (result != 1)
 	{
 		SSL_CTX_free(handle);
-		free(context);
-		return NULL;
+		free(sslContext);
+		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
 	result = SSL_CTX_use_PrivateKey_file(
@@ -1454,22 +1395,23 @@ SslContext createPrivateSslContext(
 	if (result != 1)
 	{
 		SSL_CTX_free(handle);
-		free(context);
-		return NULL;
+		free(sslContext);
+		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
-	result = SSL_CTX_check_private_key(
-		handle);
+	result = SSL_CTX_check_private_key(handle);
 
 	if (result != 1)
 	{
 		SSL_CTX_free(handle);
-		free(context);
-		return NULL;
+		free(sslContext);
+		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
-	context->handle = handle;
-	return context;
+	sslContext->handle = handle;
+
+	*_sslContext = sslContext;
+	return SUCCESS_MPNW_RESULT;
 #else
 	return NULL;
 #endif
@@ -1490,21 +1432,22 @@ void destroySslContext(SslContext context)
 #endif
 }
 
-uint8_t getSslContextSecurityProtocol(SslContext context)
+SecurityProtocol getSslContextSecurityProtocol(
+	SslContext context)
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(context != NULL);
 	assert(networkInitialized == true);
 
-	const SSL_METHOD* method = SSL_CTX_get_ssl_method(
-		context->handle);
+	const SSL_METHOD* method =
+		SSL_CTX_get_ssl_method(context->handle);
 
 	if (method == TLS_method())
 		return TLS_SECURITY_PROTOCOL;
 	else if (method == TLSv1_2_method())
 		return TLS_1_2_SECURITY_PROTOCOL;
 	else
-		return UNKNOWN_SECURITY_PROTOCOL;
+		abort();
 #else
 	abort();
 #endif

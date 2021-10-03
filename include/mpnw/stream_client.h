@@ -4,66 +4,68 @@
 /* Stream client instance handle (TCP) */
 typedef struct StreamClient* StreamClient;
 
-/* Stream client message receive function */
+/* Stream client receive function */
 typedef void(*OnStreamClientReceive)(
 	StreamClient client,
 	const uint8_t* buffer,
 	size_t byteCount);
 
 /*
- * Creates a new stream client (TCP).
- * Returns stream client on success, otherwise NULL.
+ * Create a new stream client instance (TCP).
+ * Returns operation MPNW result.
  *
- * addressFamily - local stream socket address family.
- * bufferSize - socket message receive buffer size.
- * onReceive - pointer to the valid receive function.
- * handle - pointer to the receive function argument.
- * sslContext - pointer to the SSL context or NULL.
+ * addressFamily - local socket address family.
+ * bufferSize - message receive buffer size.
+ * onReceive - message receive function.
+ * handle - receive function argument.
+ * sslContext - SSL context instance or NULL.
+ * streamClient - pointer to the streamClient value.
  */
-StreamClient createStreamClient(
-	uint8_t addressFamily,
+MpnwResult createStreamClient(
+	AddressFamily addressFamily,
 	size_t bufferSize,
 	OnStreamClientReceive onReceive,
 	void* handle,
-	SslContext sslContext);
+	SslContext sslContext,
+	StreamClient* streamClient);
 
 /*
- * Destroys specified stream client.
- * client - pointer to the stream client or NULL.
+ * Destroy stream client instance.
+ * client - stream client instance or NULL.
  */
 void destroyStreamClient(StreamClient client);
 
 /*
 * Returns stream client receive buffer size.
-* client - pointer to the valid stream client.
+* client - stream client instance.
 */
 size_t getStreamClientBufferSize(StreamClient client);
 
 /*
 * Returns stream client receive function.
-* client - pointer to the valid stream client.
+* client - stream client instance.
 */
 OnStreamClientReceive getStreamClientOnReceive(StreamClient client);
 
 /*
  * Returns stream client handle.
- * client - pointer to the valid stream client.
+ * client - stream client instance.
  */
 void* getStreamClientHandle(StreamClient client);
 
 /*
  * Returns stream client socket.
- * client - pointer to the valid stream client.
+ * client - stream client instance.
  */
 Socket getStreamClientSocket(StreamClient client);
 
 /*
- * Connects stream client to the server.
+ * Connect stream client to the server.
  * Returns true on success.
  *
- * socket - pointer to the valid socket.
- * address - pointer to the valid address.
- * timeoutTime - attempt time out time (ms).
+ * socket - stream client instance.
+ * address - remote socket address.
+ * timeoutTime - time out time (ms).
  */
 bool connectStreamClient(
 	StreamClient client,
@@ -74,17 +76,17 @@ bool connectStreamClient(
  * Receive buffered datagrams.
  * Returns true if message received.
  *
- * client - pointer to the valid datagram client.
+ * client - stream client instance.
  */
 bool updateStreamClient(StreamClient client);
 
 /*
- * Sends message to the stream server.
+ * Send message to the stream server.
  * Returns true on success.
  *
- * client - pointer to the valid stream client.
- * buffer - pointer to the valid data buffer.
- * count - data buffer send byte count.
+ * client - stream client instance.
+ * buffer - message send buffer.
+ * count - send byte count.
  */
 bool streamClientSend(
 	StreamClient client,

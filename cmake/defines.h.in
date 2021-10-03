@@ -8,3 +8,51 @@
 
 #define MPNW_SUPPORT_OPENSSL @MPNW_SUPPORT_OPENSSL@
 #define MPNW_LITTLE_ENDIAN @MPNW_LITTLE_ENDIAN@
+
+typedef enum MpnwResult
+{
+    SUCCESS_MPNW_RESULT = 0,
+    FAILED_TO_ALLOCATE_MPNW_RESULT = 1,
+    FAILED_TO_CREATE_SOCKET_MPNW_RESULT = 2,
+    FAILED_TO_BIND_SOCKET_MPNW_RESULT = 3,
+    FAILED_TO_LISTEN_SOCKET_MPNW_RESULT = 4,
+    FAILED_TO_ACCEPT_SOCKET_MPNW_RESULT = 5,
+    FAILED_TO_CONNECT_SOCKET_MPNW_RESULT = 6,
+	FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT = 7,
+	FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT = 8,
+	FAILED_TO_CREATE_SSL_MPNW_RESULT = 9,
+	FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT = 10,
+    MPNW_RESULT_COUNT = 11,
+} MpnwResult;
+
+inline static const char* mpnwResultToString(
+    MpnwResult result)
+{
+    switch(result)
+    {
+    default:
+        return "Unknown";
+    case SUCCESS_MPNW_RESULT:
+        return "Success";
+    case FAILED_TO_ALLOCATE_MPNW_RESULT:
+        return "Failed to allocate";
+    case FAILED_TO_CREATE_SOCKET_MPNW_RESULT:
+        return "Failed to create socket";
+    case FAILED_TO_BIND_SOCKET_MPNW_RESULT:
+        return "Failed to bind socket";
+    case FAILED_TO_LISTEN_SOCKET_MPNW_RESULT:
+        return "Failed to listen socket";
+    case FAILED_TO_ACCEPT_SOCKET_MPNW_RESULT:
+        return "Failed to accept socket";
+    case FAILED_TO_CONNECT_SOCKET_MPNW_RESULT:
+        return "Failed to connect socket";
+    case FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT:
+        return "Failed to set socket flag";
+    case FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT:
+        return "Failed to get address info";
+    case FAILED_TO_CREATE_SSL_MPNW_RESULT:
+        return "Failed to create SSL";
+    case FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT:
+        return "Failed to load certificate";
+    }
+}
