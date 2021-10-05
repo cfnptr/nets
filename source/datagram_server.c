@@ -5,7 +5,7 @@
 
 struct DatagramServer
 {
-	size_t bufferSize;
+	size_t receiveBufferSize;
 	OnDatagramServerReceive onReceive;
 	void* handle;
 	uint8_t* receiveBuffer;
@@ -16,13 +16,13 @@ struct DatagramServer
 MpnwResult createDatagramServer(
 	uint8_t addressFamily,
 	const char* service,
-	size_t bufferSize,
+	size_t receiveBufferSize,
 	OnDatagramServerReceive onReceive,
 	void* handle,
 	DatagramServer* _datagramServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(bufferSize != 0);
+	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
 	assert(_datagramServer != NULL);
 	assert(isNetworkInitialized() == true);
@@ -34,7 +34,7 @@ MpnwResult createDatagramServer(
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
-		bufferSize * sizeof(uint8_t));
+		receiveBufferSize * sizeof(uint8_t));
 
 	if (receiveBuffer == NULL)
 	{
@@ -86,7 +86,7 @@ MpnwResult createDatagramServer(
 		return mpnwResult;
 	}
 
-	datagramServer->bufferSize = bufferSize;
+	datagramServer->receiveBufferSize = receiveBufferSize;
 	datagramServer->onReceive = onReceive;
 	datagramServer->handle = handle;
 	datagramServer->receiveBuffer = receiveBuffer;
@@ -97,92 +97,92 @@ MpnwResult createDatagramServer(
 	return SUCCESS_MPNW_RESULT;
 }
 
-void destroyDatagramServer(DatagramServer server)
+void destroyDatagramServer(DatagramServer datagramServer)
 {
 	assert(isNetworkInitialized() == true);
 
-	if (server == NULL)
+	if (datagramServer == NULL)
 		return;
 
 	shutdownSocket(
-		server->socket,
+		datagramServer->socket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(server->socket);
-	destroySocketAddress(server->address);
-	free(server->receiveBuffer);
-	free(server);
+	destroySocket(datagramServer->socket);
+	destroySocketAddress(datagramServer->address);
+	free(datagramServer->receiveBuffer);
+	free(datagramServer);
 }
 
-size_t getDatagramServerBufferSize(DatagramServer server)
+size_t getDatagramServerReceiveBufferSize(DatagramServer datagramServer)
 {
-	assert(server != NULL);
+	assert(datagramServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->bufferSize;
+	return datagramServer->receiveBufferSize;
 }
 
-OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer server)
+OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer datagramServer)
 {
-	assert(server != NULL);
+	assert(datagramServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->onReceive;
+	return datagramServer->onReceive;
 }
 
-void* getDatagramServerHandle(DatagramServer server)
+void* getDatagramServerHandle(DatagramServer datagramServer)
 {
-	assert(server != NULL);
+	assert(datagramServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->handle;
+	return datagramServer->handle;
 }
 
-Socket getDatagramServerSocket(DatagramServer server)
+Socket getDatagramServerSocket(DatagramServer datagramServer)
 {
-	assert(server != NULL);
+	assert(datagramServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->socket;
+	return datagramServer->socket;
 }
 
-bool updateDatagramServer(DatagramServer server)
+bool updateDatagramServer(DatagramServer datagramServer)
 {
-	assert(server != NULL);
+	assert(datagramServer != NULL);
 
 	uint8_t* receiveBuffer =
-		server->receiveBuffer;
+		datagramServer->receiveBuffer;
 
 	size_t byteCount;
 
 	bool result = socketReceiveFrom(
-		server->socket,
-		server->address,
+		datagramServer->socket,
+		datagramServer->address,
 		receiveBuffer,
-		server->bufferSize,
+		datagramServer->receiveBufferSize,
 		&byteCount);
 
 	if (result == false)
 		return false;
 
-	server->onReceive(
-		server,
-		server->address,
+	datagramServer->onReceive(
+		datagramServer,
+		datagramServer->address,
 		receiveBuffer,
 		byteCount);
 	return true;
 }
 
 bool datagramServerSend(
-	DatagramServer server,
-	const void* buffer,
-	size_t count,
-	SocketAddress address)
+	DatagramServer datagramServer,
+	const void* sendBuffer,
+	size_t byteCount,
+	SocketAddress socketAddress)
 {
-	assert(server != NULL);
-	assert(buffer != NULL);
-	assert(count != 0);
-	assert(address != NULL);
+	assert(datagramServer != NULL);
+	assert(sendBuffer != NULL);
+	assert(byteCount != 0);
+	assert(socketAddress != NULL);
 	assert(isNetworkInitialized() == true);
 
 	return socketSendTo(
-		server->socket,
-		buffer,
-		count,
-		address);
+		datagramServer->socket,
+		sendBuffer,
+		byteCount,
+		socketAddress);
 }

@@ -5,7 +5,7 @@
 
 struct StreamClient
 {
-	size_t bufferSize;
+	size_t receiveBufferSize;
 	OnStreamClientReceive onReceive;
 	void* handle;
 	uint8_t* receiveBuffer;
@@ -14,14 +14,14 @@ struct StreamClient
 
 MpnwResult createStreamClient(
 	AddressFamily addressFamily,
-	size_t bufferSize,
+	size_t receiveBufferSize,
 	OnStreamClientReceive onReceive,
 	void* handle,
 	SslContext sslContext,
 	StreamClient* _streamClient)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(bufferSize != 0);
+	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
 	assert(_streamClient != NULL);
 	assert(isNetworkInitialized() == true);
@@ -33,7 +33,7 @@ MpnwResult createStreamClient(
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
-		bufferSize * sizeof(uint8_t));
+		receiveBufferSize * sizeof(uint8_t));
 
 	if (receiveBuffer == NULL)
 	{
@@ -86,7 +86,7 @@ MpnwResult createStreamClient(
 		return mpnwResult;
 	}
 
-	streamClient->bufferSize = bufferSize;
+	streamClient->receiveBufferSize = receiveBufferSize;
 	streamClient->onReceive = onReceive;
 	streamClient->handle = handle;
 	streamClient->receiveBuffer = receiveBuffer;
@@ -96,60 +96,60 @@ MpnwResult createStreamClient(
 	return SUCCESS_MPNW_RESULT;
 }
 
-void destroyStreamClient(StreamClient client)
+void destroyStreamClient(StreamClient streamClient)
 {
 	assert(isNetworkInitialized() == true);
 
-	if (client == NULL)
+	if (streamClient == NULL)
 		return;
 
 	shutdownSocket(
-		client->socket,
+		streamClient->socket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(client->socket);
-	free(client->receiveBuffer);
-	free(client);
+	destroySocket(streamClient->socket);
+	free(streamClient->receiveBuffer);
+	free(streamClient);
 }
 
-size_t getStreamClientBufferSize(StreamClient client)
+size_t getStreamClientReceiveBufferSize(StreamClient streamClient)
 {
-	assert(client != NULL);
+	assert(streamClient != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->bufferSize;
+	return streamClient->receiveBufferSize;
 }
 
-OnStreamClientReceive getStreamClientOnReceive(StreamClient client)
+OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient)
 {
-	assert(client != NULL);
+	assert(streamClient != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->onReceive;
+	return streamClient->onReceive;
 }
 
-void* getStreamClientHandle(StreamClient client)
+void* getStreamClientHandle(StreamClient streamClient)
 {
-	assert(client != NULL);
+	assert(streamClient != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->handle;
+	return streamClient->handle;
 }
 
-Socket getStreamClientSocket(StreamClient client)
+Socket getStreamClientSocket(StreamClient streamClient)
 {
-	assert(client != NULL);
+	assert(streamClient != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->socket;
+	return streamClient->socket;
 }
 
 bool connectStreamClient(
-	StreamClient client,
+	StreamClient streamClient,
 	SocketAddress address,
 	double timeoutTime)
 {
-	assert(client != NULL);
+	assert(streamClient != NULL);
 	assert(address != NULL);
 	assert(timeoutTime >= 0.0);
 	assert(isNetworkInitialized() == true);
 
-	Socket socket = client->socket;
+	Socket socket = streamClient->socket;
 	double timeout = getCurrentClock() + timeoutTime;
 
 	while (getCurrentClock() < timeout)
@@ -184,43 +184,43 @@ CONNECT_SSL:
 	return false;
 }
 
-bool updateStreamClient(StreamClient client)
+bool updateStreamClient(StreamClient streamClient)
 {
-	assert(client != NULL);
+	assert(streamClient != NULL);
 
 	uint8_t* receiveBuffer =
-		client->receiveBuffer;
+		streamClient->receiveBuffer;
 
 	size_t byteCount;
 
 	bool result = socketReceive(
-		client->socket,
+		streamClient->socket,
 		receiveBuffer,
-		client->bufferSize,
+		streamClient->receiveBufferSize,
 		&byteCount);
 
 	if (result == false)
 		return false;
 
-	client->onReceive(
-		client,
+	streamClient->onReceive(
+		streamClient,
 		receiveBuffer,
 		byteCount);
 	return true;
 }
 
 bool streamClientSend(
-	StreamClient client,
-	const void* buffer,
-	size_t count)
+	StreamClient streamClient,
+	const void* sendBuffer,
+	size_t byteCount)
 {
-	assert(client != NULL);
-	assert(buffer != NULL);
-	assert(count != 0);
+	assert(streamClient != NULL);
+	assert(sendBuffer != NULL);
+	assert(byteCount != 0);
 	assert(isNetworkInitialized() == true);
 
 	return socketSend(
-		client->socket,
-		buffer,
-		count);
+		streamClient->socket,
+		sendBuffer,
+		byteCount);
 }

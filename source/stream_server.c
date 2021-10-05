@@ -134,25 +134,25 @@ MpnwResult createStreamServer(
 	return SUCCESS_MPNW_RESULT;
 }
 
-void destroyStreamServer(StreamServer server)
+void destroyStreamServer(StreamServer streamServer)
 {
 	assert(isNetworkInitialized() == true);
 
-	if (server == NULL)
+	if (streamServer == NULL)
 		return;
 
-	StreamSession sessionBuffer = server->sessionBuffer;
-	size_t sessionCount = server->sessionCount;
-	OnStreamSessionDestroy onDestroy = server->onDestroy;
+	StreamSession sessionBuffer = streamServer->sessionBuffer;
+	size_t sessionCount = streamServer->sessionCount;
+	OnStreamSessionDestroy onDestroy = streamServer->onDestroy;
 
 	for (size_t i = 0; i < sessionCount; i++)
 	{
-		StreamSession session = &sessionBuffer[i];
-		Socket receiveSocket = session->receiveSocket;
+		StreamSession streamSession = &sessionBuffer[i];
+		Socket receiveSocket = streamSession->receiveSocket;
 
 		onDestroy(
-			server,
-			session);
+			streamServer,
+			streamSession);
 		shutdownSocket(
 			receiveSocket,
 			RECEIVE_SEND_SOCKET_SHUTDOWN);
@@ -160,114 +160,114 @@ void destroyStreamServer(StreamServer server)
 	}
 
 	shutdownSocket(
-		server->acceptSocket,
+		streamServer->acceptSocket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(server->acceptSocket);
-	free(server->receiveBuffer);
+	destroySocket(streamServer->acceptSocket);
+	free(streamServer->receiveBuffer);
 	free(sessionBuffer);
-	free(server);
+	free(streamServer);
 }
 
-size_t getStreamServerSessionBufferSize(StreamServer server)
+size_t getStreamServerSessionBufferSize(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->sessionBufferSize;
+	return streamServer->sessionBufferSize;
 }
 
-size_t getStreamServerReceiveBufferSize(StreamServer server)
+size_t getStreamServerReceiveBufferSize(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->receiveBufferSize;
+	return streamServer->receiveBufferSize;
 }
 
-OnStreamSessionCreate getStreamServerOnCreate(StreamServer server)
+OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->onCreate;
+	return streamServer->onCreate;
 }
 
-OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer server)
+OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->onDestroy;
+	return streamServer->onDestroy;
 }
 
-OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer server)
+OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->onUpdate;
+	return streamServer->onUpdate;
 }
 
-OnStreamSessionReceive getStreamServerOnReceive(StreamServer server)
+OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->onReceive;
+	return streamServer->onReceive;
 }
 
-void* getStreamServerHandle(StreamServer server)
+void* getStreamServerHandle(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->handle;
+	return streamServer->handle;
 }
 
-Socket getStreamServerSocket(StreamServer server)
+Socket getStreamServerSocket(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 	assert(isNetworkInitialized() == true);
-	return server->acceptSocket;
+	return streamServer->acceptSocket;
 }
 
-Socket getStreamSessionSocket(StreamSession session)
+Socket getStreamSessionSocket(StreamSession streamSession)
 {
-	assert(session != NULL);
+	assert(streamSession != NULL);
 	assert(isNetworkInitialized() == true);
-	return session->receiveSocket;
+	return streamSession->receiveSocket;
 }
 
-void* getStreamSessionHandle(StreamSession session)
+void* getStreamSessionHandle(StreamSession streamSession)
 {
-	assert(session != NULL);
+	assert(streamSession != NULL);
 	assert(isNetworkInitialized() == true);
-	return session->handle;
+	return streamSession->handle;
 }
 
-bool updateStreamServer(StreamServer server)
+bool updateStreamServer(StreamServer streamServer)
 {
-	assert(server != NULL);
+	assert(streamServer != NULL);
 
 	bool isUpdated = false;
 
-	StreamSession sessionBuffer = server->sessionBuffer;
-	size_t sessionBufferSize = server->sessionBufferSize;
-	size_t sessionCount = server->sessionCount;
-	uint8_t* receiveBuffer = server->receiveBuffer;
-	size_t receiveBufferSize = server->receiveBufferSize;
-	OnStreamSessionCreate onCreate = server->onCreate;
-	OnStreamSessionDestroy onDestroy = server->onDestroy;
-	OnStreamSessionUpdate onUpdate = server->onUpdate;
-	OnStreamSessionReceive onReceive = server->onReceive;
-	Socket serverSocket = server->acceptSocket;
+	StreamSession sessionBuffer = streamServer->sessionBuffer;
+	size_t sessionBufferSize = streamServer->sessionBufferSize;
+	size_t sessionCount = streamServer->sessionCount;
+	uint8_t* receiveBuffer = streamServer->receiveBuffer;
+	size_t receiveBufferSize = streamServer->receiveBufferSize;
+	OnStreamSessionCreate onCreate = streamServer->onCreate;
+	OnStreamSessionDestroy onDestroy = streamServer->onDestroy;
+	OnStreamSessionUpdate onUpdate = streamServer->onUpdate;
+	OnStreamSessionReceive onReceive = streamServer->onReceive;
+	Socket serverSocket = streamServer->acceptSocket;
 	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
 
 	for (size_t i = 0; i < sessionCount; i++)
 	{
-		StreamSession session = &sessionBuffer[i];
-		Socket receiveSocket = session->receiveSocket;
+		StreamSession streamSession = &sessionBuffer[i];
+		Socket receiveSocket = streamSession->receiveSocket;
 
-		if (session->isSslAccepted == false)
+		if (streamSession->isSslAccepted == false)
 		{
 			bool result = acceptSslSocket(receiveSocket);
 
 			if (result == true)
 			{
-				session->isSslAccepted = true;
+				streamSession->isSslAccepted = true;
 				isUpdated = true;
 			}
 			else
@@ -277,8 +277,8 @@ bool updateStreamServer(StreamServer server)
 		}
 
 		bool result = onUpdate(
-			server,
-			session);
+			streamServer,
+			streamSession);
 
 		if (result == false)
 			goto DESTROY_SESSION;
@@ -295,8 +295,8 @@ bool updateStreamServer(StreamServer server)
 			continue;
 
 		result = onReceive(
-			server,
-			session,
+			streamServer,
+			streamSession,
 			receiveBuffer,
 			byteCount);
 
@@ -308,8 +308,8 @@ bool updateStreamServer(StreamServer server)
 
 	DESTROY_SESSION:
 		onDestroy(
-			server,
-			session);
+			streamServer,
+			streamSession);
 		shutdownSocket(
 			receiveSocket,
 			RECEIVE_SEND_SOCKET_SHUTDOWN);
@@ -333,7 +333,7 @@ bool updateStreamServer(StreamServer server)
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		server->sessionCount = sessionCount;
+		streamServer->sessionCount = sessionCount;
 		return isUpdated;
 	}
 
@@ -342,7 +342,7 @@ bool updateStreamServer(StreamServer server)
 		void* session;
 
 		bool result = onCreate(
-			server,
+			streamServer,
 			acceptedSocket,
 			&session);
 
@@ -370,22 +370,22 @@ bool updateStreamServer(StreamServer server)
 		destroySocket(acceptedSocket);
 	}
 
-	server->sessionCount = sessionCount;
+	streamServer->sessionCount = sessionCount;
 	return true;
 }
 
 bool streamSessionSend(
-	StreamSession session,
-	const void* buffer,
-	size_t count)
+	StreamSession streamSession,
+	const void* sendBuffer,
+	size_t byteCount)
 {
-	assert(session != NULL);
-	assert(buffer != NULL);
-	assert(count != 0);
+	assert(streamSession != NULL);
+	assert(sendBuffer != NULL);
+	assert(byteCount != 0);
 	assert(isNetworkInitialized() == true);
 
 	return socketSend(
-		session->receiveSocket,
-		buffer,
-		count);
+		streamSession->receiveSocket,
+		sendBuffer,
+		byteCount);
 }

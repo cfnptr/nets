@@ -3,7 +3,7 @@
 
 struct DatagramClient
 {
-	size_t bufferSize;
+	size_t receiveBufferSize;
 	OnDatagramClientReceive onReceive;
 	void* handle;
 	uint8_t* receiveBuffer;
@@ -12,13 +12,13 @@ struct DatagramClient
 
 MpnwResult createDatagramClient(
 	SocketAddress remoteAddress,
-	size_t bufferSize,
+	size_t receiveBufferSize,
 	OnDatagramClientReceive onReceive,
 	void* handle,
 	DatagramClient* _datagramClient)
 {
 	assert(remoteAddress != NULL);
-	assert(bufferSize != 0);
+	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
 	assert(_datagramClient != NULL);
 	assert(isNetworkInitialized() == true);
@@ -30,7 +30,7 @@ MpnwResult createDatagramClient(
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
-		bufferSize * sizeof(uint8_t));
+		receiveBufferSize * sizeof(uint8_t));
 
 	if (receiveBuffer == NULL)
 	{
@@ -98,7 +98,7 @@ MpnwResult createDatagramClient(
 		return FAILED_TO_CONNECT_SOCKET_MPNW_RESULT;
 	}
 
-	datagramClient->bufferSize = bufferSize;
+	datagramClient->receiveBufferSize = receiveBufferSize;
 	datagramClient->onReceive = onReceive;
 	datagramClient->handle = handle;
 	datagramClient->receiveBuffer = receiveBuffer;
@@ -108,86 +108,86 @@ MpnwResult createDatagramClient(
 	return SUCCESS_MPNW_RESULT;
 }
 
-void destroyDatagramClient(DatagramClient client)
+void destroyDatagramClient(DatagramClient datagramClient)
 {
 	assert(isNetworkInitialized() == true);
 
-	if (client == NULL)
+	if (datagramClient == NULL)
 		return;
 
 	shutdownSocket(
-		client->socket,
+		datagramClient->socket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(client->socket);
-	free(client->receiveBuffer);
-	free(client);
+	destroySocket(datagramClient->socket);
+	free(datagramClient->receiveBuffer);
+	free(datagramClient);
 }
 
-size_t getDatagramClientBufferSize(DatagramClient client)
+size_t getDatagramClientReceiveBufferSize(DatagramClient datagramClient)
 {
-	assert(client != NULL);
+	assert(datagramClient != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->bufferSize;
+	return datagramClient->receiveBufferSize;
 }
 
-OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient client)
+OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient datagramClient)
 {
-	assert(client != NULL);
+	assert(datagramClient != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->onReceive;
+	return datagramClient->onReceive;
 }
 
-void* getDatagramClientHandle(DatagramClient client)
+void* getDatagramClientHandle(DatagramClient datagramClient)
 {
-	assert(client != NULL);
+	assert(datagramClient != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->handle;
+	return datagramClient->handle;
 }
 
-Socket getDatagramClientSocket(DatagramClient client)
+Socket getDatagramClientSocket(DatagramClient datagramClient)
 {
-	assert(client != NULL);
+	assert(datagramClient != NULL);
 	assert(isNetworkInitialized() == true);
-	return client->socket;
+	return datagramClient->socket;
 }
 
-bool updateDatagramClient(DatagramClient client)
+bool updateDatagramClient(DatagramClient datagramClient)
 {
-	assert(client != NULL);
+	assert(datagramClient != NULL);
 
 	uint8_t* receiveBuffer =
-		client->receiveBuffer;
+		datagramClient->receiveBuffer;
 
 	size_t byteCount;
 
 	bool result = socketReceive(
-		client->socket,
+		datagramClient->socket,
 		receiveBuffer,
-		client->bufferSize,
+		datagramClient->receiveBufferSize,
 		&byteCount);
 
 	if (result == false)
 		return false;
 
-	client->onReceive(
-		client,
+	datagramClient->onReceive(
+		datagramClient,
 		receiveBuffer,
 		byteCount);
 	return true;
 }
 
 bool datagramClientSend(
-	DatagramClient client,
-	const void* buffer,
-	size_t count)
+	DatagramClient datagramClient,
+	const void* sendBuffer,
+	size_t byteCount)
 {
-	assert(client != NULL);
-	assert(buffer != NULL);
-	assert(count != 0);
+	assert(datagramClient != NULL);
+	assert(sendBuffer != NULL);
+	assert(byteCount != 0);
 	assert(isNetworkInitialized() == true);
 
 	return socketSend(
-		client->socket,
-		buffer,
-		count);
+		datagramClient->socket,
+		sendBuffer,
+		byteCount);
 }

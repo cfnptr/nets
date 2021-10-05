@@ -293,21 +293,21 @@ bool socketSendTo(
  *
  * host - address host name string.
  * service - address service name string.
- * address - pointer to the address value.
+ * socketAddress - pointer to the address value.
  */
 MpnwResult createSocketAddress(
 	const char* host,
 	const char* service,
-	SocketAddress* address);
+	SocketAddress* socketAddress);
 
 /*
  * Create a new socket address copy.
  * Returns address on success, otherwise NULL.
  *
- * address - socket address instance.
+ * socketAddress - socket address instance.
  */
 SocketAddress createSocketAddressCopy(
-	SocketAddress address);
+	SocketAddress socketAddress);
 
 /*
  * Resolve a new socket addresses.
@@ -317,20 +317,20 @@ SocketAddress createSocketAddressCopy(
  * service - address service name string.
  * family - socket address family.
  * type - socket connection type.
- * address - pointer to the address value.
+ * socketAddress - pointer to the address value.
  */
 MpnwResult resolveSocketAddress(
 	const char* host,
 	const char* service,
 	AddressFamily family,
 	SocketType type,
-	SocketAddress* address);
+	SocketAddress* socketAddress);
 
 /*
  * Destroy socket address instance.
- * address - socket address or NULL.
+ * socketAddress - socket address or NULL.
  */
-void destroySocketAddress(SocketAddress address);
+void destroySocketAddress(SocketAddress socketAddress);
 
 /*
  * Copy source socket address to the destination.
@@ -354,19 +354,19 @@ int compareSocketAddress(
 
 /*
  * Returns socket address family.
- * address - socket address instance.
+ * socketAddress - socket address instance.
  */
 AddressFamily getSocketAddressFamily(
-	SocketAddress address);
+	SocketAddress socketAddress);
 
 /*
  * Set socket address family.
  *
- * address - socket address instance.
+ * socketAddress - socket address instance.
  * addressFamily - socket address family.
  */
 void setSocketAddressFamily(
-	SocketAddress address,
+	SocketAddress socketAddress,
 	AddressFamily addressFamily);
 
 /*
@@ -381,13 +381,11 @@ size_t getSocketAddressFamilyIpSize(
  * address - socket address instance.
  */
 size_t getSocketAddressIpSize(
-	SocketAddress address);
+	SocketAddress socketAddress);
 
 /*
  * Returns socket IP address byte array.
- *
- * address - socket address instance.
- * ip - pointer to the IP copy array.
+ * socketAddress - socket address instance.
  */
 const uint8_t* getSocketAddressIp(
 	SocketAddress address);
@@ -396,44 +394,44 @@ const uint8_t* getSocketAddressIp(
  * Set socket IP address byte array.
  * Returns true on success.
  *
- * address - socket address instance.
+ * socketAddress - socket address instance.
  * ip - IP byte array.
  * size - IP byte array size.
  */
 bool setSocketAddressIp(
-	SocketAddress address,
+	SocketAddress socketAddress,
 	const uint8_t* ip,
 	size_t size);
 
 /*
  * Returns socket address port number.
  *
- * address - socket address instance.
+ * socketAddress - socket address instance.
  * port - pointer to the port value.
  */
 uint16_t getSocketAddressPort(
-	SocketAddress address);
+	SocketAddress socketAddress);
 
 /*
  * Set socket address port number.
  *
- * address - socket address instance.
+ * socketAddress - socket address instance.
  * port - socket address port.
  */
 void setSocketAddressPort(
-	SocketAddress address,
+	SocketAddress socketAddress,
 	uint16_t port);
 
 /*
  * Get socket address host name.
  * Returns true on success.
  *
- * address - socket address instance.
+ * socketAddress - socket address instance.
  * host - pointer to the host name value.
  * length - host name string length.
  */
 bool getSocketAddressHost(
-	SocketAddress address,
+	SocketAddress socketAddress,
 	char* host,
 	size_t length);
 
@@ -441,12 +439,12 @@ bool getSocketAddressHost(
  * Returns socket address service name.
  * Returns true on success.
  *
- * address - socket address instance.
+ * socketAddress - socket address instance.
  * service - pointer to the service name.
  * length - service name string length.
  */
 bool getSocketAddressService(
-	SocketAddress address,
+	SocketAddress socketAddress,
 	char* service,
 	size_t length);
 
@@ -454,14 +452,14 @@ bool getSocketAddressService(
  * Get socket address host and service name.
  * Returns true on success.
  *
- * address - socket address instance.
+ * socketAddress - socket address instance.
  * host - pointer to the host name.
  * hostLength - host name string length.
  * service - pointer to the service name.
  * serviceLength - service name string length.
  */
 bool getSocketAddressHostService(
-	SocketAddress address,
+	SocketAddress socketAddress,
 	char* host,
 	size_t hostLength,
 	char* service,
@@ -471,7 +469,7 @@ bool getSocketAddressHostService(
  * Create a new public SSL context.
  * Returns operation MPNW result.
  *
- * socketType - socket connection type.
+ * securityProtocol - security protocol type.
  * certificateFilePath - certificate file path string or NULL.
  * certificatesDirectory - certificate's directory path string or NULL.
  * sslContext - pointer to the sslContext value.
@@ -486,10 +484,11 @@ MpnwResult createPublicSslContext(
  * Creates a new private SSL context.
  * Returns operation MPNW result.
  *
- * socketType - target socket type value.
+ * securityProtocol - security protocol type.
  * certificateFilePath - certificates file path string.
  * privateKeyFilePath - private key file path string.
  * certificateChain - file path is certificate chain.
+ * sslContext - pointer to the sslContext value.
  */
 MpnwResult createPrivateSslContext(
 	SecurityProtocol securityProtocol,
@@ -500,15 +499,15 @@ MpnwResult createPrivateSslContext(
 
 /*
  * Destroys SSL context instance.
- * context - SSL context instance or NULL.
+ * sslContext - SSL context instance or NULL.
  */
-void destroySslContext(SslContext context);
+void destroySslContext(SslContext sslContext);
 
 /*
  * Returns SSL context security protocol.
- * context - SSL context instance.
+ * sslContext - SSL context instance.
  */
-SecurityProtocol getSslContextSecurityProtocol(SslContext context);
+SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext);
 
 /*
  * Splits and handles received stream data to the datagrams.

@@ -11,31 +11,31 @@ typedef struct StreamSession* StreamSession;
  * Destroys session on false return result.
  */
 typedef bool(*OnStreamSessionCreate)(
-	StreamServer server,
+	StreamServer streamServer,
 	Socket socket,
 	void** handle);
 
 /* Stream session destroy function */
 typedef void(*OnStreamSessionDestroy)(
-	StreamServer server,
-	StreamSession session);
+	StreamServer streamServer,
+	StreamSession streamSession);
 
 /*
  * Stream session update function.
  * Destroys session on false return result.
  */
 typedef bool(*OnStreamSessionUpdate)(
-	StreamServer server,
-	StreamSession session);
+	StreamServer streamServer,
+	StreamSession streamSession);
 
 /*
  * Stream session receive function
  * Destroys session on false return result.
  */
 typedef bool(*OnStreamSessionReceive)(
-	StreamServer server,
-	StreamSession session,
-	const uint8_t* buffer,
+	StreamServer streamServer,
+	StreamSession streamSession,
+	const uint8_t* receiveBuffer,
 	size_t byteCount);
 
 /*
@@ -68,87 +68,87 @@ MpnwResult createStreamServer(
 
 /*
  * Destroy stream server instance.
- * server - stream server instance or NULL.
+ * streamServer - stream server instance or NULL.
  */
-void destroyStreamServer(StreamServer server);
+void destroyStreamServer(StreamServer streamServer);
 
 /*
  * Returns stream server session buffer size.
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-size_t getStreamServerSessionBufferSize(StreamServer server);
+size_t getStreamServerSessionBufferSize(StreamServer streamServer);
 
 /*
  * Returns stream server receive buffer size.
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-size_t getStreamServerReceiveBufferSize(StreamServer server);
+size_t getStreamServerReceiveBufferSize(StreamServer streamServer);
 
 /*
  * Returns stream server create function.
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-OnStreamSessionCreate getStreamServerOnCreate(StreamServer server);
+OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer);
 
 /*
  * Returns stream server destroy function.
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer server);
+OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer);
 
 /*
  * Returns stream server update function.
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer server);
+OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer);
 
 /*
  * Returns stream server receive function.
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-OnStreamSessionReceive getStreamServerOnReceive(StreamServer server);
+OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer);
 
 /*
  * Returns stream server handle.
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-void* getStreamServerHandle(StreamServer server);
+void* getStreamServerHandle(StreamServer streamServer);
 
 /*
  * Returns stream server socket.
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-Socket getStreamServerSocket(StreamServer server);
+Socket getStreamServerSocket(StreamServer streamServer);
 
 /*
  * Returns stream session socket.
- * session - stream session instance.
+ * streamSession - stream session instance.
  */
-Socket getStreamSessionSocket(StreamSession session);
+Socket getStreamSessionSocket(StreamSession streamSession);
 
 /*
  * Returns stream session handle.
- * session - stream session instance.
+ * streamSession - stream session instance.
  */
-void* getStreamSessionHandle(StreamSession session);
+void* getStreamSessionHandle(StreamSession streamSession);
 
 /*
  * Receive buffered datagrams.
  * Returns true if update actions occurred.
  *
- * server - stream server instance.
+ * streamServer - stream server instance.
  */
-bool updateStreamServer(StreamServer server);
+bool updateStreamServer(StreamServer streamServer);
 
 /*
  * Send datagram to the specified session.
  * Returns true on success.
  *
- * session - stream session instance.
+ * streamSession - stream session instance.
  * buffer - message send buffer.
  * count - send byte count.
  */
 bool streamSessionSend(
-	StreamSession session,
-	const void* buffer,
-	size_t count);
+	StreamSession streamSession,
+	const void* sendBuffer,
+	size_t byteCount);
