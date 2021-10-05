@@ -13,6 +13,7 @@ project(mpnw
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
+option(MPNW_BUILD_SHARED "Build MPNW shared library" ON)
 option(MPNW_BUILD_EXAMPLES "Build MPNW usage examples" ON)
 option(MPNW_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 
@@ -59,23 +60,41 @@ if(MPNW_USE_OPENSSL)
 		OpenSSL::Crypto)
 endif ()
 
-add_library(mpnw STATIC
+set(MPNW_SOURCES
 	source/datagram_client.c
 	source/datagram_server.c
 	source/socket.c
 	source/stream_client.c
 	source/stream_server.c)
-target_link_libraries(mpnw PUBLIC
+
+add_library(mpnw-static STATIC
+	${MPNW_SOURCES})
+set_target_properties(mpnw-static PROPERTIES
+	OUTPUT_NAME "mpnw")
+target_link_libraries(mpnw-static PUBLIC
 	${MPNW_LINK_LIBRARIES})
-target_include_directories(mpnw PUBLIC
+target_include_directories(mpnw-static PUBLIC
 	${PROJECT_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/include)
+
+if (MPNW_BUILD_SHARED)
+	add_library(mpnw-shared SHARED
+		${MPNW_SOURCES})
+	set_target_properties(mpnw-shared PROPERTIES
+		OUTPUT_NAME "mpnw"
+		WINDOWS_EXPORT_ALL_SYMBOLS ON)
+	target_link_libraries(mpnw-shared PUBLIC
+		${MPNW_LINK_LIBRARIES})
+	target_include_directories(mpnw-shared PUBLIC
+		${PROJECT_BINARY_DIR}
+		${PROJECT_SOURCE_DIR}/include)
+endif ()
 
 if (MPNW_BUILD_EXAMPLES)
 	add_executable(mpnw-datagram-example
 		examples/datagram_example.c)
 	target_link_libraries(mpnw-datagram-example PRIVATE
-		mpnw)
+		mpnw-static)
 	target_include_directories(mpnw-datagram-example PRIVATE
 		${PROJECT_BINARY_DIR}
 		${PROJECT_SOURCE_DIR}/include)
@@ -83,7 +102,7 @@ if (MPNW_BUILD_EXAMPLES)
 	add_executable(mpnw-https-example
 		examples/https_example.c)
 	target_link_libraries(mpnw-https-example PRIVATE
-		mpnw)
+		mpnw-static)
 	target_include_directories(mpnw-https-example PRIVATE
 		${PROJECT_BINARY_DIR}
 		${PROJECT_SOURCE_DIR}/include)

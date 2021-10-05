@@ -508,8 +508,7 @@ void destroySslContext(SslContext context);
  * Returns SSL context security protocol.
  * context - SSL context instance.
  */
-SecurityProtocol getSslContextSecurityProtocol(
-	SslContext context);
+SecurityProtocol getSslContextSecurityProtocol(SslContext context);
 
 /*
  * Splits and handles received stream data to the datagrams.

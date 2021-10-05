@@ -35,6 +35,7 @@ cmake --build build/
 ### CMake options
 | Name                | Description                          | Default value |
 | ------------------- | ------------------------------------ | ------------- |
+| MPNW_BUILD_SHARED   | Build MPNW shared library            | ON            |
 | MPNW_BUILD_EXAMPLES | Build MPNW usage examples            | ON            |
 | MPNW_USE_OPENSSL    | Use OpenSSL for secure communication | ON            |
 

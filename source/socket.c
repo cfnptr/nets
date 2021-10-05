@@ -1432,8 +1432,7 @@ void destroySslContext(SslContext context)
 #endif
 }
 
-SecurityProtocol getSslContextSecurityProtocol(
-	SslContext context)
+SecurityProtocol getSslContextSecurityProtocol(SslContext context)
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(context != NULL);
