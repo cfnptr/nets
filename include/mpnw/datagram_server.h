@@ -21,7 +21,7 @@ typedef struct DatagramServer* DatagramServer;
 /* Datagram server receive function */
 typedef void(*OnDatagramServerReceive)(
 	DatagramServer datagramServer,
-	SocketAddress socketAddress,
+	SocketAddress remoteAddress,
 	const uint8_t* receiveBuffer,
 	size_t byteCount);
 
@@ -36,7 +36,7 @@ typedef void(*OnDatagramServerReceive)(
  * handle - receive function argument.
  */
 MpnwResult createDatagramServer(
-	uint8_t addressFamily,
+	AddressFamily addressFamily,
 	const char* service,
 	size_t receiveBufferSize,
 	OnDatagramServerReceive onReceive,
@@ -88,10 +88,10 @@ bool updateDatagramServer(DatagramServer datagramServer);
  * datagramServer - datagram server instance.
  * sendBuffer - datagram send buffer.
  * byteCount - send byte count.
- * socketAddress - destination socket address.
+ * remoteAddress - destination socket address.
  */
 bool datagramServerSend(
 	DatagramServer datagramServer,
 	const void* sendBuffer,
 	size_t byteCount,
-	SocketAddress socketAddress);
+	SocketAddress remoteAddress);

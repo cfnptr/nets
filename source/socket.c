@@ -604,13 +604,13 @@ bool acceptSslSocket(Socket socket)
 
 bool connectSocket(
 	Socket socket,
-	SocketAddress socketAddress)
+	SocketAddress remoteAddress)
 {
 	assert(socket != NULL);
-	assert(socketAddress != NULL);
+	assert(remoteAddress != NULL);
 	assert(networkInitialized == true);
 
-	int family = socketAddress->handle.ss_family;
+	int family = remoteAddress->handle.ss_family;
 
 	SOCKET_LENGTH length;
 
@@ -621,7 +621,7 @@ bool connectSocket(
 
 	int result = connect(
 		socket->handle,
-		(const struct sockaddr*)&socketAddress->handle,
+		(const struct sockaddr*)&remoteAddress->handle,
 		length);
 
 	if (result == 0)
@@ -753,13 +753,13 @@ bool socketSend(
 
 bool socketReceiveFrom(
 	Socket socket,
-	SocketAddress socketAddress,
+	SocketAddress remoteAddress,
 	void* receiveBuffer,
 	size_t bufferSize,
 	size_t* byteCount)
 {
 	assert(socket != NULL);
-	assert(socketAddress != NULL);
+	assert(remoteAddress != NULL);
 	assert(buffer != NULL);
 	assert(size != 0);
 	assert(_count != NULL);
@@ -769,10 +769,10 @@ bool socketReceiveFrom(
 	assert(socket->sslContext == NULL);
 #endif
 
-	struct sockaddr_storage _socketAddress;
+	struct sockaddr_storage socketAddress;
 
 	memset(
-		&_socketAddress,
+		&socketAddress,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -784,13 +784,13 @@ bool socketReceiveFrom(
 		(char*)receiveBuffer,
 		(int)bufferSize,
 		0,
-		(struct sockaddr*)&_socketAddress,
+		(struct sockaddr*)&socketAddress,
 		&length);
 
 	if (count < 0)
 		return false;
 
-	socketAddress->handle = _socketAddress;
+	remoteAddress->handle = socketAddress;
 	*byteCount = (size_t)count;
 	return true;
 }
@@ -799,11 +799,11 @@ bool socketSendTo(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount,
-	SocketAddress socketAddress)
+	SocketAddress remoteAddress)
 {
 	assert(socket != NULL);
 	assert(sendBuffer != NULL);
-	assert(socketAddress != NULL);
+	assert(remoteAddress != NULL);
 	assert(networkInitialized == true);
 
 #if MPNW_SUPPORT_OPENSSL
@@ -812,9 +812,9 @@ bool socketSendTo(
 
 	SOCKET_LENGTH length;
 
-	if (socketAddress->handle.ss_family == AF_INET)
+	if (remoteAddress->handle.ss_family == AF_INET)
 		length = sizeof(struct sockaddr_in);
-	else if(socketAddress->handle.ss_family == AF_INET6)
+	else if(remoteAddress->handle.ss_family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
 		return false;
@@ -824,7 +824,7 @@ bool socketSendTo(
 		(const char*)sendBuffer,
 		(int)byteCount,
 		0,
-		(const struct sockaddr*)&socketAddress->handle,
+		(const struct sockaddr*)&remoteAddress->handle,
 		length) == byteCount;
 }
 

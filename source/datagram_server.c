@@ -28,7 +28,7 @@ struct DatagramServer
 };
 
 MpnwResult createDatagramServer(
-	uint8_t addressFamily,
+	AddressFamily addressFamily,
 	const char* service,
 	size_t receiveBufferSize,
 	OnDatagramServerReceive onReceive,
@@ -186,7 +186,7 @@ bool datagramServerSend(
 	DatagramServer datagramServer,
 	const void* sendBuffer,
 	size_t byteCount,
-	SocketAddress socketAddress)
+	SocketAddress remoteAddress)
 {
 	assert(datagramServer != NULL);
 	assert(sendBuffer != NULL);
@@ -198,5 +198,5 @@ bool datagramServerSend(
 		datagramServer->socket,
 		sendBuffer,
 		byteCount,
-		socketAddress);
+		remoteAddress);
 }

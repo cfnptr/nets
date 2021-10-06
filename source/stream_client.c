@@ -155,11 +155,11 @@ Socket getStreamClientSocket(StreamClient streamClient)
 
 bool connectStreamClient(
 	StreamClient streamClient,
-	SocketAddress address,
+	SocketAddress remoteAddress,
 	double timeoutTime)
 {
 	assert(streamClient != NULL);
-	assert(address != NULL);
+	assert(remoteAddress != NULL);
 	assert(timeoutTime >= 0.0);
 	assert(isNetworkInitialized() == true);
 
@@ -170,7 +170,7 @@ bool connectStreamClient(
 	{
 		bool result = connectSocket(
 			socket,
-			address);
+			remoteAddress);
 
 		if (result == true)
 			goto CONNECT_SSL;

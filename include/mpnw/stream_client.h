@@ -78,12 +78,12 @@ Socket getStreamClientSocket(StreamClient streamClient);
  * Returns true on success.
  *
  * streamClient - stream client instance.
- * socketAddress - remote socket address.
+ * remoteAddress - remote socket address.
  * timeoutTime - time out time (ms).
  */
 bool connectStreamClient(
 	StreamClient streamClient,
-	SocketAddress socketAddress,
+	SocketAddress remoteAddress,
 	double timeoutTime);
 
 /*

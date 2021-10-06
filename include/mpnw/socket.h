@@ -211,11 +211,11 @@ bool acceptSslSocket(Socket socket);
  * Returns true on success.
  *
  * socket - pointer to the valid socket.
- * socketAddress - pointer to the valid socket address.
+ * remoteAddress - pointer to the valid socket address.
  */
 bool connectSocket(
 	Socket socket,
-	SocketAddress socketAddress);
+	SocketAddress remoteAddress);
 
 /*
  * Connects socket SSL.
@@ -268,14 +268,14 @@ bool socketSend(
  * Returns true on success.
  *
  * socket - socket instance.
- * socketAddress - remote socket address.
+ * remoteAddress - remote socket address.
  * receiveBuffer - message receive buffer.
  * bufferSize - message receive buffer size.
  * byteCount - pointer to the count value.
  */
 bool socketReceiveFrom(
 	Socket socket,
-	SocketAddress socketAddress,
+	SocketAddress remoteAddress,
 	void* receiveBuffer,
 	size_t bufferSize,
 	size_t* byteCount);
@@ -293,7 +293,7 @@ bool socketSendTo(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount,
-	SocketAddress socketAddress);
+	SocketAddress remoteAddress);
 
 /*
  * Create a new socket address.
