@@ -1,3 +1,17 @@
+// Copyright 2020-2021 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #define __MPNW__
@@ -12,17 +26,18 @@
 typedef enum MpnwResult
 {
 	SUCCESS_MPNW_RESULT = 0,
-	FAILED_TO_ALLOCATE_MPNW_RESULT = 1,
-	FAILED_TO_CREATE_SOCKET_MPNW_RESULT = 2,
-	FAILED_TO_BIND_SOCKET_MPNW_RESULT = 3,
-	FAILED_TO_LISTEN_SOCKET_MPNW_RESULT = 4,
-	FAILED_TO_ACCEPT_SOCKET_MPNW_RESULT = 5,
-	FAILED_TO_CONNECT_SOCKET_MPNW_RESULT = 6,
-	FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT = 7,
-	FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT = 8,
-	FAILED_TO_CREATE_SSL_MPNW_RESULT = 9,
-	FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT = 10,
-	MPNW_RESULT_COUNT = 11,
+	NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT = 1,
+	FAILED_TO_ALLOCATE_MPNW_RESULT = 2,
+	FAILED_TO_CREATE_SOCKET_MPNW_RESULT = 3,
+	FAILED_TO_BIND_SOCKET_MPNW_RESULT = 4,
+	FAILED_TO_LISTEN_SOCKET_MPNW_RESULT = 5,
+	FAILED_TO_ACCEPT_SOCKET_MPNW_RESULT = 6,
+	FAILED_TO_CONNECT_SOCKET_MPNW_RESULT = 7,
+	FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT = 8,
+	FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT = 9,
+	FAILED_TO_CREATE_SSL_MPNW_RESULT = 10,
+	FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT = 11,
+	MPNW_RESULT_COUNT = 12,
 } MpnwResult;
 
 inline static const char* mpnwResultToString(
@@ -34,6 +49,8 @@ inline static const char* mpnwResultToString(
 		return "Unknown";
 	case SUCCESS_MPNW_RESULT:
 		return "Success";
+	case NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT:
+       	return "Network is not initialized";
 	case FAILED_TO_ALLOCATE_MPNW_RESULT:
 		return "Failed to allocate";
 	case FAILED_TO_CREATE_SOCKET_MPNW_RESULT:

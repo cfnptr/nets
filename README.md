@@ -41,7 +41,7 @@ cmake --build build/
 
 
 ## Third-party
-* [mpmt](https://github.com/cfnptr/mpmt/) (BSD-3-Clause License)
-* [OpenSSL](https://github.com/openssl/openssl/) (Apache 2.0 License)
+* [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)
+* [OpenSSL](https://github.com/openssl/openssl/) (Apache-2.0 License)
 
 ### Special thanks to Gigaflops.

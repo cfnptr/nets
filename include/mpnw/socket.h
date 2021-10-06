@@ -1,3 +1,17 @@
+// Copyright 2020-2021 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include "mpnw/defines.h"
 #include "mpnw/byte_swap.h"
@@ -21,7 +35,7 @@
 /* Current computer IP address */
 #define LOCALHOST_HOSTNAME "localhost"
 /* System-allocated, dynamic port */
-#define ANY_IP_ADDRESS_PORT "0"
+#define ANY_IP_ADDRESS_SERVICE "0"
 
 /* Maximum numeric host string length*/
 #define MAX_NUMERIC_HOST_LENGTH 46
@@ -88,18 +102,18 @@ bool isNetworkInitialized();
  * Create a new socket instance.
  * Returns operation MPNW result.
  *
- * type - socket communication type.
- * family - internet protocol address family.
- * address - socket local bind address.
+ * socketType - socket communication type.
+ * addressFamily - internet protocol address family.
+ * socketAddress - socket local bind address.
  * listening - socket listening state.
  * blocking - socket in blocking mode.
  * sslContext - SSL context or NULL.
  * socket - pointer to the socket value.
  */
 MpnwResult createSocket(
-	SocketType type,
-	AddressFamily family,
-	SocketAddress address,
+	SocketType socketType,
+	AddressFamily addressFamily,
+	SocketAddress socketAddress,
 	bool listening,
 	bool blocking,
 	SslContext sslContext,
@@ -134,28 +148,22 @@ bool isSocketBlocking(Socket socket);
  * Returns true on success.
  *
  * socket - socket instance.
- * address - socket address instance.
+ * socketAddress - socket address instance.
  */
 bool getSocketLocalAddress(
 	Socket socket,
-	SocketAddress address);
+	SocketAddress socketAddress);
 
 /*
  * Get remote socket address.
  * Returns true on success.
  *
  * socket - socket instance.
- * address - socket address instance.
+ * socketAddress - socket address instance.
  */
 bool getSocketRemoteAddress(
 	Socket socket,
-	SocketAddress address);
-
-/*
- * Returns true if socket uses SSL.
- * socket - socket instance.
- */
-bool isSocketSsl(Socket socket);
+	SocketAddress socketAddress);
 
 /*
  * Returns socket SSL context.
@@ -203,11 +211,11 @@ bool acceptSslSocket(Socket socket);
  * Returns true on success.
  *
  * socket - pointer to the valid socket.
- * address - pointer to the valid socket address.
+ * socketAddress - pointer to the valid socket address.
  */
 bool connectSocket(
 	Socket socket,
-	SocketAddress address);
+	SocketAddress socketAddress);
 
 /*
  * Connects socket SSL.
@@ -225,67 +233,67 @@ bool connectSslSocket(Socket socket);
  */
 bool shutdownSocket(
 	Socket socket,
-	SocketShutdown type);
+	SocketShutdown shutdown);
 
 /*
  * Receive socket message.
  * Returns true on success.
  *
  * socket - socket instance.
- * buffer - message receive buffer.
- * size - message receive buffer size.
- * count - pointer to the count value.
+ * receiveBuffer - message receive buffer.
+ * bufferSize - message receive buffer size.
+ * byteCount - pointer to the count value.
  */
 bool socketReceive(
 	Socket socket,
-	void* buffer,
-	size_t size,
-	size_t* count);
+	void* receiveBuffer,
+	size_t bufferSize,
+	size_t* byteCount);
 
 /*
  * Send socket message.
  * Returns true on success.
  *
  * socket - socket instance.
- * buffer - message send buffer.
- * count - send byte count.
+ * sendBuffer - message send buffer.
+ * byteCount - send byte count.
  */
 bool socketSend(
 	Socket socket,
-	const void* buffer,
-	size_t count);
+	const void* sendBuffer,
+	size_t byteCount);
 
 /*
  * Receive socket message from address.
  * Returns true on success.
  *
  * socket - socket instance.
- * address - remote socket address.
- * buffer - message receive buffer.
- * size - message receive buffer size.
- * count - pointer to the count value.
+ * socketAddress - remote socket address.
+ * receiveBuffer - message receive buffer.
+ * bufferSize - message receive buffer size.
+ * byteCount - pointer to the count value.
  */
 bool socketReceiveFrom(
 	Socket socket,
-	SocketAddress address,
-	void* buffer,
-	size_t size,
-	size_t* count);
+	SocketAddress socketAddress,
+	void* receiveBuffer,
+	size_t bufferSize,
+	size_t* byteCount);
 
 /*
  * Send socket message to the address.
  * Returns true on success.
  *
  * socket - socket instance.
- * buffer - message send buffer.
- * count - message byte count to send.
- * address - remote socket address.
+ * sendBuffer - message send buffer.
+ * byteCount - message byte count to send.
+ * socketAddress - remote socket address.
  */
 bool socketSendTo(
 	Socket socket,
-	const void* buffer,
-	size_t count,
-	SocketAddress address);
+	const void* sendBuffer,
+	size_t byteCount,
+	SocketAddress socketAddress);
 
 /*
  * Create a new socket address.
@@ -378,7 +386,7 @@ size_t getSocketAddressFamilyIpSize(
 
 /*
  * Returns socket IP address byte array size.
- * address - socket address instance.
+ * socketAddress - socket address instance.
  */
 size_t getSocketAddressIpSize(
 	SocketAddress socketAddress);
@@ -388,26 +396,21 @@ size_t getSocketAddressIpSize(
  * socketAddress - socket address instance.
  */
 const uint8_t* getSocketAddressIp(
-	SocketAddress address);
+	SocketAddress socketAddress);
 
 /*
  * Set socket IP address byte array.
- * Returns true on success.
  *
  * socketAddress - socket address instance.
  * ip - IP byte array.
- * size - IP byte array size.
  */
-bool setSocketAddressIp(
+void setSocketAddressIp(
 	SocketAddress socketAddress,
-	const uint8_t* ip,
-	size_t size);
+	const uint8_t* ip);
 
 /*
  * Returns socket address port number.
- *
  * socketAddress - socket address instance.
- * port - pointer to the port value.
  */
 uint16_t getSocketAddressPort(
 	SocketAddress socketAddress);

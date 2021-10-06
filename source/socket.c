@@ -1,3 +1,17 @@
+// Copyright 2020-2021 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "mpnw/socket.h"
 
 #if __linux__ || __APPLE__
@@ -31,7 +45,6 @@ static WSADATA wsaData;
 
 #if MPNW_SUPPORT_OPENSSL
 #include "openssl/ssl.h"
-#include "openssl/err.h"
 #else
 #define SSL_CTX void
 #endif
@@ -109,19 +122,21 @@ bool isNetworkInitialized()
 }
 
 MpnwResult createSocket(
-	SocketType _type,
-	AddressFamily _family,
-	SocketAddress address,
+	SocketType socketType,
+	AddressFamily addressFamily,
+	SocketAddress socketAddress,
 	bool listening,
 	bool blocking,
 	SslContext sslContext,
 	Socket* _socket)
 {
-	assert(_type < SOCKET_TYPE_COUNT);
-	assert(_family < ADDRESS_FAMILY_COUNT);
-	assert(address != NULL);
+	assert(socketType < SOCKET_TYPE_COUNT);
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(socketAddress != NULL);
 	assert(_socket != NULL);
-	assert(networkInitialized == true);
+
+	if (networkInitialized == false)
+		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
 #if !MPNW_SUPPORT_OPENSSL
 	assert(sslContext == NULL);
@@ -136,12 +151,12 @@ MpnwResult createSocket(
 	int type, protocol, family;
 	SOCKET_LENGTH length;
 
-	if (_type == STREAM_SOCKET_TYPE)
+	if (socketType == STREAM_SOCKET_TYPE)
 	{
 		type = SOCK_STREAM;
 		protocol = IPPROTO_TCP;
 	}
-	else if (_type == DATAGRAM_SOCKET_TYPE)
+	else if (socketType == DATAGRAM_SOCKET_TYPE)
 	{
 		type = SOCK_DGRAM;
 		protocol = IPPROTO_UDP;
@@ -151,12 +166,12 @@ MpnwResult createSocket(
 		abort();
 	}
 
-	if (_family == IP_V4_ADDRESS_FAMILY)
+	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
 		family = AF_INET;
 		length = sizeof(struct sockaddr_in);
 	}
-	else if (_family == IP_V6_ADDRESS_FAMILY)
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
 	{
 		family = AF_INET6;
 		length = sizeof(struct sockaddr_in6);
@@ -179,7 +194,7 @@ MpnwResult createSocket(
 
 	int result = bind(
 		handle,
-		(const struct sockaddr*)&address->handle,
+		(const struct sockaddr*)&socketAddress->handle,
 		length);
 	
 	if (result != 0)
@@ -191,7 +206,7 @@ MpnwResult createSocket(
 
 	if (listening == true)
 	{
-		assert(_type == STREAM_SOCKET_TYPE);
+		assert(socketType == STREAM_SOCKET_TYPE);
 
 		result = listen(
 			handle,
@@ -241,7 +256,7 @@ MpnwResult createSocket(
 		}
 	}
 
-	socketInstance->type = _type;
+	socketInstance->type = socketType;
 	socketInstance->listening = listening;
 	socketInstance->blocking = blocking;
 	socketInstance->handle = handle;
@@ -328,16 +343,16 @@ bool isSocketBlocking(Socket socket)
 
 bool getSocketLocalAddress(
 	Socket socket,
-	SocketAddress address)
+	SocketAddress socketAddress)
 {
 	assert(socket != NULL);
-	assert(address != NULL);
+	assert(socketAddress != NULL);
 	assert(networkInitialized == true);
 
-	struct sockaddr_storage socketAddress;
+	struct sockaddr_storage _socketAddress;
 
 	memset(
-		&socketAddress,
+		&_socketAddress,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -346,12 +361,12 @@ bool getSocketLocalAddress(
 
 	int result = getsockname(
 		socket->handle,
-		(struct sockaddr*)&socketAddress,
+		(struct sockaddr*)&_socketAddress,
 		&length);
 
 	if (result == 0)
 	{
-		address->handle = socketAddress;
+		socketAddress->handle = _socketAddress;
 		return true;
 	}
 	else
@@ -362,16 +377,16 @@ bool getSocketLocalAddress(
 
 bool getSocketRemoteAddress(
 	Socket socket,
-	SocketAddress address)
+	SocketAddress socketAddress)
 {
 	assert(socket != NULL);
-	assert(address != NULL);
+	assert(socketAddress != NULL);
 	assert(networkInitialized == true);
 
-	struct sockaddr_storage socketAddress;
+	struct sockaddr_storage _socketAddress;
 
 	memset(
-		&socketAddress,
+		&_socketAddress,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -380,29 +395,18 @@ bool getSocketRemoteAddress(
 
 	int result = getpeername(
 		socket->handle,
-		(struct sockaddr*)&socketAddress,
+		(struct sockaddr*)&_socketAddress,
 		&length);
 
 	if (result == 0)
 	{
-		address->handle = socketAddress;
+		socketAddress->handle = _socketAddress;
 		return true;
 	}
 	else
 	{
 		return false;
 	}
-}
-
-bool isSocketSsl(Socket socket)
-{
-#if MPNW_SUPPORT_OPENSSL
-	assert(socket != NULL);
-	assert(networkInitialized == true);
-	return socket->sslContext == NULL;
-#else
-	abort();
-#endif
 }
 
 SslContext getSocketSslContext(Socket socket)
@@ -600,26 +604,24 @@ bool acceptSslSocket(Socket socket)
 
 bool connectSocket(
 	Socket socket,
-	SocketAddress address)
+	SocketAddress socketAddress)
 {
 	assert(socket != NULL);
-	assert(address != NULL);
+	assert(socketAddress != NULL);
 	assert(networkInitialized == true);
 
-	int family = address->handle.ss_family;
+	int family = socketAddress->handle.ss_family;
 
 	SOCKET_LENGTH length;
 
 	if (family == AF_INET)
 		length = sizeof(struct sockaddr_in);
-	else if (family == AF_INET6)
-		length = sizeof(struct sockaddr_in6);
 	else
-		abort();
+		length = sizeof(struct sockaddr_in6);
 
 	int result = connect(
 		socket->handle,
-		(const struct sockaddr*)&address->handle,
+		(const struct sockaddr*)&socketAddress->handle,
 		length);
 
 	if (result == 0)
@@ -647,29 +649,29 @@ bool connectSslSocket(Socket socket)
 
 bool shutdownSocket(
 	Socket socket,
-	SocketShutdown _type)
+	SocketShutdown _shutdown)
 {
 	assert(socket != NULL);
-	assert(_type < SOCKET_SHUTDOWN_COUNT);
+	assert(shutdown < SOCKET_SHUTDOWN_COUNT);
 	assert(networkInitialized == true);
 
 	int type;
 
 #if __linux__ || __APPLE__
-	if (_type == RECEIVE_ONLY_SOCKET_SHUTDOWN)
+	if (_shutdown == RECEIVE_ONLY_SOCKET_SHUTDOWN)
 		type = SHUT_RD;
-	else if (_type == SEND_ONLY_SOCKET_SHUTDOWN)
+	else if (_shutdown == SEND_ONLY_SOCKET_SHUTDOWN)
 		type = SHUT_WR;
-	else if (_type == RECEIVE_SEND_SOCKET_SHUTDOWN)
+	else if (_shutdown == RECEIVE_SEND_SOCKET_SHUTDOWN)
 		type = SHUT_RDWR;
 	else
 		abort();
 #elif _WIN32
-	if (_type == RECEIVE_ONLY_SOCKET_SHUTDOWN)
+	if (_shutdown == RECEIVE_ONLY_SOCKET_SHUTDOWN)
 		type = SD_RECEIVE;
-	else if (_type == SEND_ONLY_SOCKET_SHUTDOWN)
+	else if (_shutdown == SEND_ONLY_SOCKET_SHUTDOWN)
 		type = SD_SEND;
-	else if (_type == RECEIVE_SEND_SOCKET_SHUTDOWN)
+	else if (_shutdown == RECEIVE_SEND_SOCKET_SHUTDOWN)
 		type = SD_BOTH;
 	else
 		abort();
@@ -684,9 +686,9 @@ bool shutdownSocket(
 
 bool socketReceive(
 	Socket socket,
-	void* buffer,
-	size_t size,
-	size_t* count)
+	void* receiveBuffer,
+	size_t bufferSize,
+	size_t* byteCount)
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
@@ -699,34 +701,34 @@ bool socketReceive(
 	{
 		int result = SSL_read(
 			socket->ssl,
-			buffer,
-			(int)size);
+			receiveBuffer,
+			(int)bufferSize);
 
 		if (result < 0)
 			return false;
 
-		*count = (size_t)result;
+		*byteCount = (size_t)result;
 		return true;
 	}
 #endif
 
 	int64_t result = recv(
 		socket->handle,
-		(char*)buffer,
-		(int)size,
+		(char*)receiveBuffer,
+		(int)bufferSize,
 		0);
 
 	if (result < 0)
 		return false;
 
-	*count = (size_t)result;
+	*byteCount = (size_t)result;
 	return true;
 }
 
 bool socketSend(
 	Socket socket,
-	const void* buffer,
-	size_t count)
+	const void* sendBuffer,
+	size_t byteCount)
 {
 	assert(socket != NULL);
 	assert(buffer != NULL);
@@ -737,27 +739,27 @@ bool socketSend(
 	{
 		return SSL_write(
 			socket->ssl,
-			buffer,
-			(int)count) == count;
+			sendBuffer,
+			(int)byteCount) == byteCount;
 	}
 #endif
 
 	return send(
 		socket->handle,
-		(const char*)buffer,
-		(int)count,
-		0) == count;
+		(const char*)sendBuffer,
+		(int)byteCount,
+		0) == byteCount;
 }
 
 bool socketReceiveFrom(
 	Socket socket,
-	SocketAddress address,
-	void* buffer,
-	size_t size,
-	size_t* _count)
+	SocketAddress socketAddress,
+	void* receiveBuffer,
+	size_t bufferSize,
+	size_t* byteCount)
 {
 	assert(socket != NULL);
-	assert(address != NULL);
+	assert(socketAddress != NULL);
 	assert(buffer != NULL);
 	assert(size != 0);
 	assert(_count != NULL);
@@ -767,10 +769,10 @@ bool socketReceiveFrom(
 	assert(socket->sslContext == NULL);
 #endif
 
-	struct sockaddr_storage socketAddress;
+	struct sockaddr_storage _socketAddress;
 
 	memset(
-		&socketAddress,
+		&_socketAddress,
 		0,
 		sizeof(struct sockaddr_storage));
 
@@ -779,29 +781,29 @@ bool socketReceiveFrom(
 
 	int64_t count = recvfrom(
 		socket->handle,
-		(char*)buffer,
-		(int)size,
+		(char*)receiveBuffer,
+		(int)bufferSize,
 		0,
-		(struct sockaddr*)&socketAddress,
+		(struct sockaddr*)&_socketAddress,
 		&length);
 
 	if (count < 0)
 		return false;
 
-	address->handle = socketAddress;
-	*_count = (size_t)count;
+	socketAddress->handle = _socketAddress;
+	*byteCount = (size_t)count;
 	return true;
 }
 
 bool socketSendTo(
 	Socket socket,
-	const void* buffer,
-	size_t count,
-	SocketAddress address)
+	const void* sendBuffer,
+	size_t byteCount,
+	SocketAddress socketAddress)
 {
 	assert(socket != NULL);
-	assert(buffer != NULL);
-	assert(address != NULL);
+	assert(sendBuffer != NULL);
+	assert(socketAddress != NULL);
 	assert(networkInitialized == true);
 
 #if MPNW_SUPPORT_OPENSSL
@@ -810,20 +812,20 @@ bool socketSendTo(
 
 	SOCKET_LENGTH length;
 
-	if (address->handle.ss_family == AF_INET)
+	if (socketAddress->handle.ss_family == AF_INET)
 		length = sizeof(struct sockaddr_in);
-	else if(address->handle.ss_family == AF_INET6)
+	else if(socketAddress->handle.ss_family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
 		return false;
 
 	return sendto(
 		socket->handle,
-		(const char*)buffer,
-		(int)count,
+		(const char*)sendBuffer,
+		(int)byteCount,
 		0,
-		(const struct sockaddr*)&address->handle,
-		length) == count;
+		(const struct sockaddr*)&socketAddress->handle,
+		length) == byteCount;
 }
 
 MpnwResult createSocketAddress(
@@ -834,7 +836,9 @@ MpnwResult createSocketAddress(
 	assert(host != NULL);
 	assert(service != NULL);
 	assert(_socketAddress != NULL);
-	assert(networkInitialized == true);
+
+	if (networkInitialized == false)
+		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
 	SocketAddress socketAddress = malloc(
 		sizeof(struct SocketAddress));
@@ -913,7 +917,9 @@ MpnwResult resolveSocketAddress(
 	assert(family < ADDRESS_FAMILY_COUNT);
 	assert(type < SOCKET_TYPE_COUNT);
 	assert(_socketAddress != NULL);
-	assert(networkInitialized == true);
+
+	if (networkInitialized == false)
+		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
 	SocketAddress socketAddress = malloc(
 		sizeof(struct SocketAddress));
@@ -1052,10 +1058,8 @@ AddressFamily getSocketAddressFamily(
 
 	if (family == AF_INET)
 		return IP_V4_ADDRESS_FAMILY;
-	else if (family == AF_INET6)
-		return IP_V6_ADDRESS_FAMILY;
 	else
-		abort();
+		return IP_V6_ADDRESS_FAMILY;
 }
 
 void setSocketAddressFamily(
@@ -1079,9 +1083,9 @@ size_t getSocketAddressFamilyIpSize(
 	assert(networkInitialized == true);
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
-		return sizeof(struct sockaddr_in);
+		return sizeof(struct in_addr);
 	else
-		return sizeof(struct sockaddr_in6);
+		return sizeof(struct in6_addr);
 }
 
 size_t getSocketAddressIpSize(
@@ -1093,9 +1097,9 @@ size_t getSocketAddressIpSize(
 	int family = socketAddress->handle.ss_family;
 
 	if (family == AF_INET)
-		return sizeof(struct sockaddr_in);
+		return sizeof(struct in_addr);
 	else
-		return sizeof(struct sockaddr_in6);
+		return sizeof(struct in6_addr);
 }
 
 const uint8_t* getSocketAddressIp(
@@ -1103,39 +1107,46 @@ const uint8_t* getSocketAddressIp(
 {
 	assert(socketAddress != NULL);
 	assert(networkInitialized == true);
-	return (const uint8_t*)&socketAddress->handle;
-}
 
-bool setSocketAddressIp(
-	SocketAddress address,
-	const uint8_t* ip,
-	size_t size)
-{
-	assert(address != NULL);
-	assert(ip != NULL);
-	assert(networkInitialized == true);
+	int family = socketAddress->handle.ss_family;
 
-	int family = address->handle.ss_family;
-
-	if (family == AF_INET && size == sizeof(struct sockaddr_in))
+	if (family == AF_INET)
 	{
-		memcpy(
-			(struct sockaddr_in*)&address->handle,
-			ip,
-			sizeof(struct sockaddr_in));
-		return true;
-	}
-	else if (size == sizeof(struct sockaddr_in6))
-	{
-		memcpy(
-			(struct sockaddr_in6*)&address->handle,
-			ip,
-			sizeof(struct sockaddr_in6));
-		return true;
+		return (const uint8_t*)&((struct sockaddr_in*)
+			&socketAddress->handle)->sin_addr;
 	}
 	else
 	{
-		return false;
+		return (const uint8_t*)&((struct sockaddr_in6*)
+			&socketAddress->handle)->sin6_addr;
+	}
+}
+
+void setSocketAddressIp(
+	SocketAddress socketAddress,
+	const uint8_t* ip)
+{
+	assert(socketAddress != NULL);
+	assert(ip != NULL);
+	assert(networkInitialized == true);
+
+	int family = socketAddress->handle.ss_family;
+
+	if (family == AF_INET)
+	{
+		memcpy(
+			&((struct sockaddr_in*)
+				&socketAddress->handle)->sin_addr,
+			ip,
+			sizeof(struct in_addr));
+	}
+	else
+	{
+		memcpy(
+			&((struct sockaddr_in6*)
+				&socketAddress->handle)->sin6_addr,
+			ip,
+			sizeof(struct in6_addr));
 	}
 }
 
@@ -1265,7 +1276,9 @@ MpnwResult createPublicSslContext(
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(_sslContext != NULL);
-	assert(networkInitialized == true);
+
+	if (networkInitialized == false)
+		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
 	SslContext sslContext = malloc(
 		sizeof(struct SslContext));
@@ -1336,7 +1349,9 @@ MpnwResult createPrivateSslContext(
 	assert(certificateFilePath != NULL);
 	assert(privateKeyFilePath != NULL);
 	assert(_sslContext != NULL);
-	assert(networkInitialized == true);
+
+	if (networkInitialized == false)
+		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
 	SslContext sslContext = malloc(
 		sizeof(struct SslContext));
@@ -1443,10 +1458,8 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext)
 
 	if (method == TLS_method())
 		return TLS_SECURITY_PROTOCOL;
-	else if (method == TLSv1_2_method())
-		return TLS_1_2_SECURITY_PROTOCOL;
 	else
-		abort();
+		return TLS_1_2_SECURITY_PROTOCOL;
 #else
 	abort();
 #endif
