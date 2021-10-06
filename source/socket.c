@@ -652,7 +652,7 @@ bool shutdownSocket(
 	SocketShutdown _shutdown)
 {
 	assert(socket != NULL);
-	assert(shutdown < SOCKET_SHUTDOWN_COUNT);
+	assert(_shutdown < SOCKET_SHUTDOWN_COUNT);
 	assert(networkInitialized == true);
 
 	int type;
@@ -691,9 +691,9 @@ bool socketReceive(
 	size_t* byteCount)
 {
 	assert(socket != NULL);
-	assert(buffer != NULL);
-	assert(size != 0);
-	assert(count != NULL);
+	assert(receiveBuffer != NULL);
+	assert(bufferSize != 0);
+	assert(byteCount != NULL);
 	assert(networkInitialized == true);
 
 #if MPNW_SUPPORT_OPENSSL
@@ -731,7 +731,7 @@ bool socketSend(
 	size_t byteCount)
 {
 	assert(socket != NULL);
-	assert(buffer != NULL);
+	assert(sendBuffer != NULL);
 	assert(networkInitialized == true);
 
 #if MPNW_SUPPORT_OPENSSL
@@ -760,9 +760,9 @@ bool socketReceiveFrom(
 {
 	assert(socket != NULL);
 	assert(remoteAddress != NULL);
-	assert(buffer != NULL);
-	assert(size != 0);
-	assert(_count != NULL);
+	assert(receiveBuffer != NULL);
+	assert(bufferSize != 0);
+	assert(byteCount != NULL);
 	assert(networkInitialized == true);
 
 #if MPNW_SUPPORT_OPENSSL

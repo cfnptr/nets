@@ -191,7 +191,7 @@ bool datagramServerSend(
 	assert(datagramServer != NULL);
 	assert(sendBuffer != NULL);
 	assert(byteCount != 0);
-	assert(socketAddress != NULL);
+	assert(remoteAddress != NULL);
 	assert(isNetworkInitialized() == true);
 
 	return socketSendTo(
