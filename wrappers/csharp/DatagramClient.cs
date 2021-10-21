@@ -22,48 +22,48 @@ namespace Mpnw
         private delegate void OnDatagramClientReceive(
             IntPtr datagramClient, IntPtr receiveBuffer, UIntPtr byteCount);
         
-        [DllImport("mpnw")] private static extern MpnwResult createDatagramClient(
-            IntPtr remoteAddress, UIntPtr receiveBufferSize, OnDatagramClientReceive onReceive, 
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult createDatagramClient(
+            IntPtr remoteAddress, UIntPtr receiveBufferSize, OnDatagramClientReceive onReceive,
             IntPtr handle, ref IntPtr datagramClient);
-        [DllImport("mpnw")] private static extern void destroyDatagramClient(IntPtr datagramClient);
-        [DllImport("mpnw")] private static extern UIntPtr getDatagramClientReceiveBufferSize(IntPtr datagramClient);
-        [DllImport("mpnw")] private static extern IntPtr getDatagramClientSocket(IntPtr datagramClient);
-        [DllImport("mpnw")] private static extern bool updateDatagramClient(IntPtr datagramClient);
-        [DllImport("mpnw")] private static extern bool datagramClientSend(
+        [DllImport(Mpnw.Lib)] private static extern void destroyDatagramClient(IntPtr datagramClient);
+        [DllImport(Mpnw.Lib)] private static extern UIntPtr getDatagramClientReceiveBufferSize(IntPtr datagramClient);
+        [DllImport(Mpnw.Lib)] private static extern IntPtr getDatagramClientSocket(IntPtr datagramClient);
+        [DllImport(Mpnw.Lib)] private static extern bool updateDatagramClient(IntPtr datagramClient);
+        [DllImport(Mpnw.Lib)] private static extern bool datagramClientSend(
             IntPtr datagramClient, IntPtr sendBuffer, UIntPtr byteCount);
-        
+
         private readonly IntPtr _handle;
         public IntPtr Handle => _handle;
-        
+
         public UIntPtr ReceiveBufferSize => getDatagramClientReceiveBufferSize(_handle);
         public Socket Socket => new Socket(getDatagramClientSocket(_handle), false);
-        
+
         protected bool Send(IntPtr sendBuffer, UIntPtr byteCount)
         {
             if (sendBuffer == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(sendBuffer));
-            
+
             return datagramClientSend(_handle, sendBuffer, byteCount);
         }
-        protected bool Send(byte[] sendBuffer, UIntPtr byteCount)
+        protected bool Send(byte[] sendBuffer, int byteCount)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = handle.AddrOfPinnedObject();
-            var result = datagramClientSend(_handle, buffer, byteCount);
-            
+            var result = datagramClientSend(_handle, buffer, (UIntPtr)byteCount);
+
             handle.Free();
             return result;
         }
-        protected bool Send(byte[] sendBuffer, UIntPtr byteCount, int offset)
+        protected bool Send(byte[] sendBuffer, int byteCount, int offset)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = IntPtr.Add(handle.AddrOfPinnedObject(), offset);
-            var result = datagramClientSend(_handle, buffer, byteCount);
-            
+            var result = datagramClientSend(_handle, buffer, (UIntPtr)byteCount);
+
             handle.Free();
             return result;
         }
-        protected bool Send(byte[] sendBuffer) => Send(sendBuffer, (UIntPtr)sendBuffer.Length);
+        protected bool Send(byte[] sendBuffer) => Send(sendBuffer, sendBuffer.Length);
         
         protected abstract void OnReceive(IntPtr datagramClient, IntPtr receiveBuffer, UIntPtr byteCount);
         

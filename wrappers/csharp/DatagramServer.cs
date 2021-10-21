@@ -23,49 +23,53 @@ namespace Mpnw
             IntPtr datagramServer, IntPtr remoteAddress, 
             IntPtr receiveBuffer, UIntPtr byteCount);
         
-        [DllImport("mpnw")] private static extern MpnwResult createDatagramServer(
-            AddressFamily addressFamily, string service, UIntPtr receiveBufferSize, 
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult createDatagramServer(
+            AddressFamily addressFamily, string service, UIntPtr receiveBufferSize,
             OnDatagramServerReceive onReceive, IntPtr handle, ref IntPtr datagramServer);
-        [DllImport("mpnw")] private static extern void destroyDatagramServer(IntPtr datagramServer);
-        [DllImport("mpnw")] private static extern UIntPtr getDatagramServerReceiveBufferSize(IntPtr datagramServer);
-        [DllImport("mpnw")] private static extern IntPtr getDatagramServerSocket(IntPtr datagramServer);
-        [DllImport("mpnw")] private static extern bool updateDatagramServer(IntPtr datagramServer);
-        [DllImport("mpnw")] private static extern bool datagramServerSend(
+        [DllImport(Mpnw.Lib)] private static extern void destroyDatagramServer(IntPtr datagramServer);
+        [DllImport(Mpnw.Lib)] private static extern UIntPtr getDatagramServerReceiveBufferSize(IntPtr datagramServer);
+        [DllImport(Mpnw.Lib)] private static extern IntPtr getDatagramServerSocket(IntPtr datagramServer);
+        [DllImport(Mpnw.Lib)] private static extern bool updateDatagramServer(IntPtr datagramServer);
+        [DllImport(Mpnw.Lib)] private static extern bool datagramServerSend(
             IntPtr datagramServer, IntPtr sendBuffer, UIntPtr byteCount, IntPtr remoteAddress);
-        
+
         private readonly IntPtr _handle;
         public IntPtr Handle => _handle;
-        
+
         public UIntPtr ReceiveBufferSize => getDatagramServerReceiveBufferSize(_handle);
         public Socket Socket => new Socket(getDatagramServerSocket(_handle), false);
-        
+
         protected bool Send(IntPtr sendBuffer, UIntPtr byteCount, SocketAddress remoteAddress)
         {
             if (sendBuffer == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(sendBuffer));
-            
+
             return datagramServerSend(_handle, sendBuffer, byteCount, remoteAddress.Handle);
         }
-        protected bool Send(byte[] sendBuffer, UIntPtr byteCount, SocketAddress remoteAddress)
+        protected bool Send(byte[] sendBuffer, int byteCount, SocketAddress remoteAddress)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = handle.AddrOfPinnedObject();
-            var result = datagramServerSend(_handle, buffer, byteCount, remoteAddress.Handle);
-            
+
+            var result = datagramServerSend(_handle,
+                buffer, (UIntPtr)byteCount, remoteAddress.Handle);
+
             handle.Free();
             return result;
         }
-        protected bool Send(byte[] sendBuffer, UIntPtr byteCount, int offset, SocketAddress remoteAddress)
+        protected bool Send(byte[] sendBuffer, int byteCount, int offset, SocketAddress remoteAddress)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = IntPtr.Add(handle.AddrOfPinnedObject(), offset);
-            var result = datagramServerSend(_handle, buffer, byteCount, remoteAddress.Handle);
-            
+
+            var result = datagramServerSend(_handle,
+                buffer, (UIntPtr)byteCount, remoteAddress.Handle);
+
             handle.Free();
             return result;
         }
-        protected bool Send(byte[] sendBuffer, SocketAddress remoteAddress) => 
-            Send(sendBuffer, (UIntPtr)sendBuffer.Length, remoteAddress);
+        protected bool Send(byte[] sendBuffer, SocketAddress remoteAddress) =>
+            Send(sendBuffer, sendBuffer.Length, remoteAddress);
         
         protected abstract void OnReceive(IntPtr datagramServer, 
             IntPtr remoteAddress, IntPtr receiveBuffer, UIntPtr byteCount);

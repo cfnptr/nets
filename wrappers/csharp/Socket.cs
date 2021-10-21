@@ -19,8 +19,8 @@ namespace Mpnw
 {
     public enum AddressFamily
     {
-        IPv4 = 0,
-        IPv6 = 1,
+        Ipv4 = 0,
+        Ipv6 = 1,
         Count = 2,
     }
 
@@ -30,7 +30,7 @@ namespace Mpnw
         Datagram = 1,
         Count = 2,
     }
-    
+
     public enum SocketShutdown
     {
         ReceiveOnly = 0,
@@ -41,16 +41,16 @@ namespace Mpnw
 
     public enum SecurityProtocol
     {
-        TLS = 0,
-        TLS12 = 1,
+        Tls = 0,
+        Tls12 = 1,
         Count = 2,
     }
-    
+
     public static class Network
     {
-        [DllImport("mpnw")] private static extern bool initializeNetwork();
-        [DllImport("mpnw")] private static extern void terminateNetwork();
-        [DllImport("mpnw")] private static extern bool isNetworkInitialized();
+        [DllImport(Mpnw.Lib)] private static extern bool initializeNetwork();
+        [DllImport(Mpnw.Lib)] private static extern void terminateNetwork();
+        [DllImport(Mpnw.Lib)] private static extern bool isNetworkInitialized();
 
         public static bool Initialize() => initializeNetwork();
         public static void Terminate() => terminateNetwork();
@@ -59,48 +59,48 @@ namespace Mpnw
 
     public class SocketAddress : ICloneable, IComparable, IComparable<SocketAddress>
     {
-        [DllImport("mpnw")] private static extern MpnwResult createSocketAddress(
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult createSocketAddress(
             string host, string service, ref IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern IntPtr createSocketAddressCopy(IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern MpnwResult resolveSocketAddress(
+        [DllImport(Mpnw.Lib)] private static extern IntPtr createSocketAddressCopy(IntPtr socketAddress);
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult resolveSocketAddress(
             string host, string service, AddressFamily family, SocketType type, ref IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern void destroySocketAddress(IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern void copySocketAddress(
+        [DllImport(Mpnw.Lib)] private static extern void destroySocketAddress(IntPtr socketAddress);
+        [DllImport(Mpnw.Lib)] private static extern void copySocketAddress(
             IntPtr sourceAddress, IntPtr destinationAddress);
-        [DllImport("mpnw")] private static extern int compareSocketAddress(IntPtr a, IntPtr b);
-        [DllImport("mpnw")] private static extern AddressFamily getSocketAddressFamily(IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern void setSocketAddressFamily(
+        [DllImport(Mpnw.Lib)] private static extern int compareSocketAddress(IntPtr a, IntPtr b);
+        [DllImport(Mpnw.Lib)] private static extern AddressFamily getSocketAddressFamily(IntPtr socketAddress);
+        [DllImport(Mpnw.Lib)] private static extern void setSocketAddressFamily(
             IntPtr socketAddress, AddressFamily addressFamily);
-        [DllImport("mpnw")] private static extern UIntPtr getSocketAddressFamilyIpSize(AddressFamily addressFamily);
-        [DllImport("mpnw")] private static extern UIntPtr getSocketAddressIpSize(IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern IntPtr getSocketAddressIp(IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern void setSocketAddressIp(
+        [DllImport(Mpnw.Lib)] private static extern UIntPtr getSocketAddressFamilyIpSize(AddressFamily addressFamily);
+        [DllImport(Mpnw.Lib)] private static extern UIntPtr getSocketAddressIpSize(IntPtr socketAddress);
+        [DllImport(Mpnw.Lib)] private static extern IntPtr getSocketAddressIp(IntPtr socketAddress);
+        [DllImport(Mpnw.Lib)] private static extern void setSocketAddressIp(
             IntPtr socketAddress, IntPtr ip);
-        [DllImport("mpnw")] private static extern ushort getSocketAddressPort(IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern void setSocketAddressPort(
+        [DllImport(Mpnw.Lib)] private static extern ushort getSocketAddressPort(IntPtr socketAddress);
+        [DllImport(Mpnw.Lib)] private static extern void setSocketAddressPort(
             IntPtr socketAddress, ushort port);
-        [DllImport("mpnw")] private static extern bool getSocketAddressHost(
+        [DllImport(Mpnw.Lib)] private static extern bool getSocketAddressHost(
             IntPtr socketAddress, IntPtr host, UIntPtr length);
-        [DllImport("mpnw")] private static extern bool getSocketAddressService(
+        [DllImport(Mpnw.Lib)] private static extern bool getSocketAddressService(
             IntPtr socketAddress, IntPtr service, UIntPtr length);
-        [DllImport("mpnw")] private static extern bool getSocketAddressHostService(
+        [DllImport(Mpnw.Lib)] private static extern bool getSocketAddressHostService(
             IntPtr socketAddress, IntPtr host, UIntPtr hostLength, IntPtr service, UIntPtr serviceLength);
 
         public const string AnyIPv4 = "0.0.0.0";
         public const string AnyIPv6 = "::";
-        
+
         public const string LoopbackIPv4 = "127.0.0.1";
         public const string LoopbackIPv6 = "::1";
-        
+
         public const string LocalhostHostname = "localhost";
         public const string AnyService = "0";
-        
+
         public const int MaxNumericHostLength = 46;
         public const int MaxNumericServiceLength = 6;
 
         private readonly IntPtr _handle;
         public IntPtr Handle => _handle;
-        
+
         private readonly bool _destroyHandle;
 
         public AddressFamily Family
@@ -110,7 +110,7 @@ namespace Mpnw
             {
                 if (value >= AddressFamily.Count)
                     throw new ArgumentOutOfRangeException(nameof(value));
-                
+
                 setSocketAddressFamily(_handle, value);
             }
         }
@@ -119,7 +119,7 @@ namespace Mpnw
         {
             if (addressFamily >= AddressFamily.Count)
                 throw new ArgumentOutOfRangeException(nameof(addressFamily));
-            
+
             return getSocketAddressFamilyIpSize(addressFamily);
         }
 
@@ -132,7 +132,7 @@ namespace Mpnw
             {
                 if (value == IntPtr.Zero)
                     throw new ArgumentNullException(nameof(value));
-            
+
                 setSocketAddressIp(_handle, value);
             }
         }
@@ -168,7 +168,7 @@ namespace Mpnw
             {
                 var buffer = Marshal.AllocHGlobal(MaxNumericHostLength);
 
-                var result = getSocketAddressHost(_handle, 
+                var result = getSocketAddressHost(_handle,
                     buffer, (UIntPtr)MaxNumericHostLength);
 
                 if (result == false)
@@ -179,7 +179,7 @@ namespace Mpnw
 
                 var host = Marshal.PtrToStringAuto(buffer);
                 Marshal.FreeHGlobal(buffer);
-                
+
                 return host;
             }
         }
@@ -200,7 +200,7 @@ namespace Mpnw
 
                 var service = Marshal.PtrToStringAuto(buffer);
                 Marshal.FreeHGlobal(buffer);
-                
+
                 return service;
             }
         }
@@ -209,7 +209,7 @@ namespace Mpnw
             var hostBuffer = Marshal.AllocHGlobal(MaxNumericHostLength);
             var serviceBuffer = Marshal.AllocHGlobal(MaxNumericServiceLength);
 
-            var result = getSocketAddressHostService(_handle, 
+            var result = getSocketAddressHostService(_handle,
                 hostBuffer, (UIntPtr)MaxNumericHostLength,
                 serviceBuffer, (UIntPtr)MaxNumericServiceLength);
 
@@ -217,7 +217,7 @@ namespace Mpnw
             {
                 Marshal.FreeHGlobal(serviceBuffer);
                 Marshal.FreeHGlobal(hostBuffer);
-                
+
                 host = null;
                 service = null;
                 return false;
@@ -225,7 +225,7 @@ namespace Mpnw
 
             host = Marshal.PtrToStringAuto(hostBuffer);
             service = Marshal.PtrToStringAuto(serviceBuffer);
-            
+
             Marshal.FreeHGlobal(serviceBuffer);
             Marshal.FreeHGlobal(hostBuffer);
             return true;
@@ -246,12 +246,12 @@ namespace Mpnw
                 throw new ArgumentNullException(nameof(host));
             if (string.IsNullOrEmpty(service))
                 throw new ArgumentNullException(nameof(service));
-            
+
             var result = createSocketAddress(host, service, ref _handle);
 
             if (result != MpnwResult.Success)
                 throw new MpnwException(result);
-            
+
             _destroyHandle = true;
         }
         public SocketAddress(string host, string service, AddressFamily family, SocketType type)
@@ -269,14 +269,14 @@ namespace Mpnw
 
             if (result != MpnwResult.Success)
                 throw new MpnwException(result);
-            
+
             _destroyHandle = true;
         }
         private SocketAddress(IntPtr handle, bool destroyHandle)
         {
             if (handle == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(handle));
-            
+
             _handle = handle;
             _destroyHandle = destroyHandle;
         }
@@ -290,7 +290,7 @@ namespace Mpnw
         {
             if (obj == null || GetType() != obj.GetType())
                 return false;
-                
+
             return _handle == ((SocketAddress)obj)._handle;
         }
         public override int GetHashCode() => _handle.GetHashCode();
@@ -301,59 +301,66 @@ namespace Mpnw
 
             if (result == false)
                 throw new MpnwException("Failed to get host/service");
-            
+
             return host + ":" + service;
         }
 
         public object Clone() => new SocketAddress(
             createSocketAddressCopy(_handle), true);
-        public void Copy(SocketAddress source) => 
+        public void Copy(SocketAddress source) =>
             copySocketAddress(source._handle, _handle);
 
-        public int CompareTo(object obj) => 
+        public int CompareTo(object obj) =>
             compareSocketAddress(_handle, ((SocketAddress)obj)._handle);
         public int CompareTo(SocketAddress other) =>
             compareSocketAddress(_handle, other._handle);
     }
 
     public class Socket
-    { 
-        [DllImport("mpnw")] private static extern MpnwResult createSocket(
-	        SocketType socketType, AddressFamily addressFamily, IntPtr socketAddress, 
+    {
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult createSocket(
+	        SocketType socketType, AddressFamily addressFamily, IntPtr socketAddress,
             bool listening, bool blocking, IntPtr sslContext, ref IntPtr socket);
-        [DllImport("mpnw")] private static extern void destroySocket(IntPtr socket);
-        [DllImport("mpnw")] private static extern SocketType getSocketType(IntPtr socket);
-        [DllImport("mpnw")] private static extern bool isSocketListening(IntPtr socket);
-        [DllImport("mpnw")] private static extern bool isSocketBlocking(IntPtr socket);
-        [DllImport("mpnw")] private static extern bool getSocketLocalAddress(
+        [DllImport(Mpnw.Lib)] private static extern void destroySocket(IntPtr socket);
+        [DllImport(Mpnw.Lib)] private static extern SocketType getSocketType(IntPtr socket);
+        [DllImport(Mpnw.Lib)] private static extern bool isSocketListening(IntPtr socket);
+        [DllImport(Mpnw.Lib)] private static extern bool isSocketBlocking(IntPtr socket);
+        [DllImport(Mpnw.Lib)] private static extern bool getSocketLocalAddress(
             IntPtr socket, IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern bool getSocketRemoteAddress(
+        [DllImport(Mpnw.Lib)] private static extern bool getSocketRemoteAddress(
             IntPtr socket, IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern IntPtr getSocketSslContext(IntPtr socket);
-        [DllImport("mpnw")] private static extern bool isSocketNoDelay(IntPtr socket);
-        [DllImport("mpnw")] private static extern void setSocketNoDelay(
+        [DllImport(Mpnw.Lib)] private static extern IntPtr getSocketSslContext(IntPtr socket);
+        [DllImport(Mpnw.Lib)] private static extern bool isSocketNoDelay(IntPtr socket);
+        [DllImport(Mpnw.Lib)] private static extern void setSocketNoDelay(
             IntPtr socket, bool value);
-        [DllImport("mpnw")] private static extern MpnwResult acceptSocket(
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult acceptSocket(
             IntPtr socket, ref IntPtr accepted);
-        [DllImport("mpnw")] private static extern bool acceptSslSocket(IntPtr socket);
-        [DllImport("mpnw")] private static extern bool connectSocket(
+        [DllImport(Mpnw.Lib)] private static extern bool acceptSslSocket(IntPtr socket);
+        [DllImport(Mpnw.Lib)] private static extern bool connectSocket(
             IntPtr socket, IntPtr socketAddress);
-        [DllImport("mpnw")] private static extern bool connectSslSocket(IntPtr socket);
-        [DllImport("mpnw")] private static extern bool shutdownSocket(
+        [DllImport(Mpnw.Lib)] private static extern bool connectSslSocket(IntPtr socket);
+        [DllImport(Mpnw.Lib)] private static extern bool shutdownSocket(
             IntPtr socket, SocketShutdown shutdown);
-        [DllImport("mpnw")] private static extern bool socketReceive(
+        [DllImport(Mpnw.Lib)] private static extern bool socketReceive(
             IntPtr socket, IntPtr receiveBuffer, UIntPtr bufferSize, ref UIntPtr byteCount);
-        [DllImport("mpnw")] private static extern bool socketSend(
+        [DllImport(Mpnw.Lib)] private static extern bool socketSend(
             IntPtr socket, IntPtr sendBuffer, UIntPtr byteCount);
-        [DllImport("mpnw")] private static extern bool socketReceiveFrom(
-            IntPtr socket, IntPtr socketAddress, IntPtr receiveBuffer, 
+        [DllImport(Mpnw.Lib)] private static extern bool socketReceiveFrom(
+            IntPtr socket, IntPtr socketAddress, IntPtr receiveBuffer,
             UIntPtr bufferSize, ref UIntPtr byteCount);
-        [DllImport("mpnw")] private static extern  bool socketSendTo(
+        [DllImport(Mpnw.Lib)] private static extern  bool socketSendTo(
             IntPtr socket, IntPtr sendBuffer, UIntPtr byteCount, IntPtr socketAddress);
+
+        public delegate bool OnStreamMessageReceive(
+            IntPtr messageBuffer, UIntPtr byteCount, IntPtr handle);
+        [DllImport(Mpnw.Lib)] public static extern bool handleStreamMessage(
+            IntPtr receiveBuffer, UIntPtr byteCount, IntPtr messageBuffer, UIntPtr messageBufferSize,
+            ref UIntPtr messageByteCount, UIntPtr messageLengthSize,
+            OnStreamMessageReceive receiveFunction, IntPtr functionHandle);
 
         private readonly IntPtr _handle;
         public IntPtr Handle => _handle;
-        
+
         private readonly bool _destroyHandle;
 
         public SocketType Type => getSocketType(_handle);
@@ -378,8 +385,8 @@ namespace Mpnw
                 return result ? socketAddress : null;
             }
         }
-        
-        public SslContext SslContext => 
+
+        public SslContext SslContext =>
             new SslContext(getSocketSslContext(_handle), false);
 
         public bool NoDelay
@@ -388,7 +395,7 @@ namespace Mpnw
             set => setSocketNoDelay(_handle, value);
         }
 
-        public Socket(SocketType socketType, AddressFamily addressFamily, 
+        public Socket(SocketType socketType, AddressFamily addressFamily,
             SocketAddress socketAddress, bool listening, bool blocking, SslContext sslContext)
         {
             if (socketType >= SocketType.Count)
@@ -410,7 +417,7 @@ namespace Mpnw
         {
             if (handle == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(handle));
-            
+
             _handle = handle;
             _destroyHandle = destroyHandle;
         }
@@ -419,12 +426,12 @@ namespace Mpnw
             if (_destroyHandle)
                 destroySocket(_handle);
         }
-        
+
         public override bool Equals(object obj)
         {
             if (obj == null || GetType() != obj.GetType())
                 return false;
-                
+
             return _handle == ((Socket)obj)._handle;
         }
         public override int GetHashCode() => _handle.GetHashCode();
@@ -464,21 +471,25 @@ namespace Mpnw
                 throw new ArgumentNullException(nameof(receiveBuffer));
             if (bufferSize == UIntPtr.Zero)
                 throw new ArgumentNullException(nameof(receiveBuffer));
-            
+
             return socketReceive(_handle, receiveBuffer, bufferSize, ref byteCount);
         }
-        public bool Receive(byte[] receiveBuffer, ref UIntPtr byteCount)
+        public bool Receive(byte[] receiveBuffer, out int byteCount)
         {
             var handle = GCHandle.Alloc(receiveBuffer, GCHandleType.Pinned);
             var buffer = handle.AddrOfPinnedObject();
-            
-            var result = socketReceive(_handle, buffer, 
-                (UIntPtr)receiveBuffer.Length, ref byteCount);
-            
+
+            var count = UIntPtr.Zero;
+
+            var result = socketReceive(_handle, buffer,
+                (UIntPtr)receiveBuffer.Length, ref count);
+
             handle.Free();
+
+            byteCount = (int)count;
             return result;
         }
-        
+
         public bool Send(IntPtr sendBuffer, UIntPtr byteSize)
         {
             if (sendBuffer == IntPtr.Zero)
@@ -486,50 +497,54 @@ namespace Mpnw
 
             return socketSend(_handle, sendBuffer, byteSize);
         }
-        public bool Send(byte[] sendBuffer, UIntPtr byteCount)
+        public bool Send(byte[] sendBuffer, int byteCount)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = handle.AddrOfPinnedObject();
-            var result = socketSend(_handle, buffer, byteCount);
-            
+            var result = socketSend(_handle, buffer, (UIntPtr)byteCount);
+
             handle.Free();
             return result;
         }
-        public bool Send(byte[] sendBuffer, UIntPtr byteCount, int offset)
+        public bool Send(byte[] sendBuffer, int byteCount, int offset)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = IntPtr.Add(handle.AddrOfPinnedObject(), offset);
-            var result = socketSend(_handle, buffer, byteCount);
-            
+            var result = socketSend(_handle, buffer, (UIntPtr)byteCount);
+
             handle.Free();
             return result;
         }
-        public bool Send(byte[] sendBuffer) => Send(sendBuffer, (UIntPtr)sendBuffer.Length);
-        
-        public bool ReceiveFrom(SocketAddress socketAddress, 
+        public bool Send(byte[] sendBuffer) => Send(sendBuffer, sendBuffer.Length);
+
+        public bool ReceiveFrom(SocketAddress socketAddress,
             IntPtr receiveBuffer, UIntPtr bufferSize, ref UIntPtr byteCount)
         {
             if (receiveBuffer == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(receiveBuffer));
             if (bufferSize == UIntPtr.Zero)
                 throw new ArgumentNullException(nameof(receiveBuffer));
-            
+
             return socketReceiveFrom(_handle, socketAddress.Handle,
                 receiveBuffer, bufferSize, ref byteCount);
         }
         public bool ReceiveFrom(SocketAddress socketAddress,
-            byte[] receiveBuffer, ref UIntPtr byteCount)
+            byte[] receiveBuffer, out int byteCount)
         {
             var handle = GCHandle.Alloc(receiveBuffer, GCHandleType.Pinned);
             var buffer = handle.AddrOfPinnedObject();
-            
+
+            var count = UIntPtr.Zero;
+
             var result = socketReceiveFrom(_handle, socketAddress.Handle,
-                buffer, (UIntPtr)receiveBuffer.Length, ref byteCount);
-            
+                buffer, (UIntPtr)receiveBuffer.Length, ref count);
+
             handle.Free();
+
+            byteCount = (int)count;
             return result;
         }
-        
+
         public bool SendTo(IntPtr sendBuffer, UIntPtr byteSize, SocketAddress socketAddress)
         {
             if (sendBuffer == IntPtr.Zero)
@@ -537,58 +552,63 @@ namespace Mpnw
 
             return socketSendTo(_handle, sendBuffer, byteSize, socketAddress.Handle);
         }
-        public bool SendTo(byte[] sendBuffer, UIntPtr byteCount, SocketAddress socketAddress)
+        public bool SendTo(byte[] sendBuffer, int byteCount, SocketAddress socketAddress)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = handle.AddrOfPinnedObject();
-            var result = socketSendTo(_handle, buffer, byteCount, socketAddress.Handle);
-            
+
+            var result = socketSendTo(_handle,
+                buffer, (UIntPtr)byteCount, socketAddress.Handle);
+
             handle.Free();
             return result;
         }
-        public bool Send(byte[] sendBuffer, UIntPtr byteCount, int offset, SocketAddress socketAddress)
+        public bool Send(byte[] sendBuffer, int byteCount, int offset, SocketAddress socketAddress)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = IntPtr.Add(handle.AddrOfPinnedObject(), offset);
-            var result = socketSendTo(_handle, buffer, byteCount, socketAddress.Handle);
-            
+
+            var result = socketSendTo(_handle,
+                buffer, (UIntPtr)byteCount, socketAddress.Handle);
+
             handle.Free();
             return result;
         }
-        public bool SendTo(byte[] sendBuffer, SocketAddress socketAddress) => 
-            SendTo(sendBuffer, (UIntPtr)sendBuffer.Length, socketAddress);
+        public bool SendTo(byte[] sendBuffer, SocketAddress socketAddress) =>
+            SendTo(sendBuffer, sendBuffer.Length, socketAddress);
     }
 
     public class SslContext
-    { 
-        [DllImport("mpnw")] private static extern MpnwResult createPublicSslContext(
-            SecurityProtocol securityProtocol, string certificateFilePath, 
+    {
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult createPublicSslContext(
+            SecurityProtocol securityProtocol, string certificateFilePath,
             string certificatesDirectory, ref IntPtr sslContext);
-        [DllImport("mpnw")] private static extern MpnwResult createPrivateSslContext(
-            SecurityProtocol securityProtocol, string certificateFilePath,  
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult createPrivateSslContext(
+            SecurityProtocol securityProtocol, string certificateFilePath,
             string privateKeyFilePath, bool certificateChain, ref IntPtr sslContext);
-        [DllImport("mpnw")] private static extern void destroySslContext(IntPtr sslContext);
-        [DllImport("mpnw")] private static extern SecurityProtocol getSslContextSecurityProtocol(IntPtr sslContext);
+        [DllImport(Mpnw.Lib)] private static extern void destroySslContext(IntPtr sslContext);
+        [DllImport(Mpnw.Lib)] private static extern SecurityProtocol getSslContextSecurityProtocol(IntPtr sslContext);
 
         private readonly IntPtr _handle;
         public IntPtr Handle => _handle;
-        
+
         private readonly bool _destroyHandle;
 
         public SecurityProtocol SecurityProtocol => getSslContextSecurityProtocol(Handle);
-        
-        public SslContext(SecurityProtocol securityProtocol, 
+
+        public SslContext(SecurityProtocol securityProtocol,
             string certificateFilePath, string certificatesDirectory)
         {
             if (securityProtocol >= SecurityProtocol.Count)
                 throw new ArgumentOutOfRangeException(nameof(securityProtocol));
-            if (string.IsNullOrEmpty(certificateFilePath))
-                throw new ArgumentNullException(nameof(certificateFilePath));
-            if (string.IsNullOrEmpty(certificatesDirectory))
-                throw new ArgumentNullException(nameof(certificatesDirectory));
-            
+
+            var filePath = !string.IsNullOrEmpty(certificateFilePath) ?
+                certificateFilePath : null;
+            var directory = !string.IsNullOrEmpty(certificateFilePath) ?
+                certificatesDirectory : null;
+
             var result = createPublicSslContext(securityProtocol,
-                certificateFilePath, certificatesDirectory, ref _handle);
+                filePath, directory, ref _handle);
             
             if (result != MpnwResult.Success)
                 throw new MpnwException(result);

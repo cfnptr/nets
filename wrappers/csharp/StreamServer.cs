@@ -29,23 +29,23 @@ namespace Mpnw
             IntPtr streamServer, IntPtr streamSession, 
             IntPtr receiveBuffer, UIntPtr byteCount);
         
-        [DllImport("mpnw")] private static extern MpnwResult createStreamServer(
-            AddressFamily addressFamily, string service, UIntPtr sessionBufferSize, UIntPtr receiveBufferSize, 
-            OnStreamSessionCreate onCreate, OnStreamSessionDestroy onDestroy, 
-            OnStreamSessionUpdate onUpdate, OnStreamSessionReceive onReceive, 
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult createStreamServer(
+            AddressFamily addressFamily, string service, UIntPtr sessionBufferSize, UIntPtr receiveBufferSize,
+            OnStreamSessionCreate onCreate, OnStreamSessionDestroy onDestroy,
+            OnStreamSessionUpdate onUpdate, OnStreamSessionReceive onReceive,
             IntPtr handle, IntPtr sslContext, ref IntPtr streamServer);
-        [DllImport("mpnw")] private static extern void destroyStreamServer(IntPtr streamServer);
-        [DllImport("mpnw")] private static extern UIntPtr getStreamServerSessionBufferSize(IntPtr streamServer);
-        [DllImport("mpnw")] private static extern UIntPtr getStreamServerReceiveBufferSize(IntPtr streamServer);
-        [DllImport("mpnw")] private static extern IntPtr getStreamServerSocket(IntPtr streamServer);
-        [DllImport("mpnw")] private static extern IntPtr getStreamSessionSocket(IntPtr streamSession);
-        [DllImport("mpnw")] private static extern bool updateStreamServer(IntPtr streamServer);
-        [DllImport("mpnw")] private static extern bool streamSessionSend(
+        [DllImport(Mpnw.Lib)] private static extern void destroyStreamServer(IntPtr streamServer);
+        [DllImport(Mpnw.Lib)] private static extern UIntPtr getStreamServerSessionBufferSize(IntPtr streamServer);
+        [DllImport(Mpnw.Lib)] private static extern UIntPtr getStreamServerReceiveBufferSize(IntPtr streamServer);
+        [DllImport(Mpnw.Lib)] private static extern IntPtr getStreamServerSocket(IntPtr streamServer);
+        [DllImport(Mpnw.Lib)] private static extern IntPtr getStreamSessionSocket(IntPtr streamSession);
+        [DllImport(Mpnw.Lib)] private static extern bool updateStreamServer(IntPtr streamServer);
+        [DllImport(Mpnw.Lib)] private static extern bool streamSessionSend(
             IntPtr streamSession, IntPtr sendBuffer, UIntPtr byteCount);
-        
+
         private readonly IntPtr _handle;
         public IntPtr Handle => _handle;
-        
+
         public UIntPtr SessionBufferSize => getStreamServerSessionBufferSize(_handle);
         public UIntPtr ReceiveBufferSize => getStreamServerReceiveBufferSize(_handle);
         public Socket Socket => new Socket(getStreamServerSocket(_handle), false);
@@ -57,42 +57,42 @@ namespace Mpnw
 
             return new Socket(getStreamSessionSocket(_handle), false);
         }
-        
+
         protected bool Send(IntPtr streamSession, IntPtr sendBuffer, UIntPtr byteCount)
         {
             if (streamSession == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(streamSession));
             if (sendBuffer == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(sendBuffer));
-            
+
             return streamSessionSend(streamSession, sendBuffer, byteCount);
         }
-        protected bool Send(IntPtr streamSession, byte[] sendBuffer, UIntPtr byteCount)
+        protected bool Send(IntPtr streamSession, byte[] sendBuffer, int byteCount)
         {
             if (streamSession == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(streamSession));
-            
+
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = handle.AddrOfPinnedObject();
-            var result = streamSessionSend(streamSession, buffer, byteCount);
-            
+            var result = streamSessionSend(streamSession, buffer, (UIntPtr)byteCount);
+
             handle.Free();
             return result;
         }
-        protected bool Send(IntPtr streamSession, byte[] sendBuffer, UIntPtr byteCount, int offset)
+        protected bool Send(IntPtr streamSession, byte[] sendBuffer, int byteCount, int offset)
         {
             if (streamSession == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(streamSession));
-            
+
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = IntPtr.Add(handle.AddrOfPinnedObject(), offset);
-            var result = streamSessionSend(streamSession, buffer, byteCount);
-            
+            var result = streamSessionSend(streamSession, buffer, (UIntPtr)byteCount);
+
             handle.Free();
             return result;
         }
-        protected bool Send(IntPtr streamSession, byte[] sendBuffer) => 
-            Send(streamSession, sendBuffer, (UIntPtr)sendBuffer.Length);
+        protected bool Send(IntPtr streamSession, byte[] sendBuffer) =>
+            Send(streamSession, sendBuffer, sendBuffer.Length);
 
         protected abstract bool OnSessionCreate(IntPtr streamServer, IntPtr socket, ref IntPtr handle);
         protected abstract void OnSessionDestroy(IntPtr streamServer, IntPtr streamSession);

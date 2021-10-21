@@ -22,50 +22,50 @@ namespace Mpnw
         private delegate void OnStreamClientReceive(
             IntPtr streamClient, IntPtr receiveBuffer, UIntPtr byteCount);
         
-        [DllImport("mpnw")] private static extern MpnwResult createStreamClient(
-            AddressFamily addressFamily, UIntPtr receiveBufferSize, OnStreamClientReceive onReceive, 
-            IntPtr handle, IntPtr sslContext, ref IntPtr streamClient); 
-        [DllImport("mpnw")] private static extern void destroyStreamClient(IntPtr streamClient);
-        [DllImport("mpnw")] private static extern UIntPtr getStreamClientReceiveBufferSize(IntPtr streamClient);
-        [DllImport("mpnw")] private static extern IntPtr getStreamClientSocket(IntPtr streamClient);
-        [DllImport("mpnw")] private static extern bool connectStreamClient(
+        [DllImport(Mpnw.Lib)] private static extern MpnwResult createStreamClient(
+            AddressFamily addressFamily, UIntPtr receiveBufferSize, OnStreamClientReceive onReceive,
+            IntPtr handle, IntPtr sslContext, ref IntPtr streamClient);
+        [DllImport(Mpnw.Lib)] private static extern void destroyStreamClient(IntPtr streamClient);
+        [DllImport(Mpnw.Lib)] private static extern UIntPtr getStreamClientReceiveBufferSize(IntPtr streamClient);
+        [DllImport(Mpnw.Lib)] private static extern IntPtr getStreamClientSocket(IntPtr streamClient);
+        [DllImport(Mpnw.Lib)] private static extern bool connectStreamClient(
             IntPtr streamClient, IntPtr remoteAddress, double timeoutTime);
-        [DllImport("mpnw")] private static extern bool updateStreamClient(IntPtr streamClient);
-        [DllImport("mpnw")] private static extern bool streamClientSend(
+        [DllImport(Mpnw.Lib)] private static extern bool updateStreamClient(IntPtr streamClient);
+        [DllImport(Mpnw.Lib)] private static extern bool streamClientSend(
             IntPtr streamClient, IntPtr sendBuffer, UIntPtr byteCount);
 
         private readonly IntPtr _handle;
         public IntPtr Handle => _handle;
-        
+
         public UIntPtr ReceiveBufferSize => getStreamClientReceiveBufferSize(_handle);
         public Socket Socket => new Socket(getStreamClientSocket(_handle), false);
-        
+
         protected bool Send(IntPtr sendBuffer, UIntPtr byteCount)
         {
             if (sendBuffer == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(sendBuffer));
-            
+
             return streamClientSend(_handle, sendBuffer, byteCount);
         }
-        protected bool Send(byte[] sendBuffer, UIntPtr byteCount)
+        protected bool Send(byte[] sendBuffer, int byteCount)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = handle.AddrOfPinnedObject();
-            var result = streamClientSend(_handle, buffer, byteCount);
-            
+            var result = streamClientSend(_handle, buffer, (UIntPtr)byteCount);
+
             handle.Free();
             return result;
         }
-        protected bool Send(byte[] sendBuffer, UIntPtr byteCount, int offset)
+        protected bool Send(byte[] sendBuffer, int byteCount, int offset)
         {
             var handle = GCHandle.Alloc(sendBuffer, GCHandleType.Pinned);
             var buffer = IntPtr.Add(handle.AddrOfPinnedObject(), offset);
-            var result = streamClientSend(_handle, buffer, byteCount);
-            
+            var result = streamClientSend(_handle, buffer, (UIntPtr)byteCount);
+
             handle.Free();
             return result;
         }
-        protected bool Send(byte[] sendBuffer) => Send(sendBuffer, (UIntPtr)sendBuffer.Length);
+        protected bool Send(byte[] sendBuffer) => Send(sendBuffer, sendBuffer.Length);
 
         protected abstract void OnReceive(IntPtr streamClient, IntPtr receiveBuffer, UIntPtr byteCount);
         

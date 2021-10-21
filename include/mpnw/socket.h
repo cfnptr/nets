@@ -513,103 +513,103 @@ void destroySslContext(SslContext sslContext);
 SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext);
 
 /*
- * Splits and handles received stream data to the datagrams.
+ * Splits and handles received stream data to the messages.
  * Returns true on all handle success
  *
  * receiveBuffer - message receive buffer.
  * byteCount - message received byte count.
- * datagramBuffer - receive datagram buffer.
- * datagramBufferSiz - receive datagram buffer size.
- * datagramByteCount - pointer to the datagram buffer byte count.
- * datagramLengthSize - datagram length header size.
+ * messageBuffer - receive message buffer.
+ * messageBufferSiz - receive message buffer size.
+ * messageByteCount - pointer to the message buffer byte count.
+ * messageLengthSize - message length header size.
  * receiveFunction - pointer to the receive handler.
  * functionHandle - receive function handle or NULL.
  */
-inline static bool handleStreamDatagram(
+inline static bool handleStreamMessage(
 	const uint8_t* receiveBuffer,
 	size_t byteCount,
-	uint8_t* datagramBuffer,
-	size_t datagramBufferSize,
-	size_t* datagramByteCount,
-	size_t datagramLengthSize,
+	uint8_t* messageBuffer,
+	size_t messageBufferSize,
+	size_t* messageByteCount,
+	size_t messageLengthSize,
 	bool(*receiveFunction)(const uint8_t*, size_t, void*),
 	void* functionHandle)
 {
 	assert(receiveBuffer != NULL);
 	assert(byteCount != 0);
-	assert(datagramBuffer != NULL);
-	assert(datagramBufferSize != 0);
-	assert(datagramByteCount != NULL);
+	assert(messageBuffer != NULL);
+	assert(messageBufferSize != 0);
+	assert(messageByteCount != NULL);
 
 	assert(
-		datagramLengthSize == sizeof(uint8_t) ||
-		datagramLengthSize == sizeof(uint16_t) ||
-		datagramLengthSize == sizeof(uint32_t) ||
-		datagramLengthSize == sizeof(uint64_t));
-	assert(datagramBufferSize >= datagramLengthSize);
+		messageLengthSize == sizeof(uint8_t) ||
+		messageLengthSize == sizeof(uint16_t) ||
+		messageLengthSize == sizeof(uint32_t) ||
+		messageLengthSize == sizeof(uint64_t));
+	assert(messageBufferSize >= messageLengthSize);
 
-	size_t _datagramByteCount =
-		*datagramByteCount;
+	size_t _messageByteCount =
+		*messageByteCount;
 
 	size_t pointer = 0;
 
 	// Handle received data with buffered data
-	if (_datagramByteCount > 0)
+	if (_messageByteCount > 0)
 	{
-		// Datagram buffer has not full size
-		if (_datagramByteCount < datagramLengthSize)
+		// Message buffer has not full size
+		if (_messageByteCount < messageLengthSize)
 		{
-			size_t datagramSizePart =
-				datagramLengthSize - _datagramByteCount;
+			size_t messageSizePart =
+				messageLengthSize - _messageByteCount;
 
-			// Received not full datagram size
-			if (datagramSizePart > byteCount)
+			// Received not full message size
+			if (messageSizePart > byteCount)
 			{
-				// Store part of the received datagram size
+				// Store part of the received message size
 				memcpy(
-					datagramBuffer + _datagramByteCount,
+					messageBuffer + _messageByteCount,
 					receiveBuffer,
 					byteCount);
-				*datagramByteCount += byteCount;
+				*messageByteCount += byteCount;
 				return true;
 			}
 
-			// Copy remaining datagram size part
+			// Copy remaining message size part
 			memcpy(
-				datagramBuffer + _datagramByteCount,
+				messageBuffer + _messageByteCount,
 				receiveBuffer,
-				datagramSizePart);
-			pointer += datagramSizePart;
-			_datagramByteCount += datagramSizePart;
+				messageSizePart);
+			pointer += messageSizePart;
+			_messageByteCount += messageSizePart;
 		}
 
-		// Decode received datagram size
-		uint64_t datagramSize;
+		// Decode received message size
+		uint64_t messageSize;
 
-		if (datagramLengthSize == sizeof(uint8_t))
+		if (messageLengthSize == sizeof(uint8_t))
 		{
-			datagramSize = datagramBuffer[0];
+			messageSize = messageBuffer[0];
 		}
-		else if (datagramLengthSize == sizeof(uint16_t))
+		else if (messageLengthSize == sizeof(uint16_t))
 		{
 #if MPNW_LITTLE_ENDIAN
-			datagramSize = *(uint16_t*)datagramBuffer;
+			messageSize = *(uint16_t*)messageBuffer;
 #else
 			datagramSize = swapBytes16(*(uint16_t*)datagramBuffer);
 #endif
 		}
-		else if (datagramLengthSize == sizeof(uint32_t))
+		else if (messageLengthSize == sizeof(uint32_t))
 		{
 #if MPNW_LITTLE_ENDIAN
-			datagramSize = *(uint32_t*)datagramBuffer;
+			messageSize = *(uint32_t*)messageBuffer;
 #else
 			datagramSize = swapBytes32(*(uint32_t*)datagramBuffer);
 #endif
 		}
-		else if (datagramLengthSize == sizeof(uint64_t))
+		else if (messageLengthSize == sizeof(uint64_t))
 		{
 #if MPNW_LITTLE_ENDIAN
-			datagramSize = *(uint64_t*)datagramBuffer;
+			messageSize = *(uint64_t*)messageBuffer;
 #else
 			datagramSize = swapBytes64(*(uint64_t*)datagramBuffer);
 #endif
@@ -619,86 +619,86 @@ inline static bool handleStreamDatagram(
 			abort();
 		}
 
-		// Received datagram is bigger than buffer
-		if (datagramSize > datagramBufferSize - datagramLengthSize)
+		// Received message is bigger than buffer
+		if (messageSize > messageBufferSize - messageLengthSize)
 			return false;
 
-		size_t neededPartSize = datagramSize -
-			(_datagramByteCount - datagramLengthSize);
+		size_t neededPartSize = messageSize -
+			(_messageByteCount - messageLengthSize);
 
-		// Received not full datagram
+		// Received not full message
 		if (neededPartSize > byteCount - pointer)
 		{
-			size_t datagramPartSize = byteCount - pointer;
+			size_t messagePartSize = byteCount - pointer;
 
 			memcpy(
-				datagramBuffer + _datagramByteCount,
+				messageBuffer + _messageByteCount,
 				receiveBuffer + pointer,
-				datagramPartSize);
-			*datagramByteCount = _datagramByteCount + datagramPartSize;
+				messagePartSize);
+			*messageByteCount = _messageByteCount + messagePartSize;
 			return true;
 		}
 
 		memcpy(
-			datagramBuffer + _datagramByteCount,
+			messageBuffer + _messageByteCount,
 			receiveBuffer + pointer,
 			neededPartSize);
 
 		bool result = receiveFunction(
-			datagramBuffer + datagramLengthSize,
-			datagramSize,
+			messageBuffer + messageLengthSize,
+			messageSize,
 			functionHandle);
 
 		if (result == false)
 			return false;
 
-		*datagramByteCount = 0;
+		*messageByteCount = 0;
 		pointer += neededPartSize;
 	}
 
 	// Continue until all received data handled
 	while (pointer < byteCount)
 	{
-		// Received not full datagram size
-		if (datagramLengthSize > byteCount - pointer)
+		// Received not full message size
+		if (messageLengthSize > byteCount - pointer)
 		{
-			size_t datagramSizePart = byteCount - pointer;
+			size_t messageSizePart = byteCount - pointer;
 
 			memcpy(
-				datagramBuffer,
+				messageBuffer,
 				receiveBuffer + pointer,
-				datagramSizePart);
-			*datagramByteCount += datagramSizePart;
+				messageSizePart);
+			*messageByteCount += messageSizePart;
 			return true;
 		}
 
-		// Decode received datagram size
-		uint64_t datagramSize;
+		// Decode received message size
+		uint64_t messageSize;
 
-		if (datagramLengthSize == sizeof(uint8_t))
+		if (messageLengthSize == sizeof(uint8_t))
 		{
-			datagramSize = receiveBuffer[pointer];
+			messageSize = receiveBuffer[pointer];
 		}
-		else if (datagramLengthSize == sizeof(uint16_t))
+		else if (messageLengthSize == sizeof(uint16_t))
 		{
 #if MPNW_LITTLE_ENDIAN
-			datagramSize = *(uint16_t*)(receiveBuffer + pointer);
+			messageSize = *(uint16_t*)(receiveBuffer + pointer);
 #else
 			datagramSize = swapBytes16(*(uint16_t*)(receiveBuffer + pointer));
 #endif
 		}
-		else if (datagramLengthSize == sizeof(uint32_t))
+		else if (messageLengthSize == sizeof(uint32_t))
 		{
 #if MPNW_LITTLE_ENDIAN
-			datagramSize = *(uint32_t*)(receiveBuffer + pointer);
+			messageSize = *(uint32_t*)(receiveBuffer + pointer);
 #else
 			datagramSize = swapBytes32(*(uint32_t*)(receiveBuffer + pointer));
 #endif
 		}
-		else if (datagramLengthSize == sizeof(uint64_t))
+		else if (messageLengthSize == sizeof(uint64_t))
 		{
 #if MPNW_LITTLE_ENDIAN
-			datagramSize = *(uint64_t*)(receiveBuffer + pointer);
+			messageSize = *(uint64_t*)(receiveBuffer + pointer);
 #else
 			datagramSize = swapBytes64(*(uint64_t*)(receiveBuffer + pointer));
 #endif
@@ -708,33 +708,33 @@ inline static bool handleStreamDatagram(
 			abort();
 		}
 
-		// Received datagram is bigger than buffer
-		if (datagramSize > datagramBufferSize - datagramLengthSize)
+		// Received message is bigger than buffer
+		if (messageSize > messageBufferSize - messageLengthSize)
 			return false;
 
-		// Received not full datagram
-		if (datagramSize > (byteCount - pointer) - datagramLengthSize)
+		// Received not full message
+		if (messageSize > (byteCount - pointer) - messageLengthSize)
 		{
-			size_t datagramPartSize = byteCount - pointer;
+			size_t messagePartSize = byteCount - pointer;
 
 			memcpy(
-				datagramBuffer,
+				messageBuffer,
 				receiveBuffer + pointer,
-				datagramPartSize);
-			*datagramByteCount += datagramPartSize;
+				messagePartSize);
+			*messageByteCount += messagePartSize;
 			return true;
 		}
 
-		// Handle received datagram data
+		// Handle received message data
 		bool result = receiveFunction(
-			receiveBuffer + pointer + datagramLengthSize,
-			datagramSize,
+			receiveBuffer + pointer + messageLengthSize,
+			messageSize,
 			functionHandle);
 
 		if (result == false)
 			return false;
 
-		pointer += datagramLengthSize + datagramSize;
+		pointer += messageLengthSize + messageSize;
 	}
 
 	return true;
