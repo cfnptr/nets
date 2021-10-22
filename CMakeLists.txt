@@ -4,6 +4,10 @@ if (${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
 	message(FATAL_ERROR "Prevented in-tree build")
 endif ()
 
+if (TARGET mpnw)
+	return()
+endif ()
+
 project(mpnw 
 	VERSION 1.2.0
 	DESCRIPTION "Multi-platform networking library"
