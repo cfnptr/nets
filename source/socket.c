@@ -1333,7 +1333,7 @@ MpnwResult createPublicSslContext(
 	*_sslContext = sslContext;
 	return SUCCESS_MPNW_RESULT;
 #else
-	return NULL;
+	return NO_OPENSSL_SUPPORT_MPNW_RESULT;
 #endif
 }
 
@@ -1428,7 +1428,7 @@ MpnwResult createPrivateSslContext(
 	*_sslContext = sslContext;
 	return SUCCESS_MPNW_RESULT;
 #else
-	return NULL;
+	return NO_OPENSSL_SUPPORT_MPNW_RESULT;
 #endif
 }
 

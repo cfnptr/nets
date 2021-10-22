@@ -30,7 +30,8 @@ namespace Mpnw
         FailedToGetAddressInfo = 9,
         FailedToCreateSSL = 10,
         FailedToLoadCertificate = 11,
-        Count = 12,
+        NoOpensslSupport = 12,
+        Count = 13,
     }
 
     public class MpnwException : Exception
