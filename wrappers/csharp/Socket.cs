@@ -353,7 +353,7 @@ namespace Mpnw
 
         public delegate bool OnStreamMessageReceive(
             IntPtr messageBuffer, UIntPtr byteCount, IntPtr handle);
-        [DllImport(Mpnw.Lib)] public static extern bool handleStreamMessage(
+        [DllImport(Mpnw.Lib)] public static extern bool sHandleStreamMessage(
             IntPtr receiveBuffer, UIntPtr byteCount, IntPtr messageBuffer, UIntPtr messageBufferSize,
             ref UIntPtr messageByteCount, UIntPtr messageLengthSize,
             OnStreamMessageReceive receiveFunction, IntPtr functionHandle);

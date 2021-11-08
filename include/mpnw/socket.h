@@ -739,3 +739,14 @@ inline static bool handleStreamMessage(
 
 	return true;
 }
+
+// For library symbols
+bool sHandleStreamMessage(
+	const uint8_t* receiveBuffer,
+	size_t byteCount,
+	uint8_t* messageBuffer,
+	size_t messageBufferSize,
+	size_t* messageByteCount,
+	size_t messageLengthSize,
+	bool(*receiveFunction)(const uint8_t*, size_t, void*),
+	void* functionHandle);

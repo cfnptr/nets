@@ -1464,3 +1464,24 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext)
 	abort();
 #endif
 }
+
+bool sHandleStreamMessage(
+	const uint8_t* receiveBuffer,
+	size_t byteCount,
+	uint8_t* messageBuffer,
+	size_t messageBufferSize,
+	size_t* messageByteCount,
+	size_t messageLengthSize,
+	bool(*receiveFunction)(const uint8_t*, size_t, void*),
+	void* functionHandle)
+{
+	return handleStreamMessage(
+		receiveBuffer,
+		byteCount,
+		messageBuffer,
+		messageBufferSize,
+		messageByteCount,
+		messageLengthSize,
+		receiveFunction,
+		functionHandle);
+}
