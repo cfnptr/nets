@@ -105,7 +105,6 @@ bool isNetworkInitialized();
  * socketType - socket communication type.
  * addressFamily - internet protocol address family.
  * socketAddress - socket local bind address.
- * listening - socket listening state.
  * blocking - socket in blocking mode.
  * sslContext - SSL context or NULL.
  * socket - pointer to the socket value.
@@ -114,7 +113,6 @@ MpnwResult createSocket(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
-	bool listening,
 	bool blocking,
 	SslContext sslContext,
 	Socket* socket);
@@ -130,12 +128,6 @@ void destroySocket(Socket socket);
  * socket - socket instance.
  */
 SocketType getSocketType(Socket socket);
-
-/*
- * Returns true if socket is in listening state.
- * socket - socket instance.
- */
-bool isSocketListening(Socket socket);
 
 /*
  * Returns true if socket blocking mode.
@@ -186,6 +178,28 @@ bool isSocketNoDelay(Socket socket);
 void setSocketNoDelay(
 	Socket socket,
 	bool value);
+
+/*
+ * Returns true if socket is in listening state.
+ * socket - socket instance.
+ */
+bool isSocketListening(Socket socket);
+
+/*
+ * Returns socket pending connections queue size.
+ * socket - socket instance.
+ */
+size_t getSocketQueueSize(Socket socket);
+
+/*
+ * Put socket in a listening state.
+ *
+ * socket - socket instance.
+ * queueSize - pending connections queue size.
+ */
+bool listenSocket(
+	Socket socket,
+	size_t queueSize);
 
 /*
  * Accept a new socket connection.

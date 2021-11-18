@@ -58,19 +58,22 @@ typedef bool(*OnStreamSessionReceive)(
  *
  * addressFamily - local socket address family.
  * service - local address service string.
- * sessionBufferSize - socket session buffer size.
- * receiveBufferSize - socket message receive buffer size.
- * receiveTimeoutTime - socket message receive timeout time (s).
- * receiveFunction - message receive function.
- * createFunction - create function or NULL.
- * destroyFunction - destroy function or NULL.
+ * sessionBufferSize - session receive buffer size.
+ * connectionQueueSize - pending connections queue size.
+ * receiveBufferSize - message receive buffer size.
+ * onCreate - session create function.
+ * onDestroy - session destroy function.
+ * onUpdate - session update function.
+ * onReceive - message receive function.
  * handle - receive function argument.
  * sslContext - SSL context or NULL.
+ * streamServer - pointer to the stream server value.
  */
 MpnwResult createStreamServer(
 	AddressFamily addressFamily,
 	const char* service,
 	size_t sessionBufferSize,
+	size_t connectionQueueSize,
 	size_t receiveBufferSize,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
@@ -159,8 +162,8 @@ bool updateStreamServer(StreamServer streamServer);
  * Returns true on success.
  *
  * streamSession - stream session instance.
- * buffer - message send buffer.
- * count - send byte count.
+ * sendBuffer - message send buffer.
+ * byteCount - send byte count.
  */
 bool streamSessionSend(
 	StreamSession streamSession,

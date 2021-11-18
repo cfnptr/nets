@@ -41,36 +41,29 @@ typedef enum MpnwResult
 	MPNW_RESULT_COUNT = 13,
 } MpnwResult;
 
+static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
+	"Success",
+	"Network is not initialized",
+	"Failed to allocate",
+	"Failed to create socket",
+	"Failed to bind socket",
+	"Failed to listen socket",
+	"Failed to accept socket",
+	"Failed to connect socket",
+	"Failed to set socket flag",
+	"Failed to get address info",
+	"Failed to create SSL",
+	"Failed to load certificate",
+};
+
 inline static const char* mpnwResultToString(
 	MpnwResult result)
 {
-	switch(result)
+	if (result < SUCCESS_MPNW_RESULT ||
+		result >= MPNW_RESULT_COUNT)
 	{
-	default:
-		return "Unknown";
-	case SUCCESS_MPNW_RESULT:
-		return "Success";
-	case NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT:
-       	return "Network is not initialized";
-	case FAILED_TO_ALLOCATE_MPNW_RESULT:
-		return "Failed to allocate";
-	case FAILED_TO_CREATE_SOCKET_MPNW_RESULT:
-		return "Failed to create socket";
-	case FAILED_TO_BIND_SOCKET_MPNW_RESULT:
-		return "Failed to bind socket";
-	case FAILED_TO_LISTEN_SOCKET_MPNW_RESULT:
-		return "Failed to listen socket";
-	case FAILED_TO_ACCEPT_SOCKET_MPNW_RESULT:
-		return "Failed to accept socket";
-	case FAILED_TO_CONNECT_SOCKET_MPNW_RESULT:
-		return "Failed to connect socket";
-	case FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT:
-		return "Failed to set socket flag";
-	case FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT:
-		return "Failed to get address info";
-	case FAILED_TO_CREATE_SSL_MPNW_RESULT:
-		return "Failed to create SSL";
-	case FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT:
-		return "Failed to load certificate";
-    }
+		return "Unknown pack result";
+	}
+
+	return mpnwResultStrings[result];
 }

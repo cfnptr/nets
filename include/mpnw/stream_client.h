@@ -33,7 +33,7 @@ typedef void(*OnStreamClientReceive)(
  * onReceive - message receive function.
  * handle - receive function argument.
  * sslContext - SSL context instance or NULL.
- * streamClient - pointer to the streamClient value.
+ * streamClient - pointer to the stream client value.
  */
 MpnwResult createStreamClient(
 	AddressFamily addressFamily,

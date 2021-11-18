@@ -19,7 +19,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -52,10 +51,9 @@ static WSADATA wsaData;
 struct Socket
 {
 	SocketType type;
-	bool listening;
 	bool blocking;
+	size_t queueSize;
 	SOCKET handle;
-
 #if MPNW_SUPPORT_OPENSSL
 	SslContext sslContext;
 	SSL* ssl;
@@ -101,9 +99,7 @@ void terminateNetwork()
 	if(networkInitialized == false)
 		return;
 
-#if __linux__ || __APPLE__
-	signal(SIGPIPE, SIG_DFL);
-#elif _WIN32
+#if _WIN32
 	int result = WSACleanup();
 
 	if (result != 0)
@@ -125,7 +121,6 @@ MpnwResult createSocket(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
-	bool listening,
 	bool blocking,
 	SslContext sslContext,
 	Socket* _socket)
@@ -148,8 +143,7 @@ MpnwResult createSocket(
 	if (socketInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
-	int type, protocol, family;
-	SOCKET_LENGTH length;
+	int type, protocol;
 
 	if (socketType == STREAM_SOCKET_TYPE)
 	{
@@ -165,6 +159,9 @@ MpnwResult createSocket(
 	{
 		abort();
 	}
+
+	int family;
+	SOCKET_LENGTH length;
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 	{
@@ -204,22 +201,6 @@ MpnwResult createSocket(
 		return FAILED_TO_BIND_SOCKET_MPNW_RESULT;
 	}
 
-	if (listening == true)
-	{
-		assert(socketType == STREAM_SOCKET_TYPE);
-
-		result = listen(
-			handle,
-			SOMAXCONN);
-
-		if (result != 0)
-		{
-			closesocket(handle);
-			free(socketInstance);
-			return FAILED_TO_LISTEN_SOCKET_MPNW_RESULT;
-		}
-	}
-
 	if (blocking == false)
 	{
 #if __linux__ || __APPLE__
@@ -257,8 +238,8 @@ MpnwResult createSocket(
 	}
 
 	socketInstance->type = socketType;
-	socketInstance->listening = listening;
 	socketInstance->blocking = blocking;
+	socketInstance->queueSize = 0;
 	socketInstance->handle = handle;
 
 #if MPNW_SUPPORT_OPENSSL
@@ -325,13 +306,6 @@ SocketType getSocketType(Socket socket)
 	assert(socket != NULL);
 	assert(networkInitialized == true);
 	return socket->type;
-}
-
-bool isSocketListening(Socket socket)
-{
-	assert(socket != NULL);
-	assert(networkInitialized == true);
-	return socket->listening;
 }
 
 bool isSocketBlocking(Socket socket)
@@ -423,7 +397,7 @@ SslContext getSocketSslContext(Socket socket)
 bool isSocketNoDelay(Socket socket)
 {
 	assert(socket != NULL);
-	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
+	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized == true);
 
 #if __linux__ || __APPLE__
@@ -456,7 +430,7 @@ void setSocketNoDelay(
 	bool _value)
 {
 	assert(socket != NULL);
-	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
+	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized == true);
 
 #if __linux__ || __APPLE__
@@ -482,14 +456,52 @@ void setSocketNoDelay(
 		abort();
 }
 
+bool isSocketListening(Socket socket)
+{
+	assert(socket != NULL);
+	assert(socket->type == STREAM_SOCKET_TYPE);
+	assert(networkInitialized == true);
+	return socket->queueSize != 0;
+}
+
+size_t getSocketQueueSize(Socket socket)
+{
+	assert(socket != NULL);
+	assert(socket->type == STREAM_SOCKET_TYPE);
+	assert(networkInitialized == true);
+	return socket->queueSize;
+}
+
+bool listenSocket(
+	Socket socket,
+	size_t queueSize)
+{
+	assert(socket != NULL);
+	assert(queueSize != 0);
+	assert(queueSize <= SOMAXCONN);
+	assert(socket->queueSize == 0);
+	assert(socket->type == STREAM_SOCKET_TYPE);
+	assert(networkInitialized == true);
+
+	int result = listen(
+		socket->handle,
+		(int)queueSize);
+
+	if (result != 0)
+		return false;
+
+	socket->queueSize = queueSize;
+	return true;
+}
+
 MpnwResult acceptSocket(
 	Socket socket,
 	Socket* _accepted)
 {
 	assert(socket != NULL);
 	assert(_accepted != NULL);
-	assert(isSocketListening(socket) == true);
-	assert(getSocketType(socket) == STREAM_SOCKET_TYPE);
+	assert(socket->queueSize != 0);
+	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized == true);
 
 	Socket accepted = malloc(
@@ -546,8 +558,8 @@ MpnwResult acceptSocket(
 	}
 
 	accepted->type = socket->type;
-	accepted->listening = false;
 	accepted->blocking = socket->blocking;
+	accepted->queueSize = 0;
 	accepted->handle = handle;
 
 #if MPNW_SUPPORT_OPENSSL

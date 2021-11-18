@@ -88,7 +88,6 @@ MpnwResult createDatagramServer(
 		addressFamily,
 		socketAddress,
 		false,
-		false,
 		NULL,
 		&socket);
 

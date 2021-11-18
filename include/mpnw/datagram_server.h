@@ -34,6 +34,7 @@ typedef void(*OnDatagramServerReceive)(
  * receiveBufferSize - datagram receive buffer size.
  * onReceive - datagram receive function.
  * handle - receive function argument.
+ * datagramServer - pointer to the datagram server value.
  */
 MpnwResult createDatagramServer(
 	AddressFamily addressFamily,

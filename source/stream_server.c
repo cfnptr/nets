@@ -41,6 +41,7 @@ MpnwResult createStreamServer(
 	AddressFamily addressFamily,
 	const char* service,
 	size_t sessionBufferSize,
+	size_t connectionQueueSize,
 	size_t receiveBufferSize,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
@@ -52,6 +53,7 @@ MpnwResult createStreamServer(
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(sessionBufferSize != 0);
+	assert(connectionQueueSize != 0);
 	assert(receiveBufferSize != 0);
 	assert(onCreate != NULL);
 	assert(onDestroy != NULL);
@@ -95,12 +97,16 @@ MpnwResult createStreamServer(
 			service,
 			&socketAddress);
 	}
-	else
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
 	{
 		mpnwResult = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
 			service,
 			&socketAddress);
+	}
+	else
+	{
+		abort();
 	}
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -117,7 +123,6 @@ MpnwResult createStreamServer(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
 		socketAddress,
-		true,
 		false,
 		sslContext,
 		&acceptSocket);
@@ -130,6 +135,18 @@ MpnwResult createStreamServer(
 		free(receiveBuffer);
 		free(streamServer);
 		return mpnwResult;
+	}
+
+	bool result = listenSocket(
+		acceptSocket,
+		connectionQueueSize);
+
+	if (result == false)
+	{
+		free(sessionBuffer);
+		free(receiveBuffer);
+		free(streamServer);
+		return FAILED_TO_LISTEN_SOCKET_MPNW_RESULT;
 	}
 
 	streamServer->sessionBufferSize = sessionBufferSize;
@@ -273,22 +290,6 @@ bool updateStreamServer(StreamServer streamServer)
 	for (size_t i = 0; i < sessionCount; i++)
 	{
 		StreamSession streamSession = &sessionBuffer[i];
-		Socket receiveSocket = streamSession->receiveSocket;
-
-		if (streamSession->isSslAccepted == false)
-		{
-			bool result = acceptSslSocket(receiveSocket);
-
-			if (result == true)
-			{
-				streamSession->isSslAccepted = true;
-				isUpdated = true;
-			}
-			else
-			{
-				continue;
-			}
-		}
 
 		bool result = onUpdate(
 			streamServer,
@@ -296,6 +297,19 @@ bool updateStreamServer(StreamServer streamServer)
 
 		if (result == false)
 			goto DESTROY_SESSION;
+
+		Socket receiveSocket = streamSession->receiveSocket;
+
+		if (streamSession->isSslAccepted == false)
+		{
+			result = acceptSslSocket(receiveSocket);
+
+			if (result == false)
+				continue;
+
+			streamSession->isSslAccepted = true;
+			isUpdated = true;
+		}
 
 		size_t byteCount;
 
@@ -339,20 +353,26 @@ bool updateStreamServer(StreamServer streamServer)
 		isUpdated = true;
 	}
 
-	Socket acceptedSocket;
-
-	MpnwResult mpnwResult = acceptSocket(
-		serverSocket,
-		&acceptedSocket);
-
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	while (true)
 	{
-		streamServer->sessionCount = sessionCount;
-		return isUpdated;
-	}
+		if (sessionCount == sessionBufferSize)
+		{
+			streamServer->sessionCount = sessionCount;
+			return isUpdated;
+		}
 
-	if (sessionCount < sessionBufferSize)
-	{
+		Socket acceptedSocket;
+
+		MpnwResult mpnwResult = acceptSocket(
+			serverSocket,
+			&acceptedSocket);
+
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		{
+			streamServer->sessionCount = sessionCount;
+			return isUpdated;
+		}
+
 		void* session;
 
 		bool result = onCreate(
@@ -376,16 +396,6 @@ bool updateStreamServer(StreamServer streamServer)
 			destroySocket(acceptedSocket);
 		}
 	}
-	else
-	{
-		shutdownSocket(
-			acceptedSocket,
-			RECEIVE_SEND_SOCKET_SHUTDOWN);
-		destroySocket(acceptedSocket);
-	}
-
-	streamServer->sessionCount = sessionCount;
-	return true;
 }
 
 bool streamSessionSend(
