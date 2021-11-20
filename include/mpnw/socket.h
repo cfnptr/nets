@@ -550,7 +550,6 @@ inline static bool handleStreamMessage(
 	void* functionHandle)
 {
 	assert(receiveBuffer != NULL);
-	assert(byteCount != 0);
 	assert(messageBuffer != NULL);
 	assert(messageBufferSize != 0);
 	assert(messageByteCount != NULL);
@@ -562,9 +561,11 @@ inline static bool handleStreamMessage(
 		messageLengthSize == sizeof(uint64_t));
 	assert(messageBufferSize >= messageLengthSize);
 
-	size_t _messageByteCount =
-		*messageByteCount;
+	// Check instead of assert for safety
+	if (byteCount == 0)
+		return false;
 
+	size_t _messageByteCount = *messageByteCount;
 	size_t pointer = 0;
 
 	// Handle received data with buffered data
