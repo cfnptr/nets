@@ -9,7 +9,7 @@ if (TARGET mpnw)
 endif ()
 
 project(mpnw 
-	VERSION 1.2.0
+	VERSION 1.3.0
 	DESCRIPTION "Multi-platform networking library"
 	HOMEPAGE_URL "https://github.com/cfnptr/mpnw"
 	LANGUAGES C)
