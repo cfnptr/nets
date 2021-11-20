@@ -14,9 +14,6 @@
 
 #include "mpnw/datagram_server.h"
 
-#include <assert.h>
-#include <stdio.h>
-
 struct DatagramServer
 {
 	size_t receiveBufferSize;

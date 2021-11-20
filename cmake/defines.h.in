@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
 
 #define __MPNW__
 
@@ -22,6 +25,39 @@
 
 #define MPNW_SUPPORT_OPENSSL @MPNW_SUPPORT_OPENSSL@
 #define MPNW_LITTLE_ENDIAN @MPNW_LITTLE_ENDIAN@
+
+#if __linux__
+#include <byteswap.h>
+#define swapBytes16(x) bswap_16(x)
+#define swapBytes32(x) bswap_32(x)
+#define swapBytes64(x) bswap_64(x)
+#elif __APPLE__
+#include <libkern/OSByteOrder.h>
+#define swapBytes16(x) OSSwapInt16(x)
+#define swapBytes32(x) OSSwapInt32(x)
+#define swapBytes64(x) OSSwapInt64(x)
+#elif _WIN32
+#include <stdlib.h>
+#define swapBytes16(x) _byteswap_ushort(x)
+#define swapBytes32(x) _byteswap_ulong(x)
+#define swapBytes64(x) _byteswap_uint64(x)
+#endif
+
+#if MPNW_LITTLE_ENDIAN
+#define hostToNet16(x) swapBytes16(x)
+#define hostToNet32(x) swapBytes32(x)
+#define hostToNet64(x) swapBytes64(x)
+#define netToHost16(x) swapBytes16(x)
+#define netToHost32(x) swapBytes32(x)
+#define netToHost64(x) swapBytes64(x)
+#else
+#define hostToNet16(x) (x)
+#define hostToNet32(x) (x)
+#define hostToNet64(x) (x)
+#define netToHost16(x) (x)
+#define netToHost32(x) (x)
+#define netToHost64(x) (x)
+#endif
 
 typedef enum MpnwResult
 {
@@ -66,4 +102,69 @@ inline static const char* mpnwResultToString(
 	}
 
 	return mpnwResultStrings[result];
+}
+
+typedef struct StreamMessage
+{
+	uint8_t* buffer;
+	size_t size;
+	size_t offset;
+} StreamMessage;
+
+inline static StreamMessage createStreamMessage(
+	uint8_t* buffer,
+	size_t messageSize,
+	uint8_t lengthSize)
+{
+	assert(buffer != NULL);
+	assert(messageSize != 0);
+
+	assert(
+		(lengthSize == sizeof(uint8_t) && messageSize <= UINT8_MAX) ||
+		(lengthSize == sizeof(uint16_t) && messageSize <= UINT16_MAX) ||
+		(lengthSize == sizeof(uint32_t) && messageSize <= UINT32_MAX) ||
+		(lengthSize == sizeof(uint64_t) && messageSize <= UINT64_MAX));
+
+	StreamMessage streamMessage;
+	streamMessage.buffer = buffer;
+	streamMessage.size = messageSize;
+
+	if (lengthSize == sizeof(uint8_t))
+	{
+		buffer[0] = messageSize + sizeof(uint8_t);
+		streamMessage.offset = sizeof(uint8_t);
+	}
+	else if (lengthSize == sizeof(uint16_t))
+	{
+#if MPNW_LITTLE_ENDIAN
+		*((uint16_t*)buffer) = messageSize + sizeof(uint16_t);
+#else
+		*((uint16_t*)buffer) = swapBytes16(messageSize + sizeof(uint16_t));
+#endif
+		streamMessage.offset = sizeof(uint16_t);
+	}
+	else if (lengthSize == sizeof(uint32_t))
+	{
+#if MPNW_LITTLE_ENDIAN
+		*((uint32_t*)buffer) = messageSize + sizeof(uint32_t);
+#else
+		*((uint32_t*)buffer) = swapBytes32(messageSize + sizeof(uint32_t));
+#endif
+		streamMessage.offset = sizeof(uint32_t);
+	}
+	else if (lengthSize == sizeof(uint64_t))
+	{
+#if MPNW_LITTLE_ENDIAN
+		*((uint64_t*)buffer) = messageSize + sizeof(uint64_t);
+#else
+		*((uint64_t*)buffer) = swapBytes64(messageSize + sizeof(uint64_t));
+#endif
+		streamMessage.offset = sizeof(uint64_t);
+	}
+    else
+	{
+		abort();
+	}
+
+	return streamMessage;
 }

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "mpnw/stream_server.h"
-#include <stdio.h>
 
 struct StreamSession
 {
@@ -399,4 +398,19 @@ bool streamSessionSend(
 		streamSession->receiveSocket,
 		sendBuffer,
 		byteCount);
+}
+
+bool streamSessionSendMessage(
+	StreamSession streamSession,
+	StreamMessage streamMessage)
+{
+	assert(streamSession != NULL);
+	assert(streamMessage.message != NULL);
+	assert(streamMessage.size != 0);
+	assert(streamMessage.size == streamMessage.offset);
+
+	return socketSend(
+		streamSession->receiveSocket,
+		streamMessage.message,
+		streamMessage.size);
 }

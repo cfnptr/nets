@@ -14,12 +14,8 @@
 
 #pragma once
 #include "mpnw/defines.h"
-#include "mpnw/byte_swap.h"
 
 #include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <assert.h>
 #include <stdbool.h>
 
 /* Internet Protocol V4 any address */
@@ -545,7 +541,7 @@ inline static bool handleStreamMessage(
 	uint8_t* messageBuffer,
 	size_t messageBufferSize,
 	size_t* messageByteCount,
-	size_t messageLengthSize,
+	uint8_t messageLengthSize,
 	bool(*receiveFunction)(const uint8_t*, size_t, void*),
 	void* functionHandle)
 {
@@ -574,7 +570,7 @@ inline static bool handleStreamMessage(
 		// Message buffer has not full size
 		if (_messageByteCount < messageLengthSize)
 		{
-			size_t messageSizePart =
+			size_t messageSizePart = (size_t)
 				messageLengthSize - _messageByteCount;
 
 			// Received not full message size

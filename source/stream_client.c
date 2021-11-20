@@ -15,8 +15,6 @@
 #include "mpnw/stream_client.h"
 #include "mpmt/thread.h"
 
-#include <assert.h>
-
 struct StreamClient
 {
 	size_t receiveBufferSize;
@@ -228,4 +226,19 @@ bool streamClientSend(
 		streamClient->socket,
 		sendBuffer,
 		byteCount);
+}
+
+bool streamClientSendMessage(
+	StreamClient streamClient,
+	StreamMessage streamMessage)
+{
+	assert(streamClient != NULL);
+	assert(streamMessage.message != NULL);
+	assert(streamMessage.size != 0);
+	assert(streamMessage.size == streamMessage.offset);
+
+	return socketSend(
+		streamClient->socket,
+		streamMessage.message,
+		streamMessage.size);
 }

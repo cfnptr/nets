@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "mpnw/datagram_client.h"
-#include <assert.h>
 
 struct DatagramClient
 {

@@ -60,11 +60,11 @@ typedef bool(*OnStreamSessionReceive)(
  * service - local address service string.
  * sessionBufferSize - session receive buffer size.
  * connectionQueueSize - pending connections queue size.
- * receiveBufferSize - message receive buffer size.
+ * receiveBufferSize - data receive buffer size.
  * onCreate - session create function.
  * onDestroy - session destroy function.
  * onUpdate - session update function.
- * onReceive - message receive function.
+ * onReceive - data receive function.
  * handle - receive function argument.
  * sslContext - SSL context or NULL.
  * streamServer - pointer to the stream server value.
@@ -150,7 +150,7 @@ Socket getStreamSessionSocket(StreamSession streamSession);
 void* getStreamSessionHandle(StreamSession streamSession);
 
 /*
- * Receive buffered datagrams.
+ * Update stream server sessions.
  * Returns true if update actions occurred.
  *
  * streamServer - stream server instance.
@@ -158,14 +158,25 @@ void* getStreamSessionHandle(StreamSession streamSession);
 bool updateStreamServer(StreamServer streamServer);
 
 /*
- * Send datagram to the specified session.
+ * Send data to the specified session.
  * Returns true on success.
  *
  * streamSession - stream session instance.
- * sendBuffer - message send buffer.
+ * sendBuffer - data send buffer.
  * byteCount - send byte count.
  */
 bool streamSessionSend(
 	StreamSession streamSession,
 	const void* sendBuffer,
 	size_t byteCount);
+
+/*
+ * Send stream message to the specified session.
+ * Returns true on success.
+ *
+ * streamSession - stream session instance.
+ * sendBuffer - send stream message.
+ */
+bool streamSessionSendMessage(
+	StreamSession streamSession,
+	StreamMessage streamMessage);

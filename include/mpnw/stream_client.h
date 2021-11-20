@@ -29,8 +29,8 @@ typedef void(*OnStreamClientReceive)(
  * Returns operation MPNW result.
  *
  * addressFamily - local socket address family.
- * receiveBufferSize - message receive buffer size.
- * onReceive - message receive function.
+ * receiveBufferSize - data receive buffer size.
+ * onReceive - data receive function.
  * handle - receive function argument.
  * sslContext - SSL context instance or NULL.
  * streamClient - pointer to the stream client value.
@@ -88,21 +88,32 @@ bool connectStreamClient(
 
 /*
  * Receive buffered datagrams.
- * Returns true if message received.
+ * Returns true if any data is received.
  *
  * streamClient - stream client instance.
  */
 bool updateStreamClient(StreamClient streamClient);
 
 /*
- * Send message to the stream server.
+ * Send data to the server.
  * Returns true on success.
  *
  * streamClient - stream client instance.
- * sendBuffer - message send buffer.
+ * sendBuffer - data send buffer.
  * byteCount - send byte count.
  */
 bool streamClientSend(
 	StreamClient streamClient,
 	const void* sendBuffer,
 	size_t byteCount);
+
+/*
+ * Send stream message to the server.
+ * Returns true on success.
+ *
+ * streamClient - stream client instance.
+ * sendBuffer - send stream message.
+ */
+bool streamClientSendMessage(
+	StreamClient streamClient,
+	StreamMessage streamMessage);
