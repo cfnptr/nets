@@ -126,7 +126,9 @@ MpnwResult createSocket(
 	Socket* _socket)
 {
 	assert(socketType < SOCKET_TYPE_COUNT);
+	assert(socketType >= STREAM_SOCKET_TYPE);
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(socketAddress != NULL);
 	assert(_socket != NULL);
 
@@ -665,6 +667,7 @@ bool shutdownSocket(
 {
 	assert(socket != NULL);
 	assert(_shutdown < SOCKET_SHUTDOWN_COUNT);
+	assert(_shutdown >= RECEIVE_ONLY_SOCKET_SHUTDOWN);
 	assert(networkInitialized == true);
 
 	int type;
@@ -927,7 +930,9 @@ MpnwResult resolveSocketAddress(
 	assert(host != NULL);
 	assert(service != NULL);
 	assert(family < ADDRESS_FAMILY_COUNT);
+	assert(family >= IP_V4_ADDRESS_FAMILY);
 	assert(type < SOCKET_TYPE_COUNT);
+	assert(type >= STREAM_SOCKET_TYPE);
 	assert(_socketAddress != NULL);
 
 	if (networkInitialized == false)
@@ -1080,6 +1085,7 @@ void setSocketAddressFamily(
 {
 	assert(socketAddress != NULL);
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(networkInitialized == true);
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
@@ -1092,6 +1098,7 @@ size_t getSocketAddressFamilyIpSize(
 	AddressFamily addressFamily)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(networkInitialized == true);
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
@@ -1287,6 +1294,7 @@ MpnwResult createPublicSslContext(
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
+	assert(securityProtocol >= TLS_SECURITY_PROTOCOL);
 	assert(_sslContext != NULL);
 
 	if (networkInitialized == false)
@@ -1358,6 +1366,7 @@ MpnwResult createPrivateSslContext(
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
+	assert(securityProtocol >= TLS_SECURITY_PROTOCOL);
 	assert(certificateFilePath != NULL);
 	assert(privateKeyFilePath != NULL);
 	assert(_sslContext != NULL);

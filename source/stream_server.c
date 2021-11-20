@@ -52,6 +52,7 @@ MpnwResult createStreamServer(
 	StreamServer* _streamServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(sessionBufferSize != 0);
 	assert(connectionQueueSize != 0);
 	assert(receiveBufferSize != 0);
@@ -60,7 +61,6 @@ MpnwResult createStreamServer(
 	assert(onUpdate != NULL);
 	assert(onReceive != NULL);
 	assert(_streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 
 	StreamServer streamServer = malloc(
 		sizeof(struct StreamServer));
@@ -167,8 +167,6 @@ MpnwResult createStreamServer(
 
 void destroyStreamServer(StreamServer streamServer)
 {
-	assert(isNetworkInitialized() == true);
-
 	if (streamServer == NULL)
 		return;
 
@@ -202,70 +200,60 @@ void destroyStreamServer(StreamServer streamServer)
 size_t getStreamServerSessionBufferSize(StreamServer streamServer)
 {
 	assert(streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamServer->sessionBufferSize;
 }
 
 size_t getStreamServerReceiveBufferSize(StreamServer streamServer)
 {
 	assert(streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamServer->receiveBufferSize;
 }
 
 OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer)
 {
 	assert(streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamServer->onCreate;
 }
 
 OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer)
 {
 	assert(streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamServer->onDestroy;
 }
 
 OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer)
 {
 	assert(streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamServer->onUpdate;
 }
 
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer)
 {
 	assert(streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamServer->onReceive;
 }
 
 void* getStreamServerHandle(StreamServer streamServer)
 {
 	assert(streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamServer->handle;
 }
 
 Socket getStreamServerSocket(StreamServer streamServer)
 {
 	assert(streamServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamServer->acceptSocket;
 }
 
 Socket getStreamSessionSocket(StreamSession streamSession)
 {
 	assert(streamSession != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamSession->receiveSocket;
 }
 
 void* getStreamSessionHandle(StreamSession streamSession)
 {
 	assert(streamSession != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamSession->handle;
 }
 
@@ -406,7 +394,6 @@ bool streamSessionSend(
 	assert(streamSession != NULL);
 	assert(sendBuffer != NULL);
 	assert(byteCount != 0);
-	assert(isNetworkInitialized() == true);
 
 	return socketSend(
 		streamSession->receiveSocket,

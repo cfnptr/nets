@@ -35,7 +35,6 @@ MpnwResult createDatagramClient(
 	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
 	assert(_datagramClient != NULL);
-	assert(isNetworkInitialized() == true);
 
 	DatagramClient datagramClient = malloc(
 		sizeof(struct DatagramClient));
@@ -123,8 +122,6 @@ MpnwResult createDatagramClient(
 
 void destroyDatagramClient(DatagramClient datagramClient)
 {
-	assert(isNetworkInitialized() == true);
-
 	if (datagramClient == NULL)
 		return;
 
@@ -139,28 +136,24 @@ void destroyDatagramClient(DatagramClient datagramClient)
 size_t getDatagramClientReceiveBufferSize(DatagramClient datagramClient)
 {
 	assert(datagramClient != NULL);
-	assert(isNetworkInitialized() == true);
 	return datagramClient->receiveBufferSize;
 }
 
 OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient datagramClient)
 {
 	assert(datagramClient != NULL);
-	assert(isNetworkInitialized() == true);
 	return datagramClient->onReceive;
 }
 
 void* getDatagramClientHandle(DatagramClient datagramClient)
 {
 	assert(datagramClient != NULL);
-	assert(isNetworkInitialized() == true);
 	return datagramClient->handle;
 }
 
 Socket getDatagramClientSocket(DatagramClient datagramClient)
 {
 	assert(datagramClient != NULL);
-	assert(isNetworkInitialized() == true);
 	return datagramClient->socket;
 }
 
@@ -197,7 +190,6 @@ bool datagramClientSend(
 	assert(datagramClient != NULL);
 	assert(sendBuffer != NULL);
 	assert(byteCount != 0);
-	assert(isNetworkInitialized() == true);
 
 	return socketSend(
 		datagramClient->socket,

@@ -35,10 +35,10 @@ MpnwResult createStreamClient(
 	StreamClient* _streamClient)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
 	assert(_streamClient != NULL);
-	assert(isNetworkInitialized() == true);
 
 	StreamClient streamClient = malloc(
 		sizeof(struct StreamClient));
@@ -111,8 +111,6 @@ MpnwResult createStreamClient(
 
 void destroyStreamClient(StreamClient streamClient)
 {
-	assert(isNetworkInitialized() == true);
-
 	if (streamClient == NULL)
 		return;
 
@@ -127,28 +125,24 @@ void destroyStreamClient(StreamClient streamClient)
 size_t getStreamClientReceiveBufferSize(StreamClient streamClient)
 {
 	assert(streamClient != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamClient->receiveBufferSize;
 }
 
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient)
 {
 	assert(streamClient != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamClient->onReceive;
 }
 
 void* getStreamClientHandle(StreamClient streamClient)
 {
 	assert(streamClient != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamClient->handle;
 }
 
 Socket getStreamClientSocket(StreamClient streamClient)
 {
 	assert(streamClient != NULL);
-	assert(isNetworkInitialized() == true);
 	return streamClient->socket;
 }
 
@@ -160,7 +154,6 @@ bool connectStreamClient(
 	assert(streamClient != NULL);
 	assert(remoteAddress != NULL);
 	assert(timeoutTime >= 0.0);
-	assert(isNetworkInitialized() == true);
 
 	Socket socket = streamClient->socket;
 	double timeout = getCurrentClock() + timeoutTime;
@@ -230,7 +223,6 @@ bool streamClientSend(
 	assert(streamClient != NULL);
 	assert(sendBuffer != NULL);
 	assert(byteCount != 0);
-	assert(isNetworkInitialized() == true);
 
 	return socketSend(
 		streamClient->socket,

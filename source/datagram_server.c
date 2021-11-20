@@ -36,10 +36,10 @@ MpnwResult createDatagramServer(
 	DatagramServer* _datagramServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
 	assert(_datagramServer != NULL);
-	assert(isNetworkInitialized() == true);
 
 	DatagramServer datagramServer = malloc(
 		sizeof(struct DatagramServer));
@@ -112,8 +112,6 @@ MpnwResult createDatagramServer(
 
 void destroyDatagramServer(DatagramServer datagramServer)
 {
-	assert(isNetworkInitialized() == true);
-
 	if (datagramServer == NULL)
 		return;
 
@@ -129,28 +127,24 @@ void destroyDatagramServer(DatagramServer datagramServer)
 size_t getDatagramServerReceiveBufferSize(DatagramServer datagramServer)
 {
 	assert(datagramServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return datagramServer->receiveBufferSize;
 }
 
 OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer datagramServer)
 {
 	assert(datagramServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return datagramServer->onReceive;
 }
 
 void* getDatagramServerHandle(DatagramServer datagramServer)
 {
 	assert(datagramServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return datagramServer->handle;
 }
 
 Socket getDatagramServerSocket(DatagramServer datagramServer)
 {
 	assert(datagramServer != NULL);
-	assert(isNetworkInitialized() == true);
 	return datagramServer->socket;
 }
 
@@ -191,7 +185,6 @@ bool datagramServerSend(
 	assert(sendBuffer != NULL);
 	assert(byteCount != 0);
 	assert(remoteAddress != NULL);
-	assert(isNetworkInitialized() == true);
 
 	return socketSendTo(
 		datagramServer->socket,
