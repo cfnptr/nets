@@ -405,12 +405,12 @@ bool streamSessionSendMessage(
 	StreamMessage streamMessage)
 {
 	assert(streamSession != NULL);
-	assert(streamMessage.message != NULL);
+	assert(streamMessage.buffer != NULL);
 	assert(streamMessage.size != 0);
 	assert(streamMessage.size == streamMessage.offset);
 
 	return socketSend(
 		streamSession->receiveSocket,
-		streamMessage.message,
+		streamMessage.buffer,
 		streamMessage.size);
 }

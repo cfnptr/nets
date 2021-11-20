@@ -233,12 +233,12 @@ bool streamClientSendMessage(
 	StreamMessage streamMessage)
 {
 	assert(streamClient != NULL);
-	assert(streamMessage.message != NULL);
+	assert(streamMessage.buffer != NULL);
 	assert(streamMessage.size != 0);
 	assert(streamMessage.size == streamMessage.offset);
 
 	return socketSend(
 		streamClient->socket,
-		streamMessage.message,
+		streamMessage.buffer,
 		streamMessage.size);
 }
