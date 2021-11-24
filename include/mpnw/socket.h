@@ -38,6 +38,11 @@
 /* Maximum numeric service string length*/
 #define MAX_NUMERIC_SERVICE_LENGTH 6
 
+/* IPv4 address size in bytes */
+#define IP_V4_SIZE 4
+/* IPv6 address size in bytes */
+#define IP_V6_SIZE 16
+
 /* Socket instance handle */
 typedef struct Socket* Socket;
 /* Socket address instance handle */
