@@ -127,38 +127,41 @@ inline static StreamMessage createStreamMessage(
 
 	StreamMessage streamMessage;
 	streamMessage.buffer = buffer;
-	streamMessage.size = messageSize;
 
 	if (lengthSize == sizeof(uint8_t))
 	{
-		buffer[0] = messageSize + sizeof(uint8_t);
+		buffer[0] = messageSize;
+		streamMessage.size = messageSize + sizeof(uint8_t);
 		streamMessage.offset = sizeof(uint8_t);
 	}
 	else if (lengthSize == sizeof(uint16_t))
 	{
 #if MPNW_LITTLE_ENDIAN
-		*((uint16_t*)buffer) = messageSize + sizeof(uint16_t);
+		*((uint16_t*)buffer) = messageSize;
 #else
-		*((uint16_t*)buffer) = swapBytes16(messageSize + sizeof(uint16_t));
+		*((uint16_t*)buffer) = swapBytes16(messageSize);
 #endif
+		streamMessage.size = messageSize + sizeof(uint16_t);
 		streamMessage.offset = sizeof(uint16_t);
 	}
 	else if (lengthSize == sizeof(uint32_t))
 	{
 #if MPNW_LITTLE_ENDIAN
-		*((uint32_t*)buffer) = messageSize + sizeof(uint32_t);
+		*((uint32_t*)buffer) = messageSize;
 #else
-		*((uint32_t*)buffer) = swapBytes32(messageSize + sizeof(uint32_t));
+		*((uint32_t*)buffer) = swapBytes32(messageSize);
 #endif
+		streamMessage.size = messageSize + sizeof(uint32_t);
 		streamMessage.offset = sizeof(uint32_t);
 	}
 	else if (lengthSize == sizeof(uint64_t))
 	{
 #if MPNW_LITTLE_ENDIAN
-		*((uint64_t*)buffer) = messageSize + sizeof(uint64_t);
+		*((uint64_t*)buffer) = messageSize;
 #else
-		*((uint64_t*)buffer) = swapBytes64(messageSize + sizeof(uint64_t));
+		*((uint64_t*)buffer) = swapBytes64(messageSize);
 #endif
+		streamMessage.size = messageSize + sizeof(uint64_t);
 		streamMessage.offset = sizeof(uint64_t);
 	}
     else
