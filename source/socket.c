@@ -59,12 +59,10 @@ struct Socket
 	SSL* ssl;
 #endif
 };
-
 struct SocketAddress
 {
 	struct sockaddr_storage handle;
 };
-
 struct SslContext
 {
 	SSL_CTX* handle;
@@ -630,8 +628,10 @@ bool connectSocket(
 
 	if (family == AF_INET)
 		length = sizeof(struct sockaddr_in);
-	else
+	else if (family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
+	else
+		abort();
 
 	int result = connect(
 		socket->handle,
@@ -825,14 +825,16 @@ bool socketSendTo(
 	assert(socket->sslContext == NULL);
 #endif
 
+	int family = remoteAddress->handle.ss_family;
+
 	SOCKET_LENGTH length;
 
-	if (remoteAddress->handle.ss_family == AF_INET)
+	if (family == AF_INET)
 		length = sizeof(struct sockaddr_in);
-	else if(remoteAddress->handle.ss_family == AF_INET6)
+	else if (family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
 	else
-		return false;
+		abort();
 
 	return sendto(
 		socket->handle,
@@ -955,11 +957,11 @@ MpnwResult resolveSocketAddress(
 		AI_ADDRCONFIG |
 		AI_V4MAPPED;
 
-	if(family == IP_V4_ADDRESS_FAMILY)
+	if (family == IP_V4_ADDRESS_FAMILY)
 	{
 		hints.ai_family = AF_INET;
 	}
-	else if(family == IP_V6_ADDRESS_FAMILY)
+	else if (family == IP_V6_ADDRESS_FAMILY)
 	{
 		hints.ai_family = AF_INET6;
 	}
@@ -968,12 +970,12 @@ MpnwResult resolveSocketAddress(
 		abort();
 	}
 
-	if(type == STREAM_SOCKET_TYPE)
+	if (type == STREAM_SOCKET_TYPE)
 	{
 		hints.ai_socktype = SOCK_STREAM;
 		hints.ai_protocol = IPPROTO_TCP;
 	}
-	else if(type == DATAGRAM_SOCKET_TYPE)
+	else if (type == DATAGRAM_SOCKET_TYPE)
 	{
 		hints.ai_socktype = SOCK_DGRAM;
 		hints.ai_protocol = IPPROTO_UDP;
@@ -1042,27 +1044,24 @@ int compareSocketAddress(
 	assert(a != NULL);
 	assert(b != NULL);
 
-	if (a->handle.ss_family == AF_INET)
+	int family = a->handle.ss_family;
+
+	if (family == AF_INET)
 	{
 		return memcmp(
 			&a->handle,
 			&b->handle,
 			sizeof(struct sockaddr_in));
 	}
-	else if (a->handle.ss_family == AF_INET6)
+	if (family == AF_INET6)
 	{
 		return memcmp(
 			&a->handle,
 			&b->handle,
 			sizeof(struct sockaddr_in6));
 	}
-	else
-	{
-		return memcmp(
-			&a->handle,
-			&b->handle,
-			sizeof(struct sockaddr_storage));
-	}
+
+	abort();
 }
 
 AddressFamily getSocketAddressFamily(
@@ -1075,23 +1074,10 @@ AddressFamily getSocketAddressFamily(
 
 	if (family == AF_INET)
 		return IP_V4_ADDRESS_FAMILY;
-	else
+	if (family == AF_INET6)
 		return IP_V6_ADDRESS_FAMILY;
-}
 
-void setSocketAddressFamily(
-	SocketAddress socketAddress,
-	AddressFamily addressFamily)
-{
-	assert(socketAddress != NULL);
-	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
-	assert(networkInitialized == true);
-
-	if (addressFamily == IP_V4_ADDRESS_FAMILY)
-		socketAddress->handle.ss_family = AF_INET;
-	else
-		socketAddress->handle.ss_family = AF_INET6;
+	abort();
 }
 
 size_t getSocketAddressFamilyIpSize(
@@ -1103,8 +1089,10 @@ size_t getSocketAddressFamilyIpSize(
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
 		return sizeof(struct in_addr);
-	else
+	if (addressFamily == IP_V6_ADDRESS_FAMILY)
 		return sizeof(struct in6_addr);
+
+	abort();
 }
 
 size_t getSocketAddressIpSize(
@@ -1117,8 +1105,10 @@ size_t getSocketAddressIpSize(
 
 	if (family == AF_INET)
 		return sizeof(struct in_addr);
-	else
+	if (family == AF_INET6)
 		return sizeof(struct in6_addr);
+
+	abort();
 }
 
 const uint8_t* getSocketAddressIp(
@@ -1134,11 +1124,13 @@ const uint8_t* getSocketAddressIp(
 		return (const uint8_t*)&((struct sockaddr_in*)
 			&socketAddress->handle)->sin_addr;
 	}
-	else
+	if (family == AF_INET6)
 	{
 		return (const uint8_t*)&((struct sockaddr_in6*)
 			&socketAddress->handle)->sin6_addr;
 	}
+
+	abort();
 }
 
 void setSocketAddressIp(
@@ -1159,13 +1151,17 @@ void setSocketAddressIp(
 			ip,
 			sizeof(struct in_addr));
 	}
-	else
+	else if (family == AF_INET6)
 	{
 		memcpy(
 			&((struct sockaddr_in6*)
 				&socketAddress->handle)->sin6_addr,
 			ip,
 			sizeof(struct in6_addr));
+	}
+	else
+	{
+		abort();
 	}
 }
 
@@ -1183,12 +1179,14 @@ uint16_t getSocketAddressPort(
 			(struct sockaddr_in*)&socketAddress->handle;
 		return ntohs(address4->sin_port);
 	}
-	else
+	if (family == AF_INET6)
 	{
 		struct sockaddr_in6* address6 =
 			(struct sockaddr_in6*)&socketAddress->handle;
 		return ntohs(address6->sin6_port);
 	}
+
+	abort();
 }
 
 void setSocketAddressPort(
@@ -1206,11 +1204,15 @@ void setSocketAddressPort(
 			(struct sockaddr_in*)&socketAddress->handle;
 		address4->sin_port = htons(port);
 	}
-	else
+	else if (family == AF_INET6)
 	{
 		struct sockaddr_in6* address6 =
 			(struct sockaddr_in6*)&socketAddress->handle;
 		address6->sin6_port = htons(port);
+	}
+	else
+	{
+		abort();
 	}
 }
 
@@ -1316,7 +1318,11 @@ MpnwResult createPublicSslContext(
 		handle = SSL_CTX_new(TLS_method());
 		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
+#if MPNW_SUPPORT_DEPRECATED_SSL
 		handle = SSL_CTX_new(TLSv1_2_method());
+#else
+		abort();
+#endif
 		break;
 	}
 
@@ -1390,7 +1396,11 @@ MpnwResult createPrivateSslContext(
 		handle = SSL_CTX_new(TLS_method());
 		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
+#if MPNW_SUPPORT_DEPRECATED_SSL
 		handle = SSL_CTX_new(TLSv1_2_method());
+#else
+		abort();
+#endif
 		break;
 	}
 
@@ -1479,8 +1489,13 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext)
 
 	if (method == TLS_method())
 		return TLS_SECURITY_PROTOCOL;
-	else
+
+#if MPNW_SUPPORT_DEPRECATED_SSL
+	if (method == TLSv1_2_method())
 		return TLS_1_2_SECURITY_PROTOCOL;
+#endif
+
+	abort();
 #else
 	abort();
 #endif

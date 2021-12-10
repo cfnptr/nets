@@ -63,12 +63,16 @@ MpnwResult createDatagramServer(
 			service,
 			&socketAddress);
 	}
-	else
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
 	{
 		mpnwResult = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
 			service,
 			&socketAddress);
+	}
+	else
+	{
+		abort();
 	}
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)

@@ -383,16 +383,6 @@ AddressFamily getSocketAddressFamily(
 	SocketAddress socketAddress);
 
 /*
- * Set socket address family.
- *
- * socketAddress - socket address instance.
- * addressFamily - socket address family.
- */
-void setSocketAddressFamily(
-	SocketAddress socketAddress,
-	AddressFamily addressFamily);
-
-/*
  * Returns socket address family IP byte array size.
  * addressFamily - socket address family.
  */

@@ -63,12 +63,16 @@ MpnwResult createStreamClient(
 			ANY_IP_ADDRESS_SERVICE,
 			&socketAddress);
 	}
-	else
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
 	{
 		mpnwResult = createSocketAddress(
 			ANY_IP_ADDRESS_V6,
 			ANY_IP_ADDRESS_SERVICE,
 			&socketAddress);
+	}
+	else
+	{
+		abort();
 	}
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
