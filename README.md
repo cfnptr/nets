@@ -1,8 +1,14 @@
+# MPNW
+A library providing a generic interface for transferring data over a network across different platforms.
+
+![CI](https://github.com/cfnptr/mpnw/actions/workflows/cmake.yml/badge.svg)
+
 ## Features
-* Blocking/Non-blocking socket
-* Stream client/server (TCP)
-* Datagram client/server (UDP)
+* Blocking / non-blocking socket
+* Stream client / server (TCP)
+* Datagram client / server (UDP)
 * Secure socket layer (OpenSSL)
+* Datagrams over TCP stream
 
 ## Supported operating systems
 * Ubuntu
@@ -40,6 +46,9 @@ cmake --build build/
 | MPNW_USE_OPENSSL          | Use OpenSSL for secure communication | ON            |
 | MPNW_ALLOW_DEPRECATED_SSL | Allow deprecated OpenSSL functions   | OFF           |
 
+## Usage
+Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/mpnw/examples/datagram_example.c) \
+HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cfnptr/mpnw/examples/https_example.c)
 
 ## Third-party
 * [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)

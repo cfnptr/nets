@@ -464,6 +464,11 @@ bool isSocketListening(Socket socket)
 	return socket->queueSize != 0;
 }
 
+size_t getMaxSocketQueueSize()
+{
+	return SOMAXCONN;
+}
+
 size_t getSocketQueueSize(Socket socket)
 {
 	assert(socket != NULL);
@@ -478,7 +483,7 @@ bool listenSocket(
 {
 	assert(socket != NULL);
 	assert(queueSize != 0);
-	assert(queueSize <= SOMAXCONN);
+	assert(queueSize <= getMaxSocketQueueSize());
 	assert(socket->queueSize == 0);
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized == true);

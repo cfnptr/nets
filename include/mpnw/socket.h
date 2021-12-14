@@ -187,6 +187,11 @@ void setSocketNoDelay(
 bool isSocketListening(Socket socket);
 
 /*
+ * Maximum number of queued connections.
+ */
+size_t getMaxSocketQueueSize();
+
+/*
  * Returns socket pending connections queue size.
  * socket - socket instance.
  */
