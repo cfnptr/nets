@@ -47,8 +47,8 @@ cmake --build build/
 | MPNW_ALLOW_DEPRECATED_SSL | Allow deprecated OpenSSL functions   | OFF           |
 
 ## Usage
-Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/mpnw/examples/datagram_example.c) \
-HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cfnptr/mpnw/examples/https_example.c)
+Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/datagram_example.c) \
+HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/https_example.c)
 
 ## Third-party
 * [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)
