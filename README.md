@@ -1,5 +1,5 @@
 # MPNW
-A library providing a generic interface for transferring data over a network across different platforms.
+A library providing generic interface for transferring data over a network across different platforms.
 
 ![CI](https://github.com/cfnptr/mpnw/actions/workflows/cmake.yml/badge.svg)
 
