@@ -14,7 +14,7 @@
 
 #include "mpnw/datagram_server.h"
 
-struct DatagramServer
+struct DatagramServer_T
 {
 	size_t receiveBufferSize;
 	OnDatagramServerReceive onReceive;
@@ -30,18 +30,18 @@ MpnwResult createDatagramServer(
 	size_t receiveBufferSize,
 	OnDatagramServerReceive onReceive,
 	void* handle,
-	DatagramServer* _datagramServer)
+	DatagramServer* datagramServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
-	assert(_datagramServer != NULL);
+	assert(datagramServer != NULL);
 
-	DatagramServer datagramServer = malloc(
-		sizeof(struct DatagramServer));
+	DatagramServer datagramServerInstance = malloc(
+		sizeof(DatagramServer_T));
 
-	if (datagramServer == NULL)
+	if (datagramServerInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
@@ -49,7 +49,7 @@ MpnwResult createDatagramServer(
 
 	if (receiveBuffer == NULL)
 	{
-		free(datagramServer);
+		free(datagramServerInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
 
@@ -78,7 +78,7 @@ MpnwResult createDatagramServer(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		free(receiveBuffer);
-		free(datagramServer);
+		free(datagramServerInstance);
 		return mpnwResult;
 	}
 
@@ -96,21 +96,20 @@ MpnwResult createDatagramServer(
 	{
 		destroySocketAddress(socketAddress);
 		free(receiveBuffer);
-		free(datagramServer);
+		free(datagramServerInstance);
 		return mpnwResult;
 	}
 
-	datagramServer->receiveBufferSize = receiveBufferSize;
-	datagramServer->onReceive = onReceive;
-	datagramServer->handle = handle;
-	datagramServer->receiveBuffer = receiveBuffer;
-	datagramServer->address = socketAddress;
-	datagramServer->socket = socket;
+	datagramServerInstance->receiveBufferSize = receiveBufferSize;
+	datagramServerInstance->onReceive = onReceive;
+	datagramServerInstance->handle = handle;
+	datagramServerInstance->receiveBuffer = receiveBuffer;
+	datagramServerInstance->address = socketAddress;
+	datagramServerInstance->socket = socket;
 
-	*_datagramServer = datagramServer;
+	*datagramServer = datagramServerInstance;
 	return SUCCESS_MPNW_RESULT;
 }
-
 void destroyDatagramServer(DatagramServer datagramServer)
 {
 	if (datagramServer == NULL)
@@ -130,19 +129,16 @@ size_t getDatagramServerReceiveBufferSize(DatagramServer datagramServer)
 	assert(datagramServer != NULL);
 	return datagramServer->receiveBufferSize;
 }
-
 OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer datagramServer)
 {
 	assert(datagramServer != NULL);
 	return datagramServer->onReceive;
 }
-
 void* getDatagramServerHandle(DatagramServer datagramServer)
 {
 	assert(datagramServer != NULL);
 	return datagramServer->handle;
 }
-
 Socket getDatagramServerSocket(DatagramServer datagramServer)
 {
 	assert(datagramServer != NULL);

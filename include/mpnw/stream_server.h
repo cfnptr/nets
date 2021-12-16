@@ -15,10 +15,23 @@
 #pragma once
 #include "mpnw/socket.h"
 
-/* Stream server instance handle (TCP) */
-typedef struct StreamServer* StreamServer;
-/* Stream server session instance handle (TCP) */
-typedef struct StreamSession* StreamSession;
+/*
+ * Stream server structure. (TCP)
+ */
+typedef struct StreamServer_T StreamServer_T;
+/*
+ * Stream server instance. (TCP)
+ */
+typedef StreamServer_T* StreamServer;
+
+/*
+ * Stream server session structure. (TCP)
+ */
+typedef struct StreamSession_T StreamSession_T;
+/*
+ * Stream server session instance. (TCP)
+ */
+typedef StreamSession_T* StreamSession;
 
 /*
  * Stream session create function.
@@ -28,12 +41,12 @@ typedef bool(*OnStreamSessionCreate)(
 	StreamServer streamServer,
 	Socket socket,
 	void** handle);
-
-/* Stream session destroy function */
+/*
+ * Stream session destroy function.
+ */
 typedef void(*OnStreamSessionDestroy)(
 	StreamServer streamServer,
 	StreamSession streamSession);
-
 /*
  * Stream session update function.
  * Destroys session on false return result.
@@ -41,7 +54,6 @@ typedef void(*OnStreamSessionDestroy)(
 typedef bool(*OnStreamSessionUpdate)(
 	StreamServer streamServer,
 	StreamSession streamSession);
-
 /*
  * Stream session receive function
  * Destroys session on false return result.
@@ -82,9 +94,8 @@ MpnwResult createStreamServer(
 	void* handle,
 	SslContext sslContext,
 	StreamServer* streamServer);
-
 /*
- * Destroy stream server instance.
+ * Destroys stream server instance.
  * streamServer - stream server instance or NULL.
  */
 void destroyStreamServer(StreamServer streamServer);
@@ -94,55 +105,46 @@ void destroyStreamServer(StreamServer streamServer);
  * streamServer - stream server instance.
  */
 size_t getStreamServerSessionBufferSize(StreamServer streamServer);
-
 /*
  * Returns stream server receive buffer size.
  * streamServer - stream server instance.
  */
 size_t getStreamServerReceiveBufferSize(StreamServer streamServer);
-
 /*
  * Returns stream server create function.
  * streamServer - stream server instance.
  */
 OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer);
-
 /*
  * Returns stream server destroy function.
  * streamServer - stream server instance.
  */
 OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer);
-
 /*
  * Returns stream server update function.
  * streamServer - stream server instance.
  */
 OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer);
-
 /*
  * Returns stream server receive function.
  * streamServer - stream server instance.
  */
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer);
-
 /*
  * Returns stream server handle.
  * streamServer - stream server instance.
  */
 void* getStreamServerHandle(StreamServer streamServer);
-
 /*
  * Returns stream server socket.
  * streamServer - stream server instance.
  */
 Socket getStreamServerSocket(StreamServer streamServer);
-
 /*
  * Returns stream session socket.
  * streamSession - stream session instance.
  */
 Socket getStreamSessionSocket(StreamSession streamSession);
-
 /*
  * Returns stream session handle.
  * streamSession - stream session instance.
@@ -169,7 +171,6 @@ bool streamSessionSend(
 	StreamSession streamSession,
 	const void* sendBuffer,
 	size_t byteCount);
-
 /*
  * Send stream message to the specified session.
  * Returns true on success.

@@ -15,10 +15,18 @@
 #pragma once
 #include "mpnw/socket.h"
 
-/* Datagram client instance handle (UDP) */
-typedef struct DatagramClient* DatagramClient;
+/*
+ * Datagram client structure (UDP).
+ */
+typedef struct DatagramClient_T DatagramClient_T;
+/*
+ * Datagram client instance (UDP).
+ */
+typedef DatagramClient_T* DatagramClient;
 
-/* Datagram client receive function */
+/*
+ * Datagram client receive function.
+ */
 typedef void(*OnDatagramClientReceive)(
 	DatagramClient datagramClient,
 	const uint8_t* receiveBuffer,
@@ -40,9 +48,8 @@ MpnwResult createDatagramClient(
 	OnDatagramClientReceive onReceive,
 	void* handle,
 	DatagramClient* datagramClient);
-
 /*
- * Destroy datagram client instance.
+ * Destroys datagram client instance.
  * datagramClient - datagram client instance or NULL.
  */
 void destroyDatagramClient(DatagramClient datagramClient);
@@ -52,19 +59,16 @@ void destroyDatagramClient(DatagramClient datagramClient);
  * datagramClient - datagram client instance.
  */
 size_t getDatagramClientReceiveBufferSize(DatagramClient datagramClient);
-
 /*
  * Returns datagram client receive function.
  * datagramClient - datagram client instance.
  */
 OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient datagramClient);
-
 /*
  * Returns datagram client handle.
  * datagramClient - datagram client instance.
  */
 void* getDatagramClientHandle(DatagramClient datagramClient);
-
 /*
  * Returns datagram client socket.
  * datagramClient - datagram client instance.

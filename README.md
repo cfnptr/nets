@@ -1,9 +1,9 @@
-# MPNW
-A library providing generic interface for transferring data over a network across different platforms.
+# MPNW ![CI](https://github.com/cfnptr/mpnw/actions/workflows/cmake.yml/badge.svg)
 
-![CI](https://github.com/cfnptr/mpnw/actions/workflows/cmake.yml/badge.svg)
+A library providing generic interface for transferring data over a **network** across different platforms.
 
 ## Features
+
 * Blocking / non-blocking socket
 * Stream client / server (TCP)
 * Datagram client / server (UDP)
@@ -11,46 +11,46 @@ A library providing generic interface for transferring data over a network acros
 * Datagrams over TCP stream
 
 ## Supported operating systems
+
 * Ubuntu
 * MacOS
 * Windows
 
 ## Build requirements
+
 * C99 compiler
+* [Git 2.30+](https://git-scm.com/)
 * [CMake 3.10+](https://cmake.org/)
 * [OpenSSL](https://openssl.org/) (Optional)
 
 ## OpenSSL installation
+
 * Ubuntu: sudo apt install libssl-dev
 * MacOS: [brew](https://brew.sh/) install openssl
 * Windows: [choco](https://chocolatey.org/) install openssl
 
 ## Cloning
+
 ```
-git clone https://github.com/cfnptr/mpnw
-cd mpnw
-git submodule update --init --recursive
+git clone --recursive https://github.com/cfnptr/mpnw
 ```
 
-## Building
-```
-cmake -DCMAKE_BUILD_TYPE=Release -S . -B build/
-cmake --build build/
-```
+## CMake options
 
-### CMake options
 | Name                      | Description                          | Default value |
 |---------------------------|--------------------------------------|---------------|
-| MPNW_BUILD_SHARED         | Build MPNW shared library            | ON            |
-| MPNW_BUILD_EXAMPLES       | Build MPNW usage examples            | ON            |
-| MPNW_USE_OPENSSL          | Use OpenSSL for secure communication | ON            |
-| MPNW_ALLOW_DEPRECATED_SSL | Allow deprecated OpenSSL functions   | OFF           |
+| MPNW_BUILD_SHARED         | Build MPNW shared library            | `ON`          |
+| MPNW_BUILD_EXAMPLES       | Build MPNW usage examples            | `ON`          |
+| MPNW_USE_OPENSSL          | Use OpenSSL for secure communication | `ON`          |
+| MPNW_ALLOW_DEPRECATED_SSL | Allow deprecated OpenSSL functions   | `OFF`         |
 
 ## Usage
+
 Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/datagram_example.c) \
 HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/https_example.c)
 
 ## Third-party
+
 * [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache-2.0 License)
 

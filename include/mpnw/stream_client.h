@@ -15,10 +15,18 @@
 #pragma once
 #include "mpnw/socket.h"
 
-/* Stream client instance handle (TCP) */
-typedef struct StreamClient* StreamClient;
+/*
+ * Stream client structure. (TCP)
+*/
+typedef struct StreamClient_T StreamClient_T;
+/*
+ * Stream client instance. (TCP)
+*/
+typedef StreamClient_T* StreamClient;
 
-/* Stream client receive function */
+/*
+ * Stream client receive function.
+ */
 typedef void(*OnStreamClientReceive)(
 	StreamClient streamClient,
 	const uint8_t* receiveBuffer,
@@ -42,9 +50,8 @@ MpnwResult createStreamClient(
 	void* handle,
 	SslContext sslContext,
 	StreamClient* streamClient);
-
 /*
- * Destroy stream client instance.
+ * Destroys stream client instance.
  * streamClient - stream client instance or NULL.
  */
 void destroyStreamClient(StreamClient streamClient);
@@ -54,19 +61,16 @@ void destroyStreamClient(StreamClient streamClient);
 * streamClient - stream client instance.
 */
 size_t getStreamClientReceiveBufferSize(StreamClient streamClient);
-
 /*
 * Returns stream client receive function.
 * streamClient - stream client instance.
 */
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient);
-
 /*
  * Returns stream client handle.
  * streamClient - stream client instance.
  */
 void* getStreamClientHandle(StreamClient streamClient);
-
 /*
  * Returns stream client socket.
  * streamClient - stream client instance.

@@ -15,10 +15,18 @@
 #pragma once
 #include "mpnw/socket.h"
 
-/* Datagram server instance handle (UDP) */
-typedef struct DatagramServer* DatagramServer;
+/*
+ * Datagram server structure. (UDP)
+ */
+typedef struct DatagramServer_T DatagramServer_T;
+/*
+ * Datagram server instance. (UDP)
+ */
+typedef DatagramServer_T* DatagramServer;
 
-/* Datagram server receive function */
+/*
+ * Datagram server receive function.
+ */
 typedef void(*OnDatagramServerReceive)(
 	DatagramServer datagramServer,
 	SocketAddress remoteAddress,
@@ -26,7 +34,7 @@ typedef void(*OnDatagramServerReceive)(
 	size_t byteCount);
 
 /*
- * Creates a new datagram server (UDP).
+ * Create a new datagram server (UDP).
  * Returns operation MPNW result.
  *
  * addressFamily - local socket address family.
@@ -43,9 +51,8 @@ MpnwResult createDatagramServer(
 	OnDatagramServerReceive onReceive,
 	void* handle,
 	DatagramServer* datagramServer);
-
 /*
- * Destroy datagram server instance.
+ * Destroys datagram server instance.
  * datagramServer - datagram server instance or NULL.
  */
 void destroyDatagramServer(DatagramServer datagramServer);
@@ -61,19 +68,16 @@ size_t getDatagramServerReceiveBufferSize(DatagramServer datagramServer);
  * datagramServer - datagram server instance.
  */
 OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer datagramServer);
-
 /*
  * Returns datagram server handle.
  * datagramServer - datagram server instance.
  */
 void* getDatagramServerHandle(DatagramServer datagramServer);
-
 /*
  * Returns datagram server socket.
  * datagramServer - datagram server instance.
  */
 Socket getDatagramServerSocket(DatagramServer datagramServer);
-
 /*
  * Receive buffered datagrams.
  * Returns true if datagram received.

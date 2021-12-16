@@ -48,7 +48,7 @@ static WSADATA wsaData;
 #define SSL_CTX void
 #endif
 
-struct Socket
+struct Socket_T
 {
 	SocketType type;
 	bool blocking;
@@ -59,11 +59,11 @@ struct Socket
 	SSL* ssl;
 #endif
 };
-struct SocketAddress
+struct SocketAddress_T
 {
 	struct sockaddr_storage handle;
 };
-struct SslContext
+struct SslContext_T
 {
 	SSL_CTX* handle;
 };
@@ -138,7 +138,7 @@ MpnwResult createSocket(
 #endif
 
 	Socket socketInstance = malloc(
-		sizeof(struct Socket));
+		sizeof(Socket_T));
 
 	if (socketInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
@@ -279,7 +279,6 @@ MpnwResult createSocket(
 	*_socket = socketInstance;
 	return SUCCESS_MPNW_RESULT;
 }
-
 void destroySocket(Socket socket)
 {
 	assert(networkInitialized == true);
@@ -307,14 +306,12 @@ SocketType getSocketType(Socket socket)
 	assert(networkInitialized == true);
 	return socket->type;
 }
-
 bool isSocketBlocking(Socket socket)
 {
 	assert(socket != NULL);
 	assert(networkInitialized == true);
 	return socket->blocking;
 }
-
 bool getSocketLocalAddress(
 	Socket socket,
 	SocketAddress socketAddress)
@@ -323,11 +320,9 @@ bool getSocketLocalAddress(
 	assert(socketAddress != NULL);
 	assert(networkInitialized == true);
 
-	struct sockaddr_storage _socketAddress;
+	struct sockaddr_storage storage;
 
-	memset(
-		&_socketAddress,
-		0,
+	memset(&storage, 0,
 		sizeof(struct sockaddr_storage));
 
 	SOCKET_LENGTH length =
@@ -335,12 +330,12 @@ bool getSocketLocalAddress(
 
 	int result = getsockname(
 		socket->handle,
-		(struct sockaddr*)&_socketAddress,
+		(struct sockaddr*)&storage,
 		&length);
 
 	if (result == 0)
 	{
-		socketAddress->handle = _socketAddress;
+		socketAddress->handle = storage;
 		return true;
 	}
 	else
@@ -348,7 +343,6 @@ bool getSocketLocalAddress(
 		return false;
 	}
 }
-
 bool getSocketRemoteAddress(
 	Socket socket,
 	SocketAddress socketAddress)
@@ -357,11 +351,9 @@ bool getSocketRemoteAddress(
 	assert(socketAddress != NULL);
 	assert(networkInitialized == true);
 
-	struct sockaddr_storage _socketAddress;
+	struct sockaddr_storage storage;
 
-	memset(
-		&_socketAddress,
-		0,
+	memset(&storage, 0,
 		sizeof(struct sockaddr_storage));
 
 	SOCKET_LENGTH length =
@@ -369,12 +361,12 @@ bool getSocketRemoteAddress(
 
 	int result = getpeername(
 		socket->handle,
-		(struct sockaddr*)&_socketAddress,
+		(struct sockaddr*)&storage,
 		&length);
 
 	if (result == 0)
 	{
-		socketAddress->handle = _socketAddress;
+		socketAddress->handle = storage;
 		return true;
 	}
 	else
@@ -382,7 +374,6 @@ bool getSocketRemoteAddress(
 		return false;
 	}
 }
-
 SslContext getSocketSslContext(Socket socket)
 {
 #if MPNW_SUPPORT_OPENSSL
@@ -424,32 +415,27 @@ bool isSocketNoDelay(Socket socket)
 	return value != FALSE;
 #endif
 }
-
 void setSocketNoDelay(
 	Socket socket,
-	bool _value)
+	bool value)
 {
 	assert(socket != NULL);
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized == true);
 
 #if __linux__ || __APPLE__
-	int value = _value ==
-		true ? 1 : 0;
-	SOCKET_LENGTH length =
-		sizeof(int);
+	int noDelay = value == true ? 1 : 0;
+	SOCKET_LENGTH length = sizeof(int);
 #elif _WIN32
-	BOOL value = _value ==
-		true ? TRUE : FALSE;
-	SOCKET_LENGTH length =
-		sizeof(BOOL);
+	BOOL noDelay = value == true ? TRUE : FALSE;
+	SOCKET_LENGTH length = sizeof(BOOL);
 #endif
 
 	int result = setsockopt(
 		socket->handle,
 		IPPROTO_TCP,
 		TCP_NODELAY,
-		(char*)&value,
+		(char*)&noDelay,
 		length);
 
 	if (result != 0)
@@ -463,12 +449,10 @@ bool isSocketListening(Socket socket)
 	assert(networkInitialized == true);
 	return socket->queueSize != 0;
 }
-
 size_t getMaxSocketQueueSize()
 {
 	return SOMAXCONN;
 }
-
 size_t getSocketQueueSize(Socket socket)
 {
 	assert(socket != NULL);
@@ -498,21 +482,20 @@ bool listenSocket(
 	socket->queueSize = queueSize;
 	return true;
 }
-
 MpnwResult acceptSocket(
 	Socket socket,
-	Socket* _accepted)
+	Socket* accepted)
 {
 	assert(socket != NULL);
-	assert(_accepted != NULL);
+	assert(accepted != NULL);
 	assert(socket->queueSize != 0);
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized == true);
 
-	Socket accepted = malloc(
-		sizeof(struct Socket));
+	Socket acceptedInstance = malloc(
+		sizeof(Socket_T));
 
-	if (accepted == NULL)
+	if (acceptedInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	SOCKET handle = accept(
@@ -522,7 +505,7 @@ MpnwResult acceptSocket(
 
 	if (handle == INVALID_SOCKET)
 	{
-		free(accepted);
+		free(acceptedInstance);
 		return FAILED_TO_ACCEPT_SOCKET_MPNW_RESULT;
 	}
 
@@ -537,7 +520,7 @@ MpnwResult acceptSocket(
 		if (flags == -1)
 		{
 			closesocket(handle);
-			free(accepted);
+			free(acceptedInstance);
 			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
 		}
 
@@ -557,15 +540,15 @@ MpnwResult acceptSocket(
 		if (result != 0)
 		{
 			closesocket(handle);
-			free(accepted);
+			free(acceptedInstance);
 			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
 		}
 	}
 
-	accepted->type = socket->type;
-	accepted->blocking = socket->blocking;
-	accepted->queueSize = 0;
-	accepted->handle = handle;
+	acceptedInstance->type = socket->type;
+	acceptedInstance->blocking = socket->blocking;
+	acceptedInstance->queueSize = 0;
+	acceptedInstance->handle = handle;
 
 #if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext != NULL)
@@ -576,7 +559,7 @@ MpnwResult acceptSocket(
 		if (ssl == NULL)
 		{
 			closesocket(handle);
-			free(accepted);
+			free(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
@@ -588,21 +571,20 @@ MpnwResult acceptSocket(
 		{
 			SSL_free(ssl);
 			closesocket(handle);
-			free(accepted);
+			free(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
-		accepted->sslContext =
-			socket->sslContext;
-		accepted->ssl = ssl;
+		acceptedInstance->sslContext = socket->sslContext;
+		acceptedInstance->ssl = ssl;
 	}
 	else
 	{
-		accepted->sslContext = NULL;
+		acceptedInstance->sslContext = NULL;
 	}
 #endif
 
-	*_accepted = accepted;
+	*accepted = acceptedInstance;
 	return SUCCESS_MPNW_RESULT;
 }
 
@@ -652,7 +634,6 @@ bool connectSocket(
 	return WSAGetLastError() == WSAEISCONN;
 #endif
 }
-
 bool connectSslSocket(Socket socket)
 {
 	assert(socket != NULL);
@@ -744,7 +725,6 @@ bool socketReceive(
 	*byteCount = (size_t)result;
 	return true;
 }
-
 bool socketSend(
 	Socket socket,
 	const void* sendBuffer,
@@ -770,7 +750,6 @@ bool socketSend(
 		(int)byteCount,
 		0) == byteCount;
 }
-
 bool socketReceiveFrom(
 	Socket socket,
 	SocketAddress remoteAddress,
@@ -789,11 +768,9 @@ bool socketReceiveFrom(
 	assert(socket->sslContext == NULL);
 #endif
 
-	struct sockaddr_storage socketAddress;
+	struct sockaddr_storage storage;
 
-	memset(
-		&socketAddress,
-		0,
+	memset(&storage, 0,
 		sizeof(struct sockaddr_storage));
 
 	SOCKET_LENGTH length =
@@ -804,17 +781,16 @@ bool socketReceiveFrom(
 		(char*)receiveBuffer,
 		(int)bufferSize,
 		0,
-		(struct sockaddr*)&socketAddress,
+		(struct sockaddr*)&storage,
 		&length);
 
 	if (count < 0)
 		return false;
 
-	remoteAddress->handle = socketAddress;
+	remoteAddress->handle = storage;
 	*byteCount = (size_t)count;
 	return true;
 }
-
 bool socketSendTo(
 	Socket socket,
 	const void* sendBuffer,
@@ -853,26 +829,24 @@ bool socketSendTo(
 MpnwResult createSocketAddress(
 	const char* host,
 	const char* service,
-	SocketAddress* _socketAddress)
+	SocketAddress* socketAddress)
 {
 	assert(host != NULL);
 	assert(service != NULL);
-	assert(_socketAddress != NULL);
+	assert(socketAddress != NULL);
 
 	if (networkInitialized == false)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
-	SocketAddress socketAddress = malloc(
-		sizeof(struct SocketAddress));
+	SocketAddress socketAddressInstance = calloc(
+		1, sizeof(SocketAddress_T));
 
-	if (socketAddress == NULL)
+	if (socketAddressInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	struct addrinfo hints;
 
-	memset(
-		&hints,
-		0,
+	memset(&hints, 0,
 		sizeof(struct addrinfo));
 
 	hints.ai_flags =
@@ -889,42 +863,35 @@ MpnwResult createSocketAddress(
 
 	if (result != 0)
 	{
-		free(socketAddress);
+		free(socketAddressInstance);
 		return FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT;
 	}
 
-	memset(
-		&socketAddress->handle,
-		0,
-		sizeof(struct sockaddr_storage));
-	memcpy(
-		&socketAddress->handle,
+	memcpy(&socketAddressInstance->handle,
 		addressInfos->ai_addr,
 		addressInfos->ai_addrlen);
 
 	freeaddrinfo(addressInfos);
 
-	*_socketAddress = socketAddress;
+	*socketAddress = socketAddressInstance;
 	return SUCCESS_MPNW_RESULT;
 }
-
 SocketAddress createSocketAddressCopy(
 	SocketAddress socketAddress)
 {
 	assert(socketAddress != NULL);
 
-	SocketAddress _socketAddress = malloc(
-		sizeof(struct SocketAddress));
+	SocketAddress socketAddressInstance = malloc(
+		sizeof(SocketAddress_T));
 
-	if (_socketAddress == NULL)
+	if (socketAddressInstance == NULL)
 		return NULL;
 
-	memcpy(
-		&_socketAddress->handle,
-		&socketAddress->handle,
-		sizeof(struct sockaddr_storage));
+	memcpy(socketAddressInstance,
+		socketAddress,
+		sizeof(SocketAddress_T));
 
-	return _socketAddress;
+	return socketAddressInstance;
 }
 
 MpnwResult resolveSocketAddress(
@@ -932,7 +899,7 @@ MpnwResult resolveSocketAddress(
 	const char* service,
 	AddressFamily family,
 	SocketType type,
-	SocketAddress* _socketAddress)
+	SocketAddress* socketAddress)
 {
 	assert(host != NULL);
 	assert(service != NULL);
@@ -940,22 +907,20 @@ MpnwResult resolveSocketAddress(
 	assert(family >= IP_V4_ADDRESS_FAMILY);
 	assert(type < SOCKET_TYPE_COUNT);
 	assert(type >= STREAM_SOCKET_TYPE);
-	assert(_socketAddress != NULL);
+	assert(socketAddress != NULL);
 
 	if (networkInitialized == false)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
-	SocketAddress socketAddress = malloc(
-		sizeof(struct SocketAddress));
+	SocketAddress socketAddressInstance = calloc(
+		1, sizeof(SocketAddress_T));
 
-	if (socketAddress == NULL)
+	if (socketAddressInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	struct addrinfo hints;
 
-	memset(
-		&hints,
-		0,
+	memset(&hints, 0,
 		sizeof(struct addrinfo));
 
 	hints.ai_flags =
@@ -1000,22 +965,17 @@ MpnwResult resolveSocketAddress(
 
 	if (result != 0)
 	{
-		free(socketAddress);
+		free(socketAddressInstance);
 		return FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT;
 	}
 
-	memset(
-		&socketAddress->handle,
-		0,
-		sizeof(struct sockaddr_storage));
-	memcpy(
-		&socketAddress->handle,
+	memcpy(&socketAddressInstance->handle,
 		addressInfos->ai_addr,
 		addressInfos->ai_addrlen);
 
 	freeaddrinfo(addressInfos);
 
-	*_socketAddress = socketAddress;
+	*socketAddress = socketAddressInstance;
 	return SUCCESS_MPNW_RESULT;
 }
 
@@ -1036,8 +996,7 @@ void copySocketAddress(
 	assert(sourceAddress != NULL);
 	assert(destinationAddress != NULL);
 
-	memcpy(
-		&destinationAddress->handle,
+	memcpy(&destinationAddress->handle,
 		&sourceAddress->handle,
 		sizeof(struct sockaddr_storage));
 }
@@ -1084,7 +1043,6 @@ AddressFamily getSocketAddressFamily(
 
 	abort();
 }
-
 size_t getSocketAddressFamilyIpSize(
 	AddressFamily addressFamily)
 {
@@ -1099,7 +1057,6 @@ size_t getSocketAddressFamilyIpSize(
 
 	abort();
 }
-
 size_t getSocketAddressIpSize(
 	SocketAddress socketAddress)
 {
@@ -1137,7 +1094,6 @@ const uint8_t* getSocketAddressIp(
 
 	abort();
 }
-
 void setSocketAddressIp(
 	SocketAddress socketAddress,
 	const uint8_t* ip)
@@ -1150,19 +1106,13 @@ void setSocketAddressIp(
 
 	if (family == AF_INET)
 	{
-		memcpy(
-			&((struct sockaddr_in*)
-				&socketAddress->handle)->sin_addr,
-			ip,
-			sizeof(struct in_addr));
+		memcpy(&((struct sockaddr_in*)&socketAddress->handle)->sin_addr,
+			ip, sizeof(struct in_addr));
 	}
 	else if (family == AF_INET6)
 	{
-		memcpy(
-			&((struct sockaddr_in6*)
-				&socketAddress->handle)->sin6_addr,
-			ip,
-			sizeof(struct in6_addr));
+		memcpy(&((struct sockaddr_in6*)&socketAddress->handle)->sin6_addr,
+			ip, sizeof(struct in6_addr));
 	}
 	else
 	{
@@ -1193,7 +1143,6 @@ uint16_t getSocketAddressPort(
 
 	abort();
 }
-
 void setSocketAddressPort(
 	SocketAddress socketAddress,
 	uint16_t port)
@@ -1242,7 +1191,6 @@ bool getSocketAddressHost(
 		0,
 		flags) == 0;
 }
-
 bool getSocketAddressService(
 	SocketAddress socketAddress,
 	char* service,
@@ -1264,7 +1212,6 @@ bool getSocketAddressService(
 		(SOCKET_LENGTH)length,
 		flags) == 0;
 }
-
 bool getSocketAddressHostService(
 	SocketAddress socketAddress,
 	char* host,
@@ -1297,20 +1244,20 @@ MpnwResult createPublicSslContext(
 	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
 	const char* certificatesDirectory,
-	SslContext* _sslContext)
+	SslContext* sslContext)
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(securityProtocol >= TLS_SECURITY_PROTOCOL);
-	assert(_sslContext != NULL);
+	assert(sslContext != NULL);
 
 	if (networkInitialized == false)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
-	SslContext sslContext = malloc(
-		sizeof(struct SslContext));
+	SslContext sslContextInstance = malloc(
+		sizeof(SslContext_T));
 
-	if (sslContext == NULL)
+	if (sslContextInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	SSL_CTX* handle;
@@ -1333,7 +1280,7 @@ MpnwResult createPublicSslContext(
 
 	if (handle == NULL)
 	{
-		free(sslContext);
+		free(sslContextInstance);
 		return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 	}
 
@@ -1355,40 +1302,39 @@ MpnwResult createPublicSslContext(
 	if (result != 1)
 	{
 		SSL_CTX_free(handle);
-		free(sslContext);
+		free(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
-	sslContext->handle = handle;
+	sslContextInstance->handle = handle;
 
-	*_sslContext = sslContext;
+	*sslContext = sslContextInstance;
 	return SUCCESS_MPNW_RESULT;
 #else
 	return NO_OPENSSL_SUPPORT_MPNW_RESULT;
 #endif
 }
-
 MpnwResult createPrivateSslContext(
 	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,
 	bool certificateChain,
-	SslContext* _sslContext)
+	SslContext* sslContext)
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(securityProtocol >= TLS_SECURITY_PROTOCOL);
 	assert(certificateFilePath != NULL);
 	assert(privateKeyFilePath != NULL);
-	assert(_sslContext != NULL);
+	assert(sslContext != NULL);
 
 	if (networkInitialized == false)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
-	SslContext sslContext = malloc(
-		sizeof(struct SslContext));
+	SslContext sslContextInstance = malloc(
+		sizeof(SslContext_T));
 
-	if (sslContext == NULL)
+	if (sslContextInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	SSL_CTX* handle;
@@ -1411,7 +1357,7 @@ MpnwResult createPrivateSslContext(
 
 	if (handle == NULL)
 	{
-		free(sslContext);
+		free(sslContextInstance);
 		return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 	}
 
@@ -1434,7 +1380,7 @@ MpnwResult createPrivateSslContext(
 	if (result != 1)
 	{
 		SSL_CTX_free(handle);
-		free(sslContext);
+		free(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
@@ -1446,7 +1392,7 @@ MpnwResult createPrivateSslContext(
 	if (result != 1)
 	{
 		SSL_CTX_free(handle);
-		free(sslContext);
+		free(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
@@ -1455,13 +1401,13 @@ MpnwResult createPrivateSslContext(
 	if (result != 1)
 	{
 		SSL_CTX_free(handle);
-		free(sslContext);
+		free(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
-	sslContext->handle = handle;
+	sslContextInstance->handle = handle;
 
-	*_sslContext = sslContext;
+	*sslContext = sslContextInstance;
 	return SUCCESS_MPNW_RESULT;
 #else
 	return NO_OPENSSL_SUPPORT_MPNW_RESULT;

@@ -14,7 +14,7 @@
 
 #include "mpnw/datagram_client.h"
 
-struct DatagramClient
+struct DatagramClient_T
 {
 	size_t receiveBufferSize;
 	OnDatagramClientReceive onReceive;
@@ -36,7 +36,7 @@ MpnwResult createDatagramClient(
 	assert(_datagramClient != NULL);
 
 	DatagramClient datagramClient = malloc(
-		sizeof(struct DatagramClient));
+		sizeof(DatagramClient_T));
 
 	if (datagramClient == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
@@ -122,7 +122,6 @@ MpnwResult createDatagramClient(
 	*_datagramClient = datagramClient;
 	return SUCCESS_MPNW_RESULT;
 }
-
 void destroyDatagramClient(DatagramClient datagramClient)
 {
 	if (datagramClient == NULL)
@@ -141,19 +140,16 @@ size_t getDatagramClientReceiveBufferSize(DatagramClient datagramClient)
 	assert(datagramClient != NULL);
 	return datagramClient->receiveBufferSize;
 }
-
 OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient datagramClient)
 {
 	assert(datagramClient != NULL);
 	return datagramClient->onReceive;
 }
-
 void* getDatagramClientHandle(DatagramClient datagramClient)
 {
 	assert(datagramClient != NULL);
 	return datagramClient->handle;
 }
-
 Socket getDatagramClientSocket(DatagramClient datagramClient)
 {
 	assert(datagramClient != NULL);

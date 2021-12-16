@@ -18,77 +18,140 @@
 #include <string.h>
 #include <stdbool.h>
 
-/* Internet Protocol V4 any address */
+/*
+ * Internet Protocol V4 any address.
+ */
 #define ANY_IP_ADDRESS_V4 "0.0.0.0"
-/* Internet Protocol V6 any address */
+/*
+ * Internet Protocol V6 any address.
+ */
 #define ANY_IP_ADDRESS_V6 "::"
 
-/* Internet protocol V4 loopback address */
+/*
+ * Internet protocol V4 loopback address.
+ */
 #define LOOPBACK_IP_ADDRESS_V4 "127.0.0.1"
-/* Internet protocol V6 loopback address */
+/*
+ * Internet protocol V6 loopback address.
+ */
 #define LOOPBACK_IP_ADDRESS_V6 "::1"
 
-/* Current computer IP address */
+/*
+ * Current computer IP address.
+ */
 #define LOCALHOST_HOSTNAME "localhost"
-/* System-allocated, dynamic port */
+/*
+ * System-allocated, dynamic port.
+ */
 #define ANY_IP_ADDRESS_SERVICE "0"
 
-/* Maximum numeric host string length*/
+/*
+ * Maximum numeric host string length.
+ */
 #define MAX_NUMERIC_HOST_LENGTH 46
-/* Maximum numeric service string length*/
+/*
+ * Maximum numeric service string length.
+ */
 #define MAX_NUMERIC_SERVICE_LENGTH 6
 
-/* IPv4 address size in bytes */
+/*
+ * IPv4 address size in bytes.
+ */
 #define IP_V4_SIZE 4
-/* IPv6 address size in bytes */
+/*
+ * IPv6 address size in bytes.
+ */
 #define IP_V6_SIZE 16
 
-/* Socket instance handle */
-typedef struct Socket* Socket;
-/* Socket address instance handle */
-typedef struct SocketAddress* SocketAddress;
-/* Secure socket layer context handle */
-typedef struct SslContext* SslContext;
+/*
+ * Socket structure.
+ */
+typedef struct Socket_T Socket_T;
+/*
+ * Socket instance.
+ */
+typedef Socket_T* Socket;
 
-/* Socket internet protocol address family */
-typedef enum AddressFamily
+/*
+ * Socket address structure.
+ */
+typedef struct SocketAddress_T SocketAddress_T;
+/*
+ * Socket address instance.
+ */
+typedef SocketAddress_T* SocketAddress;
+
+/*
+ * Secure socket layer context structure.
+ */
+typedef struct SslContext_T SslContext_T;
+/*
+ * Secure socket layer context instance.
+ */
+typedef SslContext_T* SslContext;
+
+/*
+ * Socket internet protocol address family.
+ */
+typedef enum AddressFamily_T
 {
 	IP_V4_ADDRESS_FAMILY = 0,
 	IP_V6_ADDRESS_FAMILY = 1,
 	ADDRESS_FAMILY_COUNT = 2,
-} AddressFamily;
+} AddressFamily_T;
+/*
+ * Socket internet protocol address family type.
+ */
+typedef uint8_t AddressFamily;
 
-/* Socket communication type */
-typedef enum SocketType
+/*
+ * Socket communication type.
+ */
+typedef enum SocketType_T
 {
 	STREAM_SOCKET_TYPE = 0,
 	DATAGRAM_SOCKET_TYPE = 1,
 	SOCKET_TYPE_COUNT = 2,
-} SocketType;
+} SocketType_T;
+/*
+ * Socket communication type.
+ */
+typedef uint8_t SocketType;
 
-/* Socket connection shutdown */
-typedef enum SocketShutdown
+/*
+ * Socket connection shutdown.
+ */
+typedef enum SocketShutdown_T
 {
 	RECEIVE_ONLY_SOCKET_SHUTDOWN = 0,
 	SEND_ONLY_SOCKET_SHUTDOWN = 1,
 	RECEIVE_SEND_SOCKET_SHUTDOWN = 2,
 	SOCKET_SHUTDOWN_COUNT = 3,
-} SocketShutdown;
+} SocketShutdown_T;
+/*
+ * Socket connection shutdown type.
+ */
+typedef uint8_t SocketShutdown;
 
-/* Socket security protocol */
-typedef enum SecurityProtocol
+/*
+ * Socket security protocol.
+ */
+typedef enum SecurityProtocol_T
 {
 	TLS_SECURITY_PROTOCOL = 0,
 	TLS_1_2_SECURITY_PROTOCOL = 1,
 	SECURITY_PROTOCOL_COUNT = 2,
-} SecurityProtocol;
+} SecurityProtocol_T;
+/*
+ * Socket security protocol type.
+ */
+typedef uint8_t SecurityProtocol;
 
 /*
  * Initialize network libraries.
  * Returns true on success.
  */
 bool initializeNetwork();
-
 /*
  * Terminate network libraries.
  */
@@ -117,9 +180,8 @@ MpnwResult createSocket(
 	bool blocking,
 	SslContext sslContext,
 	Socket* socket);
-
 /*
- * Destroy socket instance.
+ * Destroys socket instance.
  * socket - socket instance or NULL.
  */
 void destroySocket(Socket socket);
@@ -129,13 +191,11 @@ void destroySocket(Socket socket);
  * socket - socket instance.
  */
 SocketType getSocketType(Socket socket);
-
 /*
  * Returns true if socket blocking mode.
  * socket - socket instance.
  */
 bool isSocketBlocking(Socket socket);
-
 /*
  * Get local socket address.
  * Returns true on success.
@@ -146,7 +206,6 @@ bool isSocketBlocking(Socket socket);
 bool getSocketLocalAddress(
 	Socket socket,
 	SocketAddress socketAddress);
-
 /*
  * Get remote socket address.
  * Returns true on success.
@@ -157,7 +216,6 @@ bool getSocketLocalAddress(
 bool getSocketRemoteAddress(
 	Socket socket,
 	SocketAddress socketAddress);
-
 /*
  * Returns socket SSL context.
  * socket - socket instance.
@@ -169,7 +227,6 @@ SslContext getSocketSslContext(Socket socket);
  * socket - socket instance.
  */
 bool isSocketNoDelay(Socket socket);
-
 /*
  * Set socket no delay mode.
  *
@@ -185,12 +242,10 @@ void setSocketNoDelay(
  * socket - socket instance.
  */
 bool isSocketListening(Socket socket);
-
 /*
  * Maximum number of queued connections.
  */
 size_t getMaxSocketQueueSize();
-
 /*
  * Returns socket pending connections queue size.
  * socket - socket instance.
@@ -217,7 +272,6 @@ bool listenSocket(
 MpnwResult acceptSocket(
 	Socket socket,
 	Socket* accepted);
-
 /*
  * Accept socket SSL connection.
  * Returns true on success.
@@ -236,7 +290,6 @@ bool acceptSslSocket(Socket socket);
 bool connectSocket(
 	Socket socket,
 	SocketAddress remoteAddress);
-
 /*
  * Connects socket SSL.
  * Returns true on success.
@@ -269,7 +322,6 @@ bool socketReceive(
 	void* receiveBuffer,
 	size_t bufferSize,
 	size_t* byteCount);
-
 /*
  * Send socket message.
  * Returns true on success.
@@ -282,7 +334,6 @@ bool socketSend(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount);
-
 /*
  * Receive socket message from address.
  * Returns true on success.
@@ -299,7 +350,6 @@ bool socketReceiveFrom(
 	void* receiveBuffer,
 	size_t bufferSize,
 	size_t* byteCount);
-
 /*
  * Send socket message to the address.
  * Returns true on success.
@@ -327,7 +377,6 @@ MpnwResult createSocketAddress(
 	const char* host,
 	const char* service,
 	SocketAddress* socketAddress);
-
 /*
  * Create a new socket address copy.
  * Returns address on success, otherwise NULL.
@@ -355,7 +404,7 @@ MpnwResult resolveSocketAddress(
 	SocketAddress* socketAddress);
 
 /*
- * Destroy socket address instance.
+ * Destroys socket address instance.
  * socketAddress - socket address or NULL.
  */
 void destroySocketAddress(SocketAddress socketAddress);
@@ -386,14 +435,12 @@ int compareSocketAddress(
  */
 AddressFamily getSocketAddressFamily(
 	SocketAddress socketAddress);
-
 /*
  * Returns socket address family IP byte array size.
  * addressFamily - socket address family.
  */
 size_t getSocketAddressFamilyIpSize(
 	AddressFamily addressFamily);
-
 /*
  * Returns socket IP address byte array size.
  * socketAddress - socket address instance.
@@ -407,7 +454,6 @@ size_t getSocketAddressIpSize(
  */
 const uint8_t* getSocketAddressIp(
 	SocketAddress socketAddress);
-
 /*
  * Set socket IP address byte array.
  *
@@ -424,7 +470,6 @@ void setSocketAddressIp(
  */
 uint16_t getSocketAddressPort(
 	SocketAddress socketAddress);
-
 /*
  * Set socket address port number.
  *
@@ -447,7 +492,6 @@ bool getSocketAddressHost(
 	SocketAddress socketAddress,
 	char* host,
 	size_t length);
-
 /*
  * Returns socket address service name.
  * Returns true on success.
@@ -460,7 +504,6 @@ bool getSocketAddressService(
 	SocketAddress socketAddress,
 	char* service,
 	size_t length);
-
 /*
  * Get socket address host and service name.
  * Returns true on success.
@@ -492,9 +535,8 @@ MpnwResult createPublicSslContext(
 	const char* certificateFilePath,
 	const char* certificatesDirectory,
 	SslContext* sslContext);
-
 /*
- * Creates a new private SSL context.
+ * Create a new private SSL context.
  * Returns operation MPNW result.
  *
  * securityProtocol - security protocol type.

@@ -15,7 +15,7 @@
 #include "mpnw/stream_client.h"
 #include "mpmt/thread.h"
 
-struct StreamClient
+struct StreamClient_T
 {
 	size_t receiveBufferSize;
 	OnStreamClientReceive onReceive;
@@ -30,18 +30,18 @@ MpnwResult createStreamClient(
 	OnStreamClientReceive onReceive,
 	void* handle,
 	SslContext sslContext,
-	StreamClient* _streamClient)
+	StreamClient* streamClient)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
-	assert(_streamClient != NULL);
+	assert(streamClient != NULL);
 
-	StreamClient streamClient = malloc(
-		sizeof(struct StreamClient));
+	StreamClient streamClientInstance = malloc(
+		sizeof(StreamClient_T));
 
-	if (streamClient == NULL)
+	if (streamClientInstance == NULL)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
@@ -49,7 +49,7 @@ MpnwResult createStreamClient(
 
 	if (receiveBuffer == NULL)
 	{
-		free(streamClient);
+		free(streamClientInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
 
@@ -78,7 +78,7 @@ MpnwResult createStreamClient(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		free(receiveBuffer);
-		free(streamClient);
+		free(streamClientInstance);
 		return mpnwResult;
 	}
 
@@ -97,20 +97,19 @@ MpnwResult createStreamClient(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		free(receiveBuffer);
-		free(streamClient);
+		free(streamClientInstance);
 		return mpnwResult;
 	}
 
-	streamClient->receiveBufferSize = receiveBufferSize;
-	streamClient->onReceive = onReceive;
-	streamClient->handle = handle;
-	streamClient->receiveBuffer = receiveBuffer;
-	streamClient->socket = socket;
+	streamClientInstance->receiveBufferSize = receiveBufferSize;
+	streamClientInstance->onReceive = onReceive;
+	streamClientInstance->handle = handle;
+	streamClientInstance->receiveBuffer = receiveBuffer;
+	streamClientInstance->socket = socket;
 
-	*_streamClient = streamClient;
+	*streamClient = streamClientInstance;
 	return SUCCESS_MPNW_RESULT;
 }
-
 void destroyStreamClient(StreamClient streamClient)
 {
 	if (streamClient == NULL)
@@ -129,19 +128,16 @@ size_t getStreamClientReceiveBufferSize(StreamClient streamClient)
 	assert(streamClient != NULL);
 	return streamClient->receiveBufferSize;
 }
-
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient)
 {
 	assert(streamClient != NULL);
 	return streamClient->onReceive;
 }
-
 void* getStreamClientHandle(StreamClient streamClient)
 {
 	assert(streamClient != NULL);
 	return streamClient->handle;
 }
-
 Socket getStreamClientSocket(StreamClient streamClient)
 {
 	assert(streamClient != NULL);
