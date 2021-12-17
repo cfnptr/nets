@@ -126,7 +126,7 @@ void destroyDatagramClient(DatagramClient datagramClient)
 {
 	if (datagramClient == NULL)
 		return;
-
+	
 	shutdownSocket(
 		datagramClient->socket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);

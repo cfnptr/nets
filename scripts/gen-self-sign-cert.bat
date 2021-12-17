@@ -4,6 +4,8 @@ openssl version
 
 IF NOT %ERRORLEVEL% == 0 (
     ECHO Failed to get OpenSSL version, please check if it's installed.
+    PAUSE
+    EXIT
 )
 
 ECHO(

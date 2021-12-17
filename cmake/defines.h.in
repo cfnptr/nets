@@ -53,15 +53,18 @@
 #define netToHost32(x) swapBytes32(x)
 #define netToHost64(x) swapBytes64(x)
 #else
-#define hostToNet16(x) (x)
-#define hostToNet32(x) (x)
-#define hostToNet64(x) (x)
-#define netToHost16(x) (x)
-#define netToHost32(x) (x)
-#define netToHost64(x) (x)
+#define hostToNet16(x) (uint16_t)(x)
+#define hostToNet32(x) (uint32_t)(x)
+#define hostToNet64(x) (uint64_t)(x)
+#define netToHost16(x) (uint16_t)(x)
+#define netToHost32(x) (uint32_t)(x)
+#define netToHost64(x) (uint64_t)(x)
 #endif
 
-typedef enum MpnwResult
+/*
+ * MPNW results.
+ */
+typedef enum MpnwResult_T
 {
 	SUCCESS_MPNW_RESULT = 0,
 	NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT = 1,
@@ -77,8 +80,16 @@ typedef enum MpnwResult
 	FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT = 11,
 	NO_OPENSSL_SUPPORT_MPNW_RESULT = 12,
 	MPNW_RESULT_COUNT = 13,
-} MpnwResult;
+} MpnwResult_T;
 
+/*
+ * MPNW result type.
+ */
+typedef uint8_t MpnwResult;
+
+/*
+ * MPNW result strings.
+ */
 static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
 	"Success",
 	"Network is not initialized",
@@ -92,20 +103,24 @@ static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
 	"Failed to get address info",
 	"Failed to create SSL",
 	"Failed to load certificate",
+	"No OpenSSL support",
 };
 
+/*
+ * Returns MPNW result as string.
+ * result - MPNW result.
+ */
 inline static const char* mpnwResultToString(
 	MpnwResult result)
 {
-	if (result < SUCCESS_MPNW_RESULT ||
-		result >= MPNW_RESULT_COUNT)
-	{
-		return "Unknown pack result";
-	}
-
+	if (result >= MPNW_RESULT_COUNT)
+		return "Unknown MPNW result";
 	return mpnwResultStrings[result];
 }
 
+/*
+ * Stream message structure.
+ */
 typedef struct StreamMessage
 {
 	uint8_t* buffer;
@@ -113,6 +128,13 @@ typedef struct StreamMessage
 	size_t offset;
 } StreamMessage;
 
+/*
+ * Creates a new stream message. (TCP)
+ *
+ * buffer - message write buffer.
+ * messageSize - message size in bytes.
+ * lengthSize - message header size in bytes.
+ */
 inline static StreamMessage createStreamMessage(
 	uint8_t* buffer,
 	size_t messageSize,
@@ -132,14 +154,16 @@ inline static StreamMessage createStreamMessage(
 
 	if (lengthSize == sizeof(uint8_t))
 	{
-		buffer[0] = messageSize;
+		assert(messageSize <= UINT8_MAX);
+		buffer[0] = (uint8_t)messageSize;
 		streamMessage.size = messageSize + sizeof(uint8_t);
 		streamMessage.offset = sizeof(uint8_t);
 	}
 	else if (lengthSize == sizeof(uint16_t))
 	{
+		assert(messageSize <= UINT16_MAX);
 #if MPNW_LITTLE_ENDIAN
-		*((uint16_t*)buffer) = messageSize;
+		*((uint16_t*)buffer) = (uint16_t)messageSize;
 #else
 		*((uint16_t*)buffer) = swapBytes16(messageSize);
 #endif
@@ -148,8 +172,9 @@ inline static StreamMessage createStreamMessage(
 	}
 	else if (lengthSize == sizeof(uint32_t))
 	{
+		assert(messageSize <= UINT32_MAX);
 #if MPNW_LITTLE_ENDIAN
-		*((uint32_t*)buffer) = messageSize;
+		*((uint32_t*)buffer) = (uint32_t)messageSize;
 #else
 		*((uint32_t*)buffer) = swapBytes32(messageSize);
 #endif
@@ -158,8 +183,9 @@ inline static StreamMessage createStreamMessage(
 	}
 	else if (lengthSize == sizeof(uint64_t))
 	{
+		assert(messageSize <= UINT64_MAX);
 #if MPNW_LITTLE_ENDIAN
-		*((uint64_t*)buffer) = messageSize;
+		*((uint64_t*)buffer) = (uint64_t)messageSize;
 #else
 		*((uint64_t*)buffer) = swapBytes64(messageSize);
 #endif
