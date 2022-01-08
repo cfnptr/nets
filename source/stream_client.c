@@ -33,7 +33,6 @@ MpnwResult createStreamClient(
 	StreamClient* streamClient)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
 	assert(streamClient != NULL);
@@ -115,8 +114,7 @@ void destroyStreamClient(StreamClient streamClient)
 	if (streamClient == NULL)
 		return;
 
-	shutdownSocket(
-		streamClient->socket,
+	shutdownSocket(streamClient->socket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(streamClient->socket);
 	free(streamClient->receiveBuffer);

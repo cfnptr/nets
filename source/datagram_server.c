@@ -33,7 +33,7 @@ MpnwResult createDatagramServer(
 	DatagramServer* datagramServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
+	assert(service != NULL);
 	assert(receiveBufferSize != 0);
 	assert(onReceive != NULL);
 	assert(datagramServer != NULL);
@@ -115,8 +115,7 @@ void destroyDatagramServer(DatagramServer datagramServer)
 	if (datagramServer == NULL)
 		return;
 
-	shutdownSocket(
-		datagramServer->socket,
+	shutdownSocket(datagramServer->socket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(datagramServer->socket);
 	destroySocketAddress(datagramServer->address);

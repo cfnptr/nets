@@ -50,7 +50,7 @@ MpnwResult createStreamServer(
 	StreamServer* streamServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
+	assert(service != NULL);
 	assert(sessionBufferSize != 0);
 	assert(connectionQueueSize != 0);
 	assert(receiveBufferSize != 0);
@@ -179,14 +179,12 @@ void destroyStreamServer(StreamServer streamServer)
 		onDestroy(
 			streamServer,
 			streamSession);
-		shutdownSocket(
-			receiveSocket,
+		shutdownSocket(receiveSocket,
 			RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
 	}
 
-	shutdownSocket(
-		streamServer->acceptSocket,
+	shutdownSocket(streamServer->acceptSocket,
 		RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(streamServer->acceptSocket);
 	free(streamServer->receiveBuffer);

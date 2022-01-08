@@ -124,9 +124,7 @@ MpnwResult createSocket(
 	Socket* _socket)
 {
 	assert(socketType < SOCKET_TYPE_COUNT);
-	assert(socketType >= STREAM_SOCKET_TYPE);
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(socketAddress != NULL);
 	assert(_socket != NULL);
 
@@ -451,6 +449,7 @@ bool isSocketListening(Socket socket)
 }
 size_t getMaxSocketQueueSize()
 {
+	assert(networkInitialized == true);
 	return SOMAXCONN;
 }
 size_t getSocketQueueSize(Socket socket)
@@ -653,7 +652,6 @@ bool shutdownSocket(
 {
 	assert(socket != NULL);
 	assert(_shutdown < SOCKET_SHUTDOWN_COUNT);
-	assert(_shutdown >= RECEIVE_ONLY_SOCKET_SHUTDOWN);
 	assert(networkInitialized == true);
 
 	int type;
@@ -904,9 +902,7 @@ MpnwResult resolveSocketAddress(
 	assert(host != NULL);
 	assert(service != NULL);
 	assert(family < ADDRESS_FAMILY_COUNT);
-	assert(family >= IP_V4_ADDRESS_FAMILY);
 	assert(type < SOCKET_TYPE_COUNT);
-	assert(type >= STREAM_SOCKET_TYPE);
 	assert(socketAddress != NULL);
 
 	if (networkInitialized == false)
@@ -1005,8 +1001,8 @@ int compareSocketAddress(
 	SocketAddress a,
 	SocketAddress b)
 {
-	assert(a != NULL);
-	assert(b != NULL);
+	// NOTE: a and b should not be NULL!
+	// Skipping here assertions for debug build speed.
 
 	int family = a->handle.ss_family;
 
@@ -1047,7 +1043,6 @@ size_t getSocketAddressFamilyIpSize(
 	AddressFamily addressFamily)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(addressFamily >= IP_V4_ADDRESS_FAMILY);
 	assert(networkInitialized == true);
 
 	if (addressFamily == IP_V4_ADDRESS_FAMILY)
@@ -1226,9 +1221,7 @@ bool getSocketAddressHostService(
 	assert(serviceLength != 0);
 	assert(networkInitialized == true);
 
-	int flags =
-		NI_NUMERICHOST |
-		NI_NUMERICSERV;
+	int flags = NI_NUMERICHOST | NI_NUMERICSERV;
 
 	return getnameinfo(
 		(const struct sockaddr*)&socketAddress->handle,
@@ -1248,7 +1241,6 @@ MpnwResult createPublicSslContext(
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
-	assert(securityProtocol >= TLS_SECURITY_PROTOCOL);
 	assert(sslContext != NULL);
 
 	if (networkInitialized == false)
@@ -1323,7 +1315,6 @@ MpnwResult createPrivateSslContext(
 {
 #if MPNW_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
-	assert(securityProtocol >= TLS_SECURITY_PROTOCOL);
 	assert(certificateFilePath != NULL);
 	assert(privateKeyFilePath != NULL);
 	assert(sslContext != NULL);
