@@ -33,20 +33,20 @@ MpnwResult createStreamClient(
 	StreamClient* streamClient)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(receiveBufferSize != 0);
-	assert(onReceive != NULL);
-	assert(streamClient != NULL);
+	assert(receiveBufferSize > 0);
+	assert(onReceive);
+	assert(streamClient);
 
 	StreamClient streamClientInstance = malloc(
 		sizeof(StreamClient_T));
 
-	if (streamClientInstance == NULL)
+	if (!streamClientInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
-	if (receiveBuffer == NULL)
+	if (!receiveBuffer)
 	{
 		free(streamClientInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
@@ -111,7 +111,7 @@ MpnwResult createStreamClient(
 }
 void destroyStreamClient(StreamClient streamClient)
 {
-	if (streamClient == NULL)
+	if (!streamClient)
 		return;
 
 	shutdownSocket(streamClient->socket,
@@ -123,22 +123,22 @@ void destroyStreamClient(StreamClient streamClient)
 
 size_t getStreamClientReceiveBufferSize(StreamClient streamClient)
 {
-	assert(streamClient != NULL);
+	assert(streamClient);
 	return streamClient->receiveBufferSize;
 }
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient)
 {
-	assert(streamClient != NULL);
+	assert(streamClient);
 	return streamClient->onReceive;
 }
 void* getStreamClientHandle(StreamClient streamClient)
 {
-	assert(streamClient != NULL);
+	assert(streamClient);
 	return streamClient->handle;
 }
 Socket getStreamClientSocket(StreamClient streamClient)
 {
-	assert(streamClient != NULL);
+	assert(streamClient);
 	return streamClient->socket;
 }
 
@@ -147,8 +147,8 @@ bool connectStreamClient(
 	SocketAddress remoteAddress,
 	double timeoutTime)
 {
-	assert(streamClient != NULL);
-	assert(remoteAddress != NULL);
+	assert(streamClient);
+	assert(remoteAddress);
 	assert(timeoutTime >= 0.0);
 
 	Socket socket = streamClient->socket;
@@ -156,11 +156,7 @@ bool connectStreamClient(
 
 	while (getCurrentClock() < timeout)
 	{
-		bool result = connectSocket(
-			socket,
-			remoteAddress);
-
-		if (result == true)
+		if (connectSocket(socket, remoteAddress))
 			goto CONNECT_SSL;
 
 		sleepThread(0.001);
@@ -170,14 +166,12 @@ bool connectStreamClient(
 
 CONNECT_SSL:
 
-	if (getSocketSslContext(socket) == NULL)
+	if (!getSocketSslContext(socket))
 		return true;
 
 	while (getCurrentClock() < timeout)
 	{
-		bool result = connectSslSocket(socket);
-
-		if (result == true)
+		if (connectSslSocket(socket))
 			return true;
 
 		sleepThread(0.001);
@@ -188,7 +182,7 @@ CONNECT_SSL:
 
 bool updateStreamClient(StreamClient streamClient)
 {
-	assert(streamClient != NULL);
+	assert(streamClient);
 
 	uint8_t* receiveBuffer =
 		streamClient->receiveBuffer;
@@ -201,7 +195,7 @@ bool updateStreamClient(StreamClient streamClient)
 		streamClient->receiveBufferSize,
 		&byteCount);
 
-	if (result == false)
+	if (!result)
 		return false;
 
 	streamClient->onReceive(
@@ -216,9 +210,9 @@ bool streamClientSend(
 	const void* sendBuffer,
 	size_t byteCount)
 {
-	assert(streamClient != NULL);
-	assert(sendBuffer != NULL);
-	assert(byteCount != 0);
+	assert(streamClient);
+	assert(sendBuffer);
+	assert(byteCount > 0);
 
 	return socketSend(
 		streamClient->socket,
@@ -230,9 +224,9 @@ bool streamClientSendMessage(
 	StreamClient streamClient,
 	StreamMessage streamMessage)
 {
-	assert(streamClient != NULL);
-	assert(streamMessage.buffer != NULL);
-	assert(streamMessage.size != 0);
+	assert(streamClient);
+	assert(streamMessage.buffer);
+	assert(streamMessage.size > 0);
 	assert(streamMessage.size == streamMessage.offset);
 
 	return socketSend(

@@ -587,13 +587,12 @@ inline static bool handleStreamMessage(
 	bool(*receiveFunction)(const uint8_t*, size_t, void*),
 	void* functionHandle)
 {
-	assert(receiveBuffer != NULL);
-	assert(messageBuffer != NULL);
-	assert(messageBufferSize != 0);
-	assert(messageByteCount != NULL);
+	assert(receiveBuffer);
+	assert(messageBuffer);
+	assert(messageBufferSize > 0);
+	assert(messageByteCount);
 
-	assert(
-		messageLengthSize == sizeof(uint8_t) ||
+	assert(messageLengthSize == sizeof(uint8_t) ||
 		messageLengthSize == sizeof(uint16_t) ||
 		messageLengthSize == sizeof(uint32_t) ||
 		messageLengthSize == sizeof(uint64_t));
@@ -619,8 +618,7 @@ inline static bool handleStreamMessage(
 			if (messageSizePart > byteCount)
 			{
 				// Store part of the received message size
-				memcpy(
-					messageBuffer + _messageByteCount,
+				memcpy(messageBuffer + _messageByteCount,
 					receiveBuffer,
 					byteCount);
 				*messageByteCount += byteCount;
@@ -628,8 +626,7 @@ inline static bool handleStreamMessage(
 			}
 
 			// Copy remaining message size part
-			memcpy(
-				messageBuffer + _messageByteCount,
+			memcpy(messageBuffer + _messageByteCount,
 				receiveBuffer,
 				messageSizePart);
 			pointer += messageSizePart;
@@ -684,16 +681,14 @@ inline static bool handleStreamMessage(
 		{
 			size_t messagePartSize = byteCount - pointer;
 
-			memcpy(
-				messageBuffer + _messageByteCount,
+			memcpy(messageBuffer + _messageByteCount,
 				receiveBuffer + pointer,
 				messagePartSize);
 			*messageByteCount = _messageByteCount + messagePartSize;
 			return true;
 		}
 
-		memcpy(
-			messageBuffer + _messageByteCount,
+		memcpy(messageBuffer + _messageByteCount,
 			receiveBuffer + pointer,
 			neededPartSize);
 
@@ -702,7 +697,7 @@ inline static bool handleStreamMessage(
 			messageSize,
 			functionHandle);
 
-		if (result == false)
+		if (!result)
 			return false;
 
 		*messageByteCount = 0;
@@ -717,8 +712,7 @@ inline static bool handleStreamMessage(
 		{
 			size_t messageSizePart = byteCount - pointer;
 
-			memcpy(
-				messageBuffer,
+			memcpy(messageBuffer,
 				receiveBuffer + pointer,
 				messageSizePart);
 			*messageByteCount += messageSizePart;
@@ -770,8 +764,7 @@ inline static bool handleStreamMessage(
 		{
 			size_t messagePartSize = byteCount - pointer;
 
-			memcpy(
-				messageBuffer,
+			memcpy(messageBuffer,
 				receiveBuffer + pointer,
 				messagePartSize);
 			*messageByteCount += messagePartSize;
@@ -784,7 +777,7 @@ inline static bool handleStreamMessage(
 			messageSize,
 			functionHandle);
 
-		if (result == false)
+		if (!result)
 			return false;
 
 		pointer += messageLengthSize + messageSize;
@@ -800,6 +793,6 @@ bool sHandleStreamMessage(
 	uint8_t* messageBuffer,
 	size_t messageBufferSize,
 	size_t* messageByteCount,
-	size_t messageLengthSize,
+	uint8_t messageLengthSize,
 	bool(*receiveFunction)(const uint8_t*, size_t, void*),
 	void* functionHandle);

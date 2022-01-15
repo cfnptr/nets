@@ -28,25 +28,25 @@ MpnwResult createDatagramClient(
 	size_t receiveBufferSize,
 	OnDatagramClientReceive onReceive,
 	void* handle,
-	DatagramClient* _datagramClient)
+	DatagramClient* datagramClient)
 {
-	assert(remoteAddress != NULL);
-	assert(receiveBufferSize != 0);
-	assert(onReceive != NULL);
-	assert(_datagramClient != NULL);
+	assert(remoteAddress);
+	assert(receiveBufferSize > 0);
+	assert(onReceive);
+	assert(datagramClient);
 
-	DatagramClient datagramClient = malloc(
+	DatagramClient datagramClientInstance = malloc(
 		sizeof(DatagramClient_T));
 
-	if (datagramClient == NULL)
+	if (!datagramClientInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
-	if (receiveBuffer == NULL)
+	if (!receiveBuffer)
 	{
-		free(datagramClient);
+		free(datagramClientInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
 
@@ -78,7 +78,7 @@ MpnwResult createDatagramClient(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		free(receiveBuffer);
-		free(datagramClient);
+		free(datagramClientInstance);
 		return mpnwResult;
 	}
 
@@ -97,34 +97,30 @@ MpnwResult createDatagramClient(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		free(receiveBuffer);
-		free(datagramClient);
+		free(datagramClientInstance);
 		return mpnwResult;
 	}
 
-	bool result = connectSocket(
-		socket,
-		remoteAddress);
-
-	if (result == false)
+	if (!connectSocket(socket, remoteAddress))
 	{
 		destroySocket(socket);
 		free(receiveBuffer);
-		free(datagramClient);
+		free(datagramClientInstance);
 		return FAILED_TO_CONNECT_SOCKET_MPNW_RESULT;
 	}
 
-	datagramClient->receiveBufferSize = receiveBufferSize;
-	datagramClient->onReceive = onReceive;
-	datagramClient->handle = handle;
-	datagramClient->receiveBuffer = receiveBuffer;
-	datagramClient->socket = socket;
+	datagramClientInstance->receiveBufferSize = receiveBufferSize;
+	datagramClientInstance->onReceive = onReceive;
+	datagramClientInstance->handle = handle;
+	datagramClientInstance->receiveBuffer = receiveBuffer;
+	datagramClientInstance->socket = socket;
 
-	*_datagramClient = datagramClient;
+	*datagramClient = datagramClientInstance;
 	return SUCCESS_MPNW_RESULT;
 }
 void destroyDatagramClient(DatagramClient datagramClient)
 {
-	if (datagramClient == NULL)
+	if (!datagramClient)
 		return;
 	
 	shutdownSocket(datagramClient->socket,
@@ -136,28 +132,28 @@ void destroyDatagramClient(DatagramClient datagramClient)
 
 size_t getDatagramClientReceiveBufferSize(DatagramClient datagramClient)
 {
-	assert(datagramClient != NULL);
+	assert(datagramClient);
 	return datagramClient->receiveBufferSize;
 }
 OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient datagramClient)
 {
-	assert(datagramClient != NULL);
+	assert(datagramClient);
 	return datagramClient->onReceive;
 }
 void* getDatagramClientHandle(DatagramClient datagramClient)
 {
-	assert(datagramClient != NULL);
+	assert(datagramClient);
 	return datagramClient->handle;
 }
 Socket getDatagramClientSocket(DatagramClient datagramClient)
 {
-	assert(datagramClient != NULL);
+	assert(datagramClient);
 	return datagramClient->socket;
 }
 
 bool updateDatagramClient(DatagramClient datagramClient)
 {
-	assert(datagramClient != NULL);
+	assert(datagramClient);
 
 	uint8_t* receiveBuffer =
 		datagramClient->receiveBuffer;
@@ -170,7 +166,7 @@ bool updateDatagramClient(DatagramClient datagramClient)
 		datagramClient->receiveBufferSize,
 		&byteCount);
 
-	if (result == false)
+	if (!result)
 		return false;
 
 	datagramClient->onReceive(
@@ -185,9 +181,9 @@ bool datagramClientSend(
 	const void* sendBuffer,
 	size_t byteCount)
 {
-	assert(datagramClient != NULL);
-	assert(sendBuffer != NULL);
-	assert(byteCount != 0);
+	assert(datagramClient);
+	assert(sendBuffer);
+	assert(byteCount > 0);
 
 	return socketSend(
 		datagramClient->socket,

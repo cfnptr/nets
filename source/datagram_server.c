@@ -33,21 +33,21 @@ MpnwResult createDatagramServer(
 	DatagramServer* datagramServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(service != NULL);
-	assert(receiveBufferSize != 0);
-	assert(onReceive != NULL);
-	assert(datagramServer != NULL);
+	assert(service);
+	assert(receiveBufferSize > 0);
+	assert(onReceive);
+	assert(datagramServer);
 
 	DatagramServer datagramServerInstance = malloc(
 		sizeof(DatagramServer_T));
 
-	if (datagramServerInstance == NULL)
+	if (!datagramServerInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
-	if (receiveBuffer == NULL)
+	if (!receiveBuffer)
 	{
 		free(datagramServerInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
@@ -112,7 +112,7 @@ MpnwResult createDatagramServer(
 }
 void destroyDatagramServer(DatagramServer datagramServer)
 {
-	if (datagramServer == NULL)
+	if (!datagramServer)
 		return;
 
 	shutdownSocket(datagramServer->socket,
@@ -125,28 +125,28 @@ void destroyDatagramServer(DatagramServer datagramServer)
 
 size_t getDatagramServerReceiveBufferSize(DatagramServer datagramServer)
 {
-	assert(datagramServer != NULL);
+	assert(datagramServer);
 	return datagramServer->receiveBufferSize;
 }
 OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer datagramServer)
 {
-	assert(datagramServer != NULL);
+	assert(datagramServer);
 	return datagramServer->onReceive;
 }
 void* getDatagramServerHandle(DatagramServer datagramServer)
 {
-	assert(datagramServer != NULL);
+	assert(datagramServer);
 	return datagramServer->handle;
 }
 Socket getDatagramServerSocket(DatagramServer datagramServer)
 {
-	assert(datagramServer != NULL);
+	assert(datagramServer);
 	return datagramServer->socket;
 }
 
 bool updateDatagramServer(DatagramServer datagramServer)
 {
-	assert(datagramServer != NULL);
+	assert(datagramServer);
 
 	uint8_t* receiveBuffer =
 		datagramServer->receiveBuffer;
@@ -160,7 +160,7 @@ bool updateDatagramServer(DatagramServer datagramServer)
 		datagramServer->receiveBufferSize,
 		&byteCount);
 
-	if (result == false)
+	if (!result)
 		return false;
 
 	datagramServer->onReceive(
@@ -177,10 +177,10 @@ bool datagramServerSend(
 	size_t byteCount,
 	SocketAddress remoteAddress)
 {
-	assert(datagramServer != NULL);
-	assert(sendBuffer != NULL);
-	assert(byteCount != 0);
-	assert(remoteAddress != NULL);
+	assert(datagramServer);
+	assert(sendBuffer);
+	assert(byteCount > 0);
+	assert(remoteAddress);
 
 	return socketSendTo(
 		datagramServer->socket,

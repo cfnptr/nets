@@ -50,26 +50,26 @@ MpnwResult createStreamServer(
 	StreamServer* streamServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(service != NULL);
-	assert(sessionBufferSize != 0);
-	assert(connectionQueueSize != 0);
-	assert(receiveBufferSize != 0);
-	assert(onCreate != NULL);
-	assert(onDestroy != NULL);
-	assert(onUpdate != NULL);
-	assert(onReceive != NULL);
-	assert(streamServer != NULL);
+	assert(service);
+	assert(sessionBufferSize > 0);
+	assert(connectionQueueSize > 0);
+	assert(receiveBufferSize > 0);
+	assert(onCreate);
+	assert(onDestroy);
+	assert(onUpdate);
+	assert(onReceive);
+	assert(streamServer);
 
 	StreamServer streamServerInstance = malloc(
 		sizeof(StreamServer_T));
 
-	if (streamServerInstance == NULL)
+	if (!streamServerInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
-	if (receiveBuffer == NULL)
+	if (!receiveBuffer)
 	{
 		free(streamServerInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
@@ -78,7 +78,7 @@ MpnwResult createStreamServer(
 	StreamSession sessionBuffer = malloc(
 		sessionBufferSize * sizeof(StreamSession_T));
 
-	if (sessionBuffer == NULL)
+	if (!sessionBuffer)
 	{
 		free(receiveBuffer);
 		free(streamServerInstance);
@@ -135,11 +135,7 @@ MpnwResult createStreamServer(
 		return mpnwResult;
 	}
 
-	bool result = listenSocket(
-		acceptSocket,
-		connectionQueueSize);
-
-	if (result == false)
+	if (!listenSocket(acceptSocket, connectionQueueSize))
 	{
 		free(sessionBuffer);
 		free(receiveBuffer);
@@ -164,7 +160,7 @@ MpnwResult createStreamServer(
 }
 void destroyStreamServer(StreamServer streamServer)
 {
-	if (streamServer == NULL)
+	if (!streamServer)
 		return;
 
 	StreamSession sessionBuffer = streamServer->sessionBuffer;
@@ -194,58 +190,58 @@ void destroyStreamServer(StreamServer streamServer)
 
 size_t getStreamServerSessionBufferSize(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 	return streamServer->sessionBufferSize;
 }
 size_t getStreamServerReceiveBufferSize(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 	return streamServer->receiveBufferSize;
 }
 OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 	return streamServer->onCreate;
 }
 OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 	return streamServer->onDestroy;
 }
 OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 	return streamServer->onUpdate;
 }
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 	return streamServer->onReceive;
 }
 void* getStreamServerHandle(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 	return streamServer->handle;
 }
 Socket getStreamServerSocket(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 	return streamServer->acceptSocket;
 }
 Socket getStreamSessionSocket(StreamSession streamSession)
 {
-	assert(streamSession != NULL);
+	assert(streamSession);
 	return streamSession->receiveSocket;
 }
 void* getStreamSessionHandle(StreamSession streamSession)
 {
-	assert(streamSession != NULL);
+	assert(streamSession);
 	return streamSession->handle;
 }
 
 bool updateStreamServer(StreamServer streamServer)
 {
-	assert(streamServer != NULL);
+	assert(streamServer);
 
 	bool isUpdated = false;
 
@@ -265,20 +261,14 @@ bool updateStreamServer(StreamServer streamServer)
 	{
 		StreamSession streamSession = &sessionBuffer[i];
 
-		bool result = onUpdate(
-			streamServer,
-			streamSession);
-
-		if (result == false)
+		if (!onUpdate(streamServer, streamSession))
 			goto DESTROY_SESSION;
 
 		Socket receiveSocket = streamSession->receiveSocket;
 
-		if (streamSession->isSslAccepted == false)
+		if (!streamSession->isSslAccepted)
 		{
-			result = acceptSslSocket(receiveSocket);
-
-			if (result == false)
+			if (!acceptSslSocket(receiveSocket))
 				continue;
 
 			streamSession->isSslAccepted = true;
@@ -287,13 +277,13 @@ bool updateStreamServer(StreamServer streamServer)
 
 		size_t byteCount;
 
-		result = socketReceive(
+		bool result = socketReceive(
 			receiveSocket,
 			receiveBuffer,
 			receiveBufferSize,
 			&byteCount);
 
-		if (result == false)
+		if (!result)
 			continue;
 
 		result = onReceive(
@@ -302,7 +292,7 @@ bool updateStreamServer(StreamServer streamServer)
 			receiveBuffer,
 			byteCount);
 
-		if (result == true)
+		if (result)
 		{
 			isUpdated = true;
 			continue;
@@ -354,7 +344,7 @@ bool updateStreamServer(StreamServer streamServer)
 			acceptedSocket,
 			&session);
 
-		if (result == true)
+		if (result)
 		{
 			StreamSession_T streamSession;
 			streamSession.receiveSocket = acceptedSocket;
@@ -377,9 +367,9 @@ bool streamSessionSend(
 	const void* sendBuffer,
 	size_t byteCount)
 {
-	assert(streamSession != NULL);
-	assert(sendBuffer != NULL);
-	assert(byteCount != 0);
+	assert(streamSession);
+	assert(sendBuffer);
+	assert(byteCount > 0);
 
 	return socketSend(
 		streamSession->receiveSocket,
@@ -390,9 +380,9 @@ bool streamSessionSendMessage(
 	StreamSession streamSession,
 	StreamMessage streamMessage)
 {
-	assert(streamSession != NULL);
-	assert(streamMessage.buffer != NULL);
-	assert(streamMessage.size != 0);
+	assert(streamSession);
+	assert(streamMessage.buffer);
+	assert(streamMessage.size > 0);
 	assert(streamMessage.size == streamMessage.offset);
 
 	return socketSend(
