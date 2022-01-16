@@ -18,7 +18,8 @@ struct StreamSession_T
 {
 	Socket receiveSocket;
 	void* handle;
-	bool isSslAccepted;
+	uint8_t isSslAccepted;
+	uint8_t _alignment[3];
 };
 struct StreamServer_T
 {

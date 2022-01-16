@@ -50,10 +50,10 @@ static WSADATA wsaData;
 
 struct Socket_T
 {
-	SocketType type;
-	bool blocking;
 	size_t queueSize;
 	SOCKET handle;
+	SocketType type;
+	bool blocking;
 #if MPNW_SUPPORT_OPENSSL
 	SslContext sslContext;
 	SSL* ssl;
@@ -235,10 +235,10 @@ MpnwResult createSocket(
 		}
 	}
 
-	socketInstance->type = socketType;
-	socketInstance->blocking = blocking;
 	socketInstance->queueSize = 0;
 	socketInstance->handle = handle;
+	socketInstance->type = socketType;
+	socketInstance->blocking = blocking;
 
 #if MPNW_SUPPORT_OPENSSL
 	if (sslContext)
@@ -542,10 +542,10 @@ MpnwResult acceptSocket(
 		}
 	}
 
-	acceptedInstance->type = socket->type;
-	acceptedInstance->blocking = socket->blocking;
 	acceptedInstance->queueSize = 0;
 	acceptedInstance->handle = handle;
+	acceptedInstance->type = socket->type;
+	acceptedInstance->blocking = socket->blocking;
 
 #if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext)
