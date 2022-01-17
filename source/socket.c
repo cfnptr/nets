@@ -55,6 +55,7 @@ struct Socket_T
 	SocketType type;
 	bool blocking;
 #if MPNW_SUPPORT_OPENSSL
+	uint8_t _alignment[2];
 	SslContext sslContext;
 	SSL* ssl;
 #endif
