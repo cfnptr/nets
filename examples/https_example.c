@@ -15,6 +15,7 @@
 #include "mpnw/stream_client.h"
 
 #include "mpmt/thread.h"
+#include "mpmt/common.h"
 
 #include <stdio.h>
 #include <string.h>
