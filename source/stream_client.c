@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "mpnw/stream_client.h"
+
 #include "mpmt/thread.h"
+#include "mpmt/common.h"
 
 struct StreamClient_T
 {
