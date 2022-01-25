@@ -80,7 +80,7 @@ configure_file(
 set(MPNW_LINK_LIBRARIES
 	mpmt)
 
-if(MPNW_USE_OPENSSL)
+if(MPNW_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND MPNW_LINK_LIBRARIES
 		OpenSSL::SSL
 		OpenSSL::Crypto)
