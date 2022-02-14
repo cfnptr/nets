@@ -23,19 +23,13 @@ A library providing generic interface for transferring data over a **network** a
 * [CMake 3.10+](https://cmake.org/)
 * [OpenSSL](https://openssl.org/) (Optional)
 
-## OpenSSL installation
+### OpenSSL installation
 
 * Ubuntu: sudo apt install libssl-dev
 * MacOS: [brew](https://brew.sh/) install openssl
 * Windows: [choco](https://chocolatey.org/) install openssl
 
-## Cloning
-
-```
-git clone --recursive https://github.com/cfnptr/mpnw
-```
-
-## CMake options
+### CMake options
 
 | Name                      | Description                          | Default value |
 |---------------------------|--------------------------------------|---------------|
@@ -44,9 +38,15 @@ git clone --recursive https://github.com/cfnptr/mpnw
 | MPNW_USE_OPENSSL          | Use OpenSSL for secure communication | `ON`          |
 | MPNW_ALLOW_DEPRECATED_SSL | Allow deprecated OpenSSL functions   | `OFF`         |
 
-## Usage
+## Cloning
 
-Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/datagram_example.c) \
+```
+git clone --recursive https://github.com/cfnptr/mpnw
+```
+
+## Usage examples
+
+Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/datagram_example.c)<br/>
 HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/https_example.c)
 
 ## Third-party
