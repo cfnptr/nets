@@ -67,24 +67,36 @@ MpnwResult createStreamServer(
 	if (!streamServerInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
+	streamServerInstance->onCreate = onCreate;
+	streamServerInstance->onDestroy = onDestroy;
+	streamServerInstance->onUpdate = onUpdate;
+	streamServerInstance->onReceive = onReceive;
+	streamServerInstance->handle = handle;
+
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
 	if (!receiveBuffer)
 	{
-		free(streamServerInstance);
+		destroyStreamServer(streamServerInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
+
+	streamServerInstance->receiveBufferSize = receiveBufferSize;
+	streamServerInstance->receiveBuffer = receiveBuffer;
 
 	StreamSession sessionBuffer = malloc(
 		sessionBufferSize * sizeof(StreamSession_T));
 
 	if (!sessionBuffer)
 	{
-		free(receiveBuffer);
-		free(streamServerInstance);
+		destroyStreamServer(streamServerInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
+
+	streamServerInstance->sessionBufferSize = sessionBufferSize;
+	streamServerInstance->sessionBuffer = sessionBuffer;
+	streamServerInstance->sessionCount = 0;
 
 	MpnwResult mpnwResult;
 	SocketAddress socketAddress;
@@ -110,9 +122,7 @@ MpnwResult createStreamServer(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(sessionBuffer);
-		free(receiveBuffer);
-		free(streamServerInstance);
+		destroyStreamServer(streamServerInstance);
 		return mpnwResult;
 	}
 
@@ -130,31 +140,17 @@ MpnwResult createStreamServer(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(sessionBuffer);
-		free(receiveBuffer);
-		free(streamServerInstance);
+		destroyStreamServer(streamServerInstance);
 		return mpnwResult;
 	}
 
+	streamServerInstance->acceptSocket = acceptSocket;
+
 	if (!listenSocket(acceptSocket, connectionQueueSize))
 	{
-		free(sessionBuffer);
-		free(receiveBuffer);
-		free(streamServerInstance);
+		destroyStreamServer(streamServerInstance);
 		return FAILED_TO_LISTEN_SOCKET_MPNW_RESULT;
 	}
-
-	streamServerInstance->sessionBufferSize = sessionBufferSize;
-	streamServerInstance->receiveBufferSize = receiveBufferSize;
-	streamServerInstance->onCreate = onCreate;
-	streamServerInstance->onDestroy = onDestroy;
-	streamServerInstance->onUpdate = onUpdate;
-	streamServerInstance->onReceive = onReceive;
-	streamServerInstance->handle = handle;
-	streamServerInstance->sessionBuffer = sessionBuffer;
-	streamServerInstance->sessionCount = 0;
-	streamServerInstance->receiveBuffer = receiveBuffer;
-	streamServerInstance->acceptSocket = acceptSocket;
 
 	*streamServer = streamServerInstance;
 	return SUCCESS_MPNW_RESULT;
@@ -173,17 +169,20 @@ void destroyStreamServer(StreamServer streamServer)
 		StreamSession streamSession = &sessionBuffer[i];
 		Socket receiveSocket = streamSession->receiveSocket;
 
-		onDestroy(
-			streamServer,
-			streamSession);
+		onDestroy(streamServer, streamSession);
 		shutdownSocket(receiveSocket,
 			RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
 	}
 
-	shutdownSocket(streamServer->acceptSocket,
-		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(streamServer->acceptSocket);
+	Socket socket = streamServer->acceptSocket;
+
+	if (socket)
+	{
+		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(socket);
+	}
+
 	free(streamServer->receiveBuffer);
 	free(sessionBuffer);
 	free(streamServer);

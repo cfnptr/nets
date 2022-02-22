@@ -136,11 +136,18 @@ MpnwResult createSocket(
 	assert(!sslContext);
 #endif
 
-	Socket socketInstance = malloc(
-		sizeof(Socket_T));
+	Socket socketInstance = calloc(
+		1, sizeof(Socket_T));
 
 	if (!socketInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+
+	socketInstance->queueSize = 0;
+	socketInstance->type = socketType;
+	socketInstance->blocking = blocking;
+#if MPNW_SUPPORT_OPENSSL
+	socketInstance->sslContext = sslContext;
+#endif
 
 	int type, protocol;
 
@@ -184,9 +191,11 @@ MpnwResult createSocket(
 
 	if (handle == INVALID_SOCKET)
 	{
-		free(socketInstance);
+		destroySocket(socketInstance);
 		return FAILED_TO_CREATE_SOCKET_MPNW_RESULT;
 	}
+
+	socketInstance->handle = handle;
 
 	int result = bind(
 		handle,
@@ -195,8 +204,7 @@ MpnwResult createSocket(
 	
 	if (result != 0)
 	{
-		closesocket(handle);
-		free(socketInstance);
+		destroySocket(socketInstance);
 		return FAILED_TO_BIND_SOCKET_MPNW_RESULT;
 	}
 
@@ -210,8 +218,7 @@ MpnwResult createSocket(
 
 		if (flags == -1)
 		{
-			closesocket(handle);
-			free(socketInstance);
+			destroySocket(socketInstance);
 			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
 		}
 
@@ -230,46 +237,31 @@ MpnwResult createSocket(
 
 		if (result != 0)
 		{
-			closesocket(handle);
-			free(socketInstance);
+			destroySocket(socketInstance);
 			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
 		}
 	}
 
-	socketInstance->queueSize = 0;
-	socketInstance->handle = handle;
-	socketInstance->type = socketType;
-	socketInstance->blocking = blocking;
-
 #if MPNW_SUPPORT_OPENSSL
 	if (sslContext)
 	{
-		SSL* ssl = SSL_new(
-			sslContext->handle);
+		SSL* ssl = SSL_new(sslContext->handle);
 
 		if (!ssl)
 		{
-			closesocket(handle);
-			free(socketInstance);
+			destroySocket(socketInstance);
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
+
+		socketInstance->ssl = ssl;
 
 		result = SSL_set_fd(ssl, (int)handle);
 
 		if (result != 1)
 		{
-			SSL_free(ssl);
-			closesocket(handle);
-			free(socketInstance);
+			destroySocket(socketInstance);
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
-
-		socketInstance->sslContext = sslContext;
-		socketInstance->ssl = ssl;
-	}
-	else
-	{
-		socketInstance->sslContext = NULL;
 	}
 #endif
 
@@ -288,11 +280,8 @@ void destroySocket(Socket socket)
 		SSL_free(socket->ssl);
 #endif
 
-	int result = closesocket(
-		socket->handle);
-
-	if (result != 0)
-		abort();
+	if (socket->handle)
+		closesocket(socket->handle);
 
 	free(socket);
 }
@@ -977,10 +966,6 @@ MpnwResult resolveSocketAddress(
 void destroySocketAddress(SocketAddress socketAddress)
 {
 	assert(networkInitialized);
-
-	if (!socketAddress)
-		return;
-
 	free(socketAddress);
 }
 
@@ -1245,8 +1230,8 @@ MpnwResult createPublicSslContext(
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
-	SslContext sslContextInstance = malloc(
-		sizeof(SslContext_T));
+	SslContext sslContextInstance = calloc(
+		1, sizeof(SslContext_T));
 
 	if (!sslContextInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
@@ -1272,9 +1257,11 @@ MpnwResult createPublicSslContext(
 
 	if (!handle)
 	{
-		free(sslContextInstance);
+		destroySslContext(sslContextInstance);
 		return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 	}
+
+	sslContextInstance->handle = handle;
 
 	int result;
 
@@ -1292,12 +1279,9 @@ MpnwResult createPublicSslContext(
 
 	if (result != 1)
 	{
-		SSL_CTX_free(handle);
-		free(sslContextInstance);
+		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
-
-	sslContextInstance->handle = handle;
 
 	*sslContext = sslContextInstance;
 	return SUCCESS_MPNW_RESULT;
@@ -1321,8 +1305,8 @@ MpnwResult createPrivateSslContext(
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
-	SslContext sslContextInstance = malloc(
-		sizeof(SslContext_T));
+	SslContext sslContextInstance = calloc(
+		1, sizeof(SslContext_T));
 
 	if (!sslContextInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
@@ -1347,9 +1331,11 @@ MpnwResult createPrivateSslContext(
 
 	if (!handle)
 	{
-		free(sslContextInstance);
+		destroySslContext(sslContextInstance);
 		return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 	}
+
+	sslContextInstance->handle = handle;
 
 	int result;
 
@@ -1369,8 +1355,7 @@ MpnwResult createPrivateSslContext(
 
 	if (result != 1)
 	{
-		SSL_CTX_free(handle);
-		free(sslContextInstance);
+		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
@@ -1381,8 +1366,7 @@ MpnwResult createPrivateSslContext(
 
 	if (result != 1)
 	{
-		SSL_CTX_free(handle);
-		free(sslContextInstance);
+		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
 
@@ -1390,12 +1374,9 @@ MpnwResult createPrivateSslContext(
 
 	if (result != 1)
 	{
-		SSL_CTX_free(handle);
-		free(sslContextInstance);
+		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
 	}
-
-	sslContextInstance->handle = handle;
 
 	*sslContext = sslContextInstance;
 	return SUCCESS_MPNW_RESULT;

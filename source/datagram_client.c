@@ -35,20 +35,26 @@ MpnwResult createDatagramClient(
 	assert(onReceive);
 	assert(datagramClient);
 
-	DatagramClient datagramClientInstance = malloc(
-		sizeof(DatagramClient_T));
+	DatagramClient datagramClientInstance = calloc(
+		1, sizeof(DatagramClient_T));
 
 	if (!datagramClientInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+
+	datagramClientInstance->onReceive = onReceive;
+	datagramClientInstance->handle = handle;
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
 	if (!receiveBuffer)
 	{
-		free(datagramClientInstance);
+		destroyDatagramClient(datagramClientInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
+
+	datagramClientInstance->receiveBufferSize = receiveBufferSize;
+	datagramClientInstance->receiveBuffer = receiveBuffer;
 
 	uint8_t addressFamily =
 		getSocketAddressFamily(remoteAddress);
@@ -77,8 +83,7 @@ MpnwResult createDatagramClient(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(receiveBuffer);
-		free(datagramClientInstance);
+		destroyDatagramClient(datagramClientInstance);
 		return mpnwResult;
 	}
 
@@ -96,24 +101,17 @@ MpnwResult createDatagramClient(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(receiveBuffer);
-		free(datagramClientInstance);
+		destroyDatagramClient(datagramClientInstance);
 		return mpnwResult;
 	}
 
+	datagramClientInstance->socket = socket;
+
 	if (!connectSocket(socket, remoteAddress))
 	{
-		destroySocket(socket);
-		free(receiveBuffer);
-		free(datagramClientInstance);
+		destroyDatagramClient(datagramClientInstance);
 		return FAILED_TO_CONNECT_SOCKET_MPNW_RESULT;
 	}
-
-	datagramClientInstance->receiveBufferSize = receiveBufferSize;
-	datagramClientInstance->onReceive = onReceive;
-	datagramClientInstance->handle = handle;
-	datagramClientInstance->receiveBuffer = receiveBuffer;
-	datagramClientInstance->socket = socket;
 
 	*datagramClient = datagramClientInstance;
 	return SUCCESS_MPNW_RESULT;
@@ -122,10 +120,15 @@ void destroyDatagramClient(DatagramClient datagramClient)
 {
 	if (!datagramClient)
 		return;
-	
-	shutdownSocket(datagramClient->socket,
-		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(datagramClient->socket);
+
+	Socket socket = datagramClient->socket;
+
+	if (socket)
+	{
+		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(socket);
+	}
+
 	free(datagramClient->receiveBuffer);
 	free(datagramClient);
 }

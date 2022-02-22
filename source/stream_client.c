@@ -45,14 +45,20 @@ MpnwResult createStreamClient(
 	if (!streamClientInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 
+	streamClientInstance->onReceive = onReceive;
+	streamClientInstance->handle = handle;
+
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
 	if (!receiveBuffer)
 	{
-		free(streamClientInstance);
+		destroyStreamClient(streamClientInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
+
+	streamClientInstance->receiveBufferSize = receiveBufferSize;
+	streamClientInstance->receiveBuffer = receiveBuffer;
 
 	MpnwResult mpnwResult;
 	SocketAddress socketAddress;
@@ -78,8 +84,7 @@ MpnwResult createStreamClient(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(receiveBuffer);
-		free(streamClientInstance);
+		destroyStreamClient(streamClientInstance);
 		return mpnwResult;
 	}
 
@@ -97,15 +102,10 @@ MpnwResult createStreamClient(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(receiveBuffer);
-		free(streamClientInstance);
+		destroyStreamClient(streamClientInstance);
 		return mpnwResult;
 	}
 
-	streamClientInstance->receiveBufferSize = receiveBufferSize;
-	streamClientInstance->onReceive = onReceive;
-	streamClientInstance->handle = handle;
-	streamClientInstance->receiveBuffer = receiveBuffer;
 	streamClientInstance->socket = socket;
 
 	*streamClient = streamClientInstance;
@@ -116,9 +116,14 @@ void destroyStreamClient(StreamClient streamClient)
 	if (!streamClient)
 		return;
 
-	shutdownSocket(streamClient->socket,
-		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(streamClient->socket);
+	Socket socket = streamClient->socket;
+
+	if (socket)
+	{
+		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(socket);
+	}
+
 	free(streamClient->receiveBuffer);
 	free(streamClient);
 }

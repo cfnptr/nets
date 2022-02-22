@@ -38,20 +38,26 @@ MpnwResult createDatagramServer(
 	assert(onReceive);
 	assert(datagramServer);
 
-	DatagramServer datagramServerInstance = malloc(
-		sizeof(DatagramServer_T));
+	DatagramServer datagramServerInstance = calloc(
+		1, sizeof(DatagramServer_T));
 
 	if (!datagramServerInstance)
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+
+	datagramServerInstance->onReceive = onReceive;
+	datagramServerInstance->handle = handle;
 
 	uint8_t* receiveBuffer = malloc(
 		receiveBufferSize * sizeof(uint8_t));
 
 	if (!receiveBuffer)
 	{
-		free(datagramServerInstance);
+		destroyDatagramServer(datagramServerInstance);
 		return FAILED_TO_ALLOCATE_MPNW_RESULT;
 	}
+
+	datagramServerInstance->receiveBufferSize = receiveBufferSize;
+	datagramServerInstance->receiveBuffer = receiveBuffer;
 
 	MpnwResult mpnwResult;
 	SocketAddress socketAddress;
@@ -77,10 +83,11 @@ MpnwResult createDatagramServer(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(receiveBuffer);
-		free(datagramServerInstance);
+		destroyDatagramServer(datagramServerInstance);
 		return mpnwResult;
 	}
+
+	datagramServerInstance->address = socketAddress;
 
 	Socket socket;
 
@@ -94,17 +101,10 @@ MpnwResult createDatagramServer(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		destroySocketAddress(socketAddress);
-		free(receiveBuffer);
-		free(datagramServerInstance);
+		destroyDatagramServer(datagramServerInstance);
 		return mpnwResult;
 	}
 
-	datagramServerInstance->receiveBufferSize = receiveBufferSize;
-	datagramServerInstance->onReceive = onReceive;
-	datagramServerInstance->handle = handle;
-	datagramServerInstance->receiveBuffer = receiveBuffer;
-	datagramServerInstance->address = socketAddress;
 	datagramServerInstance->socket = socket;
 
 	*datagramServer = datagramServerInstance;
@@ -115,9 +115,14 @@ void destroyDatagramServer(DatagramServer datagramServer)
 	if (!datagramServer)
 		return;
 
-	shutdownSocket(datagramServer->socket,
-		RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(datagramServer->socket);
+	Socket socket = datagramServer->socket;
+
+	if (socket)
+	{
+		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(socket);
+	}
+
 	destroySocketAddress(datagramServer->address);
 	free(datagramServer->receiveBuffer);
 	free(datagramServer);
