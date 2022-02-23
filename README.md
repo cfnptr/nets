@@ -21,7 +21,7 @@ A library providing generic interface for transferring data over a **network** a
 * C99 compiler
 * [Git 2.30+](https://git-scm.com/)
 * [CMake 3.10+](https://cmake.org/)
-* [OpenSSL](https://openssl.org/) (Optional)
+* [OpenSSL 1.1.1+](https://openssl.org/) (Optional)
 
 ### OpenSSL installation
 
