@@ -18,7 +18,7 @@ if (${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
 	message(FATAL_ERROR "Prevented in-tree build")
 endif ()
 
-if (TARGET mpnw)
+if (TARGET mpnw-static)
 	return()
 endif ()
 
