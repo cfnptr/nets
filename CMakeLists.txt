@@ -70,6 +70,8 @@ else ()
 	set(MPNW_LITTLE_ENDIAN 1)
 endif ()
 
+set(MPMT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(MPMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/mpmt)
 
@@ -78,7 +80,7 @@ configure_file(
 	mpnw/defines.h)
 
 set(MPNW_LINK_LIBRARIES
-	mpmt)
+	mpmt-static)
 
 if(MPNW_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND MPNW_LINK_LIBRARIES
