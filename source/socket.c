@@ -164,7 +164,7 @@ inline static MpnwResult toMpnwResult(int error)
 	case WSAEOPNOTSUPP:
 		return NOT_SUPPORTED_MPNW_RESULT;
 	case WSAEMFILE:
-		return OUT_OF_SOCKET_MPNW_RESULT;
+		return OUT_OF_DESCRIPTORS_MPNW_RESULT;
 	case WSAENOBUFS:
 	case WSA_NOT_ENOUGH_MEMORY:
 		return OUT_OF_MEMORY_MPNW_RESULT;
