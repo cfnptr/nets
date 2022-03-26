@@ -88,7 +88,7 @@ bool isStreamClientConnected(StreamClient streamClient);
  *
  * streamClient - stream client instance.
  * remoteAddress - remote socket address.
- * timeoutTime - time out time (ms).
+ * timeoutTime - time out time. (seconds)
  * sslContext - SSL context instance or NULL.
  */
 MpnwResult connectStreamClient(

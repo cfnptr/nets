@@ -331,11 +331,11 @@ bool updateStreamServer(StreamServer streamServer)
 
 		Socket acceptedSocket;
 
-		MpnwResult mpnwResult = acceptSocket(
+		bool result = acceptSocket(
 			serverSocket,
 			&acceptedSocket);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (!result)
 		{
 			streamServer->sessionCount = sessionCount;
 			return isUpdated;
@@ -343,7 +343,7 @@ bool updateStreamServer(StreamServer streamServer)
 
 		void* session;
 
-		bool result = onCreate(
+		result = onCreate(
 			streamServer,
 			acceptedSocket,
 			&session);

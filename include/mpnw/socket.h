@@ -174,7 +174,7 @@ MpnwResult lastErrorToMpnwResult();
  * socketType - socket communication type.
  * addressFamily - internet protocol address family.
  * socketAddress - socket local bind address.
- * blocking - socket in blocking mode.
+ * isBlocking - socket in blocking mode.
  * sslContext - SSL context or NULL.
  * socket - pointer to the socket value.
  */
@@ -182,7 +182,7 @@ MpnwResult createSocket(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
-	bool blocking,
+	bool isBlocking,
 	SslContext sslContext,
 	Socket* socket);
 /*
@@ -270,12 +270,12 @@ MpnwResult listenSocket(
 
 /*
  * Accept a new socket connection.
- * Returns operation MPNW result.
+ * Returns true on success.
  *
  * socket - socket instance.
  * accepted - pointer to the accepted value.
  */
-MpnwResult acceptSocket(
+bool acceptSocket(
 	Socket socket,
 	Socket* accepted);
 /*

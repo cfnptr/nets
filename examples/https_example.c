@@ -75,11 +75,9 @@ int main()
 	StreamClient httpClient;
 
 	mpnwResult = createStreamClient(
-		IP_V4_ADDRESS_FAMILY,
 		receiveBufferSize,
 		clientReceiveHandler,
 		&isDataReceived,
-		sslContext,
 		&httpClient);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -123,7 +121,8 @@ int main()
 	result = connectStreamClient(
 		httpClient,
 		address,
-		2.0);
+		2.0,
+		sslContext);
 
 	destroySocketAddress(address);
 

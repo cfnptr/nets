@@ -202,7 +202,7 @@ inline static MpnwResult createSocketHandle(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
-	bool blocking,
+	bool isBlocking,
 	SOCKET* handle)
 {
 	assert(socketType < SOCKET_TYPE_COUNT);
@@ -263,7 +263,7 @@ inline static MpnwResult createSocketHandle(
 		return lastErrorToMpnwResult();
 	}
 
-	if (!blocking)
+	if (!isBlocking)
 	{
 #if __linux__ || __APPLE__
 		int flags = fcntl(
@@ -304,7 +304,7 @@ MpnwResult createSocket(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
-	bool blocking,
+	bool isBlocking,
 	SslContext sslContext,
 	Socket* _socket)
 {
@@ -313,10 +313,14 @@ MpnwResult createSocket(
 	assert(socketAddress);
 	assert(_socket);
 
+
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
-#if !MPNW_SUPPORT_OPENSSL
+#if MPNW_SUPPORT_OPENSSL
+	assert((socketType != DATAGRAM_SOCKET_TYPE) ||
+		(socketType == DATAGRAM_SOCKET_TYPE && !sslContext));
+#else
 	assert(!sslContext);
 #endif
 
@@ -328,7 +332,7 @@ MpnwResult createSocket(
 
 	socketInstance->queueSize = 0;
 	socketInstance->type = socketType;
-	socketInstance->isBlocking = blocking;
+	socketInstance->isBlocking = isBlocking;
 #if MPNW_SUPPORT_OPENSSL
 	socketInstance->sslContext = sslContext;
 #endif
@@ -339,7 +343,7 @@ MpnwResult createSocket(
 		socketType,
 		addressFamily,
 		socketAddress,
-		blocking,
+		isBlocking,
 		&handle);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -577,7 +581,7 @@ MpnwResult listenSocket(
 	socket->queueSize = queueSize;
 	return SUCCESS_MPNW_RESULT;
 }
-MpnwResult acceptSocket(
+bool acceptSocket(
 	Socket socket,
 	Socket* accepted)
 {
@@ -591,14 +595,14 @@ MpnwResult acceptSocket(
 		1, sizeof(Socket_T));
 
 	if (!acceptedInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return false;
 
 	SOCKET handle = accept(socket->handle, NULL, 0);
 
 	if (handle == INVALID_SOCKET)
 	{
 		destroySocket(acceptedInstance);
-		return lastErrorToMpnwResult();
+		return false;
 	}
 
 	if (!socket->isBlocking)
@@ -612,7 +616,7 @@ MpnwResult acceptSocket(
 		if (flags == -1)
 		{
 			destroySocket(acceptedInstance);
-			return FAILED_TO_SET_FLAG_MPNW_RESULT;
+			return false;
 		}
 
 		int result = fcntl(
@@ -631,7 +635,7 @@ MpnwResult acceptSocket(
 		if (result != 0)
 		{
 			destroySocket(acceptedInstance);
-			return FAILED_TO_SET_FLAG_MPNW_RESULT;
+			return false;
 		}
 	}
 
@@ -648,7 +652,7 @@ MpnwResult acceptSocket(
 		if (!ssl)
 		{
 			destroySocket(acceptedInstance);
-			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
+			return false;
 		}
 
 		int result = SSL_set_fd(ssl, (int)handle);
@@ -656,7 +660,7 @@ MpnwResult acceptSocket(
 		if (result != 1)
 		{
 			destroySocket(acceptedInstance);
-			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
+			return false;
 		}
 
 		acceptedInstance->sslContext = socket->sslContext;
@@ -669,7 +673,7 @@ MpnwResult acceptSocket(
 #endif
 
 	*accepted = acceptedInstance;
-	return SUCCESS_MPNW_RESULT;
+	return true;
 }
 
 bool acceptSslSocket(Socket socket)
