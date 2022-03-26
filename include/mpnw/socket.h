@@ -148,19 +148,24 @@ typedef enum SecurityProtocol_T
 typedef uint8_t SecurityProtocol;
 
 /*
- * Initialize network libraries.
+ * Initialize network subsystems.
  * Returns true on success.
  */
 bool initializeNetwork();
 /*
- * Terminate network libraries.
+ * Terminate network subsystems.
  */
 void terminateNetwork();
 
 /*
- * Returns true if network is initialized.
+ * Returns true if network subsystems are initialized.
 */
 bool isNetworkInitialized();
+
+/*
+ * Returns last network subsystems error as MPNW result.
+ */
+MpnwResult lastErrorToMpnwResult();
 
 /*
  * Create a new socket instance.
@@ -254,11 +259,12 @@ size_t getSocketQueueSize(Socket socket);
 
 /*
  * Put socket in a listening state.
+ * Returns operation MPNW result.
  *
  * socket - socket instance.
  * queueSize - pending connections queue size.
  */
-bool listenSocket(
+MpnwResult listenSocket(
 	Socket socket,
 	size_t queueSize);
 
@@ -282,29 +288,31 @@ bool acceptSslSocket(Socket socket);
 
 /*
  * Connect socket to the address.
- * Returns true on success.
+ * Returns operation MPNW result,
+ * and success if already connected.
  *
- * socket - pointer to the valid socket.
- * remoteAddress - pointer to the valid socket address.
+ * socket - socket instance.
+ * remoteAddress - remote address instance.
  */
-bool connectSocket(
+MpnwResult connectSocket(
 	Socket socket,
 	SocketAddress remoteAddress);
 /*
  * Connects socket SSL.
  * Returns true on success.
  *
- * socket - pointer to the valid socket.
+ * socket - socket instance.
  */
 bool connectSslSocket(Socket socket);
 
 /*
- * Shutdowns part of the full-duplex connection.
+ * Shutdown part of the full-duplex connection.
+ * Returns operation MPNW result.
  *
- * socket - pointer to the valid socket.
- * type - socket connection shutdown.
+ * socket - socket instance.
+ * shutdown - socket connection shutdown.
  */
-bool shutdownSocket(
+MpnwResult shutdownSocket(
 	Socket socket,
 	SocketShutdown shutdown);
 
@@ -315,7 +323,7 @@ bool shutdownSocket(
  * socket - socket instance.
  * receiveBuffer - message receive buffer.
  * bufferSize - message receive buffer size.
- * byteCount - pointer to the count value.
+ * byteCount - pointer to the byte count value.
  */
 bool socketReceive(
 	Socket socket,

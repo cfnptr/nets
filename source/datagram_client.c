@@ -39,7 +39,7 @@ MpnwResult createDatagramClient(
 		1, sizeof(DatagramClient_T));
 
 	if (!datagramClientInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	datagramClientInstance->onReceive = onReceive;
 	datagramClientInstance->handle = handle;
@@ -50,7 +50,7 @@ MpnwResult createDatagramClient(
 	if (!receiveBuffer)
 	{
 		destroyDatagramClient(datagramClientInstance);
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
 
 	datagramClientInstance->receiveBufferSize = receiveBufferSize;
@@ -107,10 +107,14 @@ MpnwResult createDatagramClient(
 
 	datagramClientInstance->socket = socket;
 
-	if (!connectSocket(socket, remoteAddress))
+	mpnwResult = connectSocket(
+		socket,
+		remoteAddress);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		destroyDatagramClient(datagramClientInstance);
-		return FAILED_TO_CONNECT_SOCKET_MPNW_RESULT;
+		return mpnwResult;
 	}
 
 	*datagramClient = datagramClientInstance;

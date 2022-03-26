@@ -26,6 +26,11 @@ typedef DatagramServer_T* DatagramServer;
 
 /*
  * Datagram server receive function.
+ *
+ * datagramServer - datagram server instance.
+ * remoteAddress - remote address instance.
+ * receiveBuffer - receive buffer size.
+ * byteCount - received byte count.
  */
 typedef void(*OnDatagramServerReceive)(
 	DatagramServer datagramServer,

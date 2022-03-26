@@ -42,7 +42,7 @@ MpnwResult createDatagramServer(
 		1, sizeof(DatagramServer_T));
 
 	if (!datagramServerInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	datagramServerInstance->onReceive = onReceive;
 	datagramServerInstance->handle = handle;
@@ -53,7 +53,7 @@ MpnwResult createDatagramServer(
 	if (!receiveBuffer)
 	{
 		destroyDatagramServer(datagramServerInstance);
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
 
 	datagramServerInstance->receiveBufferSize = receiveBufferSize;

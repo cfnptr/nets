@@ -26,6 +26,10 @@ typedef DatagramClient_T* DatagramClient;
 
 /*
  * Datagram client receive function.
+ *
+ * datagramClient - datagram client instance.
+ * receiveBuffer - receive buffer instance.
+ * byteCount - received byte count.
  */
 typedef void(*OnDatagramClientReceive)(
 	DatagramClient datagramClient,

@@ -53,9 +53,9 @@ struct Socket_T
 	size_t queueSize;
 	SOCKET handle;
 	SocketType type;
-	bool blocking;
+	bool isBlocking;
 #if MPNW_SUPPORT_OPENSSL
-	uint8_t _alignment[2];
+	uint8_t _alignment[1];
 	SslContext sslContext;
 	SSL* ssl;
 #endif
@@ -116,38 +116,98 @@ bool isNetworkInitialized()
 	return networkInitialized;
 }
 
-MpnwResult createSocket(
+inline static MpnwResult toMpnwResult(int error)
+{
+#if __linux__ || __APPLE__
+	switch (error)
+	{
+	default:
+		return UNKNOWN_ERROR_MPNW_RESULT;
+	case EAFNOSUPPORT:
+	case EPROTONOSUPPORT:
+	case ESOCKTNOSUPPORT:
+	case EOPNOTSUPP:
+		return NOT_SUPPORTED_MPNW_RESULT;
+	case EMFILE:
+		return OUT_OF_DESCRIPTORS_MPNW_RESULT;
+	case ENOBUFS:
+	case ENOMEM:
+		return OUT_OF_MEMORY_MPNW_RESULT;
+	case EACCES:
+	case EPERM:
+		return NO_ACCESS_MPNW_RESULT;
+	case EADDRINUSE:
+		return ADDRESS_IS_ALREADY_IN_USE_MPNW_RESULT;
+	case EADDRNOTAVAIL:
+		return BAD_ADDRESS_MPNW_RESULT;
+	case ECONNREFUSED:
+		return CONNECTION_IS_REFUSED_MPNW_RESULT;
+	case ECONNABORTED:
+		return CONNECTION_IS_ABORTED_MPNW_RESULT;
+	case ECONNRESET:
+		return CONNECTION_IS_RESET_MPNW_RESULT;
+	case ENETUNREACH:
+		return NETWORK_IS_NOT_REACHABLE_MPNW_RESULT;
+	case EHOSTUNREACH:
+		return HOST_IS_NOT_REACHABLE_MPNW_RESULT;
+	case ETIMEDOUT:
+		return TIMED_OUT_MPNW_RESULT;
+	}
+#elif _WIN32
+	switch (error)
+	{
+	default:
+		return UNKNOWN_ERROR_MPNW_RESULT;
+	case WSAEAFNOSUPPORT:
+	case WSAEPROTONOSUPPORT:
+	case WSAESOCKTNOSUPPORT:
+	case WSAEOPNOTSUPP:
+		return NOT_SUPPORTED_MPNW_RESULT;
+	case WSAEMFILE:
+		return OUT_OF_SOCKET_MPNW_RESULT;
+	case WSAENOBUFS:
+	case WSA_NOT_ENOUGH_MEMORY:
+		return OUT_OF_MEMORY_MPNW_RESULT;
+	case WSAEACCES:
+		return NO_ACCESS_MPNW_RESULT;
+	case WSAEADDRINUSE:
+		return ADDRESS_IS_ALREADY_IN_USE_MPNW_RESULT;
+	case WSAEADDRNOTAVAIL:
+		return BAD_ADDRESS_MPNW_RESULT;
+	case WSAECONNREFUSED:
+		return CONNECTION_IS_REFUSED_MPNW_RESULT;
+	case WSAECONNABORTED:
+		return CONNECTION_IS_ABORTED_MPNW_RESULT;
+	case WSAECONNRESET:
+		return CONNECTION_IS_RESET_MPNW_RESULT;
+	case WSAENETUNREACH:
+		return NETWORK_IS_NOT_REACHABLE_MPNW_RESULT;
+	case WSAEHOSTUNREACH:
+		return HOST_IS_NOT_REACHABLE_MPNW_RESULT;
+	case WSAETIMEDOUT:
+		return TIMED_OUT_MPNW_RESULT;
+	}
+#endif
+}
+MpnwResult lastErrorToMpnwResult()
+{
+#if __linux__ || __APPLE__
+	return toMpnwResult(errno);
+#elif _WIN32
+	return toMpnwResult(WSAGetLastError());
+#endif
+}
+
+inline static MpnwResult createSocketHandle(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
 	bool blocking,
-	SslContext sslContext,
-	Socket* _socket)
+	SOCKET* handle)
 {
 	assert(socketType < SOCKET_TYPE_COUNT);
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(socketAddress);
-	assert(_socket);
-
-	if (!networkInitialized)
-		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
-
-#if !MPNW_SUPPORT_OPENSSL
-	assert(!sslContext);
-#endif
-
-	Socket socketInstance = calloc(
-		1, sizeof(Socket_T));
-
-	if (!socketInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
-
-	socketInstance->queueSize = 0;
-	socketInstance->type = socketType;
-	socketInstance->blocking = blocking;
-#if MPNW_SUPPORT_OPENSSL
-	socketInstance->sslContext = sslContext;
-#endif
 
 	int type, protocol;
 
@@ -184,63 +244,111 @@ MpnwResult createSocket(
 		abort();
 	}
 
-	SOCKET handle = socket(
+	SOCKET handleInstance = socket(
 		family,
 		type,
 		protocol);
 
-	if (handle == INVALID_SOCKET)
-	{
-		destroySocket(socketInstance);
-		return FAILED_TO_CREATE_SOCKET_MPNW_RESULT;
-	}
-
-	socketInstance->handle = handle;
+	if (handleInstance == INVALID_SOCKET)
+		return lastErrorToMpnwResult();
 
 	int result = bind(
-		handle,
+		handleInstance,
 		(const struct sockaddr*)&socketAddress->handle,
 		length);
-	
+
 	if (result != 0)
 	{
-		destroySocket(socketInstance);
-		return FAILED_TO_BIND_SOCKET_MPNW_RESULT;
+		closesocket(handleInstance);
+		return lastErrorToMpnwResult();
 	}
 
 	if (!blocking)
 	{
 #if __linux__ || __APPLE__
 		int flags = fcntl(
-			handle,
+			handleInstance,
 			F_GETFL,
 			0);
 
 		if (flags == -1)
 		{
-			destroySocket(socketInstance);
-			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
+			closesocket(handleInstance);
+			return FAILED_TO_SET_FLAG_MPNW_RESULT;
 		}
 
 		result = fcntl(
-			handle,
+			handleInstance,
 			F_SETFL,
 			flags | O_NONBLOCK);
 #elif _WIN32
 		u_long flags = 1;
 
 		result = ioctlsocket(
-    		handle,
+    		handleInstance,
     		FIONBIO,
     		&flags);
 #endif
 
 		if (result != 0)
 		{
-			destroySocket(socketInstance);
-			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
+			closesocket(handleInstance);
+			return FAILED_TO_SET_FLAG_MPNW_RESULT;
 		}
 	}
+
+	*handle = handleInstance;
+	return SUCCESS_MPNW_RESULT;
+}
+MpnwResult createSocket(
+	SocketType socketType,
+	AddressFamily addressFamily,
+	SocketAddress socketAddress,
+	bool blocking,
+	SslContext sslContext,
+	Socket* _socket)
+{
+	assert(socketType < SOCKET_TYPE_COUNT);
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(socketAddress);
+	assert(_socket);
+
+	if (!networkInitialized)
+		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
+
+#if !MPNW_SUPPORT_OPENSSL
+	assert(!sslContext);
+#endif
+
+	Socket socketInstance = calloc(
+		1, sizeof(Socket_T));
+
+	if (!socketInstance)
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	socketInstance->queueSize = 0;
+	socketInstance->type = socketType;
+	socketInstance->isBlocking = blocking;
+#if MPNW_SUPPORT_OPENSSL
+	socketInstance->sslContext = sslContext;
+#endif
+
+	SOCKET handle;
+
+	MpnwResult mpnwResult = createSocketHandle(
+		socketType,
+		addressFamily,
+		socketAddress,
+		blocking,
+		&handle);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	{
+		destroySocket(socketInstance);
+		return mpnwResult;
+	}
+
+	socketInstance->handle = handle;
 
 #if MPNW_SUPPORT_OPENSSL
 	if (sslContext)
@@ -255,7 +363,7 @@ MpnwResult createSocket(
 
 		socketInstance->ssl = ssl;
 
-		result = SSL_set_fd(ssl, (int)handle);
+		int result = SSL_set_fd(ssl, (int)handle);
 
 		if (result != 1)
 		{
@@ -296,7 +404,7 @@ bool isSocketBlocking(Socket socket)
 {
 	assert(socket);
 	assert(networkInitialized);
-	return socket->blocking;
+	return socket->isBlocking;
 }
 bool getSocketLocalAddress(
 	Socket socket,
@@ -448,7 +556,7 @@ size_t getSocketQueueSize(Socket socket)
 	return socket->queueSize;
 }
 
-bool listenSocket(
+MpnwResult listenSocket(
 	Socket socket,
 	size_t queueSize)
 {
@@ -464,10 +572,10 @@ bool listenSocket(
 		(int)queueSize);
 
 	if (result != 0)
-		return false;
+		return lastErrorToMpnwResult();
 
 	socket->queueSize = queueSize;
-	return true;
+	return SUCCESS_MPNW_RESULT;
 }
 MpnwResult acceptSocket(
 	Socket socket,
@@ -479,24 +587,21 @@ MpnwResult acceptSocket(
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized);
 
-	Socket acceptedInstance = malloc(
-		sizeof(Socket_T));
+	Socket acceptedInstance = calloc(
+		1, sizeof(Socket_T));
 
 	if (!acceptedInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
-	SOCKET handle = accept(
-		socket->handle,
-		NULL,
-		0);
+	SOCKET handle = accept(socket->handle, NULL, 0);
 
 	if (handle == INVALID_SOCKET)
 	{
-		free(acceptedInstance);
-		return FAILED_TO_ACCEPT_SOCKET_MPNW_RESULT;
+		destroySocket(acceptedInstance);
+		return lastErrorToMpnwResult();
 	}
 
-	if (!socket->blocking)
+	if (!socket->isBlocking)
 	{
 #if __linux__ || __APPLE__
 		int flags = fcntl(
@@ -506,9 +611,8 @@ MpnwResult acceptSocket(
 
 		if (flags == -1)
 		{
-			closesocket(handle);
-			free(acceptedInstance);
-			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
+			destroySocket(acceptedInstance);
+			return FAILED_TO_SET_FLAG_MPNW_RESULT;
 		}
 
 		int result = fcntl(
@@ -526,39 +630,32 @@ MpnwResult acceptSocket(
 
 		if (result != 0)
 		{
-			closesocket(handle);
-			free(acceptedInstance);
-			return FAILED_TO_SET_SOCKET_FLAG_MPNW_RESULT;
+			destroySocket(acceptedInstance);
+			return FAILED_TO_SET_FLAG_MPNW_RESULT;
 		}
 	}
 
 	acceptedInstance->queueSize = 0;
 	acceptedInstance->handle = handle;
 	acceptedInstance->type = socket->type;
-	acceptedInstance->blocking = socket->blocking;
+	acceptedInstance->isBlocking = socket->isBlocking;
 
 #if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
-		SSL* ssl = SSL_new(
-			socket->sslContext->handle);
+		SSL* ssl = SSL_new(socket->sslContext->handle);
 
 		if (!ssl)
 		{
-			closesocket(handle);
-			free(acceptedInstance);
+			destroySocket(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
-		int result = SSL_set_fd(
-			ssl,
-			(int)handle);
+		int result = SSL_set_fd(ssl, (int)handle);
 
 		if (result != 1)
 		{
-			SSL_free(ssl);
-			closesocket(handle);
-			free(acceptedInstance);
+			destroySocket(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
@@ -588,7 +685,7 @@ bool acceptSslSocket(Socket socket)
 #endif
 }
 
-bool connectSocket(
+MpnwResult connectSocket(
 	Socket socket,
 	SocketAddress remoteAddress)
 {
@@ -613,13 +710,21 @@ bool connectSocket(
 		length);
 
 	if (result == 0)
-		return true;
+		return SUCCESS_MPNW_RESULT;
 
 #if __linux__ || __APPLE__
-	return errno == EISCONN;
+	int error = errno;
+
+	if (error == EISCONN)
+		return SUCCESS_MPNW_RESULT;
 #elif _WIN32
-	return WSAGetLastError() == WSAEISCONN;
+	int error = WSAGetLastError();
+
+	if (error == WSAEISCONN)
+		return SUCCESS_MPNW_RESULT;
 #endif
+
+	return toMpnwResult(error);
 }
 bool connectSslSocket(Socket socket)
 {
@@ -634,7 +739,7 @@ bool connectSslSocket(Socket socket)
 #endif
 }
 
-bool shutdownSocket(
+MpnwResult shutdownSocket(
 	Socket socket,
 	SocketShutdown _shutdown)
 {
@@ -666,9 +771,14 @@ bool shutdownSocket(
 
 	// Do not shutdown SSL, due to the bad documentation
 
-	return shutdown(
+	int result = shutdown(
 		socket->handle,
-		type) == 0;
+		type);
+
+	if (result != 0)
+		return lastErrorToMpnwResult();
+
+	return SUCCESS_MPNW_RESULT;
 }
 
 bool socketReceive(
@@ -828,7 +938,7 @@ MpnwResult createSocketAddress(
 		1, sizeof(SocketAddress_T));
 
 	if (!socketAddressInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	struct addrinfo hints;
 
@@ -900,7 +1010,7 @@ MpnwResult resolveSocketAddress(
 		1, sizeof(SocketAddress_T));
 
 	if (!socketAddressInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	struct addrinfo hints;
 
@@ -1234,7 +1344,7 @@ MpnwResult createPublicSslContext(
 		1, sizeof(SslContext_T));
 
 	if (!sslContextInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	SSL_CTX* handle;
 
@@ -1309,7 +1419,7 @@ MpnwResult createPrivateSslContext(
 		1, sizeof(SslContext_T));
 
 	if (!sslContextInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	SSL_CTX* handle;
 

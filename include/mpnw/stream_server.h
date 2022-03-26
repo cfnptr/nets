@@ -36,6 +36,10 @@ typedef StreamSession_T* StreamSession;
 /*
  * Stream session create function.
  * Destroys session on false return result.
+ *
+ * streamServer - stream server instance.
+ * socket - a new socket instance.
+ * handle - pointer to the handle.
  */
 typedef bool(*OnStreamSessionCreate)(
 	StreamServer streamServer,
@@ -43,6 +47,9 @@ typedef bool(*OnStreamSessionCreate)(
 	void** handle);
 /*
  * Stream session destroy function.
+ *
+ * streamServer - stream server instance.
+ * streamSession - stream session instance.
  */
 typedef void(*OnStreamSessionDestroy)(
 	StreamServer streamServer,
@@ -50,6 +57,9 @@ typedef void(*OnStreamSessionDestroy)(
 /*
  * Stream session update function.
  * Destroys session on false return result.
+ *
+ * streamServer - stream server instance.
+ * streamSession - stream session instance.
  */
 typedef bool(*OnStreamSessionUpdate)(
 	StreamServer streamServer,
@@ -57,6 +67,11 @@ typedef bool(*OnStreamSessionUpdate)(
 /*
  * Stream session receive function
  * Destroys session on false return result.
+ *
+ * streamServer - stream server instance.
+ * streamSession - stream session instance.
+ * receiveBuffer - receive buffer instance.
+ * byteCount - received byte count.
  */
 typedef bool(*OnStreamSessionReceive)(
 	StreamServer streamServer,

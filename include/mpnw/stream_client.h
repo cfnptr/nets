@@ -26,6 +26,10 @@ typedef StreamClient_T* StreamClient;
 
 /*
  * Stream client receive function.
+ *
+ * streamClient - stream client instance.
+ * receiveBuffer - receive buffer instance.
+ * byteCount - received byte count.
  */
 typedef void(*OnStreamClientReceive)(
 	StreamClient streamClient,
@@ -36,19 +40,15 @@ typedef void(*OnStreamClientReceive)(
  * Create a new stream client instance (TCP).
  * Returns operation MPNW result.
  *
- * addressFamily - local socket address family.
  * receiveBufferSize - data receive buffer size.
  * onReceive - data receive function.
  * handle - receive function argument.
- * sslContext - SSL context instance or NULL.
  * streamClient - pointer to the stream client value.
  */
 MpnwResult createStreamClient(
-	AddressFamily addressFamily,
 	size_t receiveBufferSize,
 	OnStreamClientReceive onReceive,
 	void* handle,
-	SslContext sslContext,
 	StreamClient* streamClient);
 /*
  * Destroys stream client instance.
@@ -78,17 +78,29 @@ void* getStreamClientHandle(StreamClient streamClient);
 Socket getStreamClientSocket(StreamClient streamClient);
 
 /*
+ * Returns true if stream client has been connected.
+ * streamClient - stream client instance.
+ */
+bool isStreamClientConnected(StreamClient streamClient);
+/*
  * Connect stream client to the server.
  * Returns true on success.
  *
  * streamClient - stream client instance.
  * remoteAddress - remote socket address.
  * timeoutTime - time out time (ms).
+ * sslContext - SSL context instance or NULL.
  */
-bool connectStreamClient(
+MpnwResult connectStreamClient(
 	StreamClient streamClient,
 	SocketAddress remoteAddress,
-	double timeoutTime);
+	double timeoutTime,
+	SslContext sslContext);
+/*
+ * Disconnect stream client from the server.
+ * streamClient - stream client instance.
+ */
+void disconnectStreamClient(StreamClient streamClient);
 
 /*
  * Receive buffered datagrams.

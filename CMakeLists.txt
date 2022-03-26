@@ -91,6 +91,8 @@ endif ()
 set(MPNW_SOURCES
 	source/datagram_client.c
 	source/datagram_server.c
+	source/http_client.c
+	source/http_server.c
 	source/socket.c
 	source/stream_client.c
 	source/stream_server.c)

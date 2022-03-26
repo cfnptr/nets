@@ -65,7 +65,7 @@ MpnwResult createStreamServer(
 		sizeof(StreamServer_T));
 
 	if (!streamServerInstance)
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	streamServerInstance->onCreate = onCreate;
 	streamServerInstance->onDestroy = onDestroy;
@@ -79,7 +79,7 @@ MpnwResult createStreamServer(
 	if (!receiveBuffer)
 	{
 		destroyStreamServer(streamServerInstance);
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
 
 	streamServerInstance->receiveBufferSize = receiveBufferSize;
@@ -91,7 +91,7 @@ MpnwResult createStreamServer(
 	if (!sessionBuffer)
 	{
 		destroyStreamServer(streamServerInstance);
-		return FAILED_TO_ALLOCATE_MPNW_RESULT;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
 
 	streamServerInstance->sessionBufferSize = sessionBufferSize;
@@ -146,10 +146,14 @@ MpnwResult createStreamServer(
 
 	streamServerInstance->acceptSocket = acceptSocket;
 
-	if (!listenSocket(acceptSocket, connectionQueueSize))
+	mpnwResult = listenSocket(
+		acceptSocket,
+		connectionQueueSize);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		destroyStreamServer(streamServerInstance);
-		return FAILED_TO_LISTEN_SOCKET_MPNW_RESULT;
+		return mpnwResult;
 	}
 
 	*streamServer = streamServerInstance;
