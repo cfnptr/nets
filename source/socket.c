@@ -53,6 +53,7 @@ struct Socket_T
 	size_t queueSize;
 	SOCKET handle;
 	SocketType type;
+	AddressFamily family;
 	bool isBlocking;
 #if MPNW_SUPPORT_OPENSSL
 	uint8_t _alignment[1];
@@ -140,12 +141,19 @@ inline static MpnwResult toMpnwResult(int error)
 		return ADDRESS_IS_ALREADY_IN_USE_MPNW_RESULT;
 	case EADDRNOTAVAIL:
 		return BAD_ADDRESS_MPNW_RESULT;
+	case EINVAL:
+	case EFAULT:
+	case ENOTSOCK:
+	case EBADF:
+		return BAD_DATA_MPNW_RESULT;
 	case ECONNREFUSED:
 		return CONNECTION_IS_REFUSED_MPNW_RESULT;
 	case ECONNABORTED:
 		return CONNECTION_IS_ABORTED_MPNW_RESULT;
 	case ECONNRESET:
 		return CONNECTION_IS_RESET_MPNW_RESULT;
+	case EPIPE:
+		return CONNECTION_IS_CLOSED_MPNW_RESULT;
 	case ENETUNREACH:
 		return NETWORK_IS_NOT_REACHABLE_MPNW_RESULT;
 	case EHOSTUNREACH:
@@ -174,6 +182,10 @@ inline static MpnwResult toMpnwResult(int error)
 		return ADDRESS_IS_ALREADY_IN_USE_MPNW_RESULT;
 	case WSAEADDRNOTAVAIL:
 		return BAD_ADDRESS_MPNW_RESULT;
+	case WSAEINVAL:
+	case WSAEFAULT:
+	case WSAENOTSOCK:
+		return BAD_DATA_MPNW_RESULT;
 	case WSAECONNREFUSED:
 		return CONNECTION_IS_REFUSED_MPNW_RESULT;
 	case WSAECONNABORTED:
@@ -313,7 +325,6 @@ MpnwResult createSocket(
 	assert(socketAddress);
 	assert(_socket);
 
-
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
 
@@ -332,6 +343,7 @@ MpnwResult createSocket(
 
 	socketInstance->queueSize = 0;
 	socketInstance->type = socketType;
+	socketInstance->family = addressFamily;
 	socketInstance->isBlocking = isBlocking;
 #if MPNW_SUPPORT_OPENSSL
 	socketInstance->sslContext = sslContext;
@@ -403,6 +415,12 @@ SocketType getSocketType(Socket socket)
 	assert(socket);
 	assert(networkInitialized);
 	return socket->type;
+}
+AddressFamily getSocketFamily(Socket socket)
+{
+	assert(socket);
+	assert(networkInitialized);
+	return socket->family;
 }
 bool isSocketBlocking(Socket socket)
 {
@@ -483,7 +501,64 @@ SslContext getSocketSslContext(Socket socket)
 #endif
 }
 
-bool isSocketNoDelay(Socket socket)
+bool isSocketOnlyV6(
+	Socket socket)
+{
+	assert(socket);
+	assert(networkInitialized);
+
+#if __linux__ || __APPLE__
+	int value;
+#elif _WIN32
+	BOOL value;
+#endif
+
+	SOCKET_LENGTH length;
+
+	int result = getsockopt(
+		socket->handle,
+		IPPROTO_IPV6,
+		IPV6_V6ONLY,
+		(char*)&value,
+		&length);
+
+	if (result != 0)
+		abort();
+
+#if __linux__ || __APPLE__
+	return value != 0;
+#elif _WIN32
+	return value != FALSE;
+#endif
+}
+void setSocketOnlyV6(
+	Socket socket,
+	bool value)
+{
+	assert(socket);
+	assert(networkInitialized);
+
+#if __linux__ || __APPLE__
+	int noDelay = value ? 1 : 0;
+	SOCKET_LENGTH length = sizeof(int);
+#elif _WIN32
+	BOOL noDelay = value ? TRUE : FALSE;
+	SOCKET_LENGTH length = sizeof(BOOL);
+#endif
+
+	int result = setsockopt(
+		socket->handle,
+		IPPROTO_IPV6,
+		IPV6_V6ONLY,
+		(char*)&noDelay,
+		length);
+
+	if (result != 0)
+		abort();
+}
+
+bool isSocketNoDelay(
+	Socket socket)
 {
 	assert(socket);
 	assert(socket->type == STREAM_SOCKET_TYPE);
@@ -976,6 +1051,32 @@ MpnwResult createSocketAddress(
 	*socketAddress = socketAddressInstance;
 	return SUCCESS_MPNW_RESULT;
 }
+MpnwResult createAnySocketAddress(
+	AddressFamily addressFamily,
+	SocketAddress* socketAddress)
+{
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(socketAddress);
+
+	if (addressFamily == IP_V4_ADDRESS_FAMILY)
+	{
+		return createSocketAddress(
+			ANY_IP_ADDRESS_V4,
+			ANY_IP_ADDRESS_SERVICE,
+			socketAddress);
+	}
+	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
+	{
+		return createSocketAddress(
+			ANY_IP_ADDRESS_V6,
+			ANY_IP_ADDRESS_SERVICE,
+			socketAddress);
+	}
+	else
+	{
+		abort();
+	}
+}
 SocketAddress createSocketAddressCopy(
 	SocketAddress socketAddress)
 {
@@ -1075,6 +1176,154 @@ MpnwResult resolveSocketAddress(
 
 	*socketAddress = socketAddressInstance;
 	return SUCCESS_MPNW_RESULT;
+}
+MpnwResult resolveUriSocketAddress(
+	const char* uri,
+	size_t uriLength,
+	AddressFamily family,
+	SocketType type,
+	const char* defaultService,
+	size_t* _pathOffset,
+	SocketAddress* socketAddress)
+{
+	assert(uri);
+	assert(uriLength > 0);
+	assert(family < ADDRESS_FAMILY_COUNT);
+	assert(type < SOCKET_TYPE_COUNT);
+	assert(defaultService);
+	assert(socketAddress);
+
+	size_t serviceSize = 0, hostOffset = 0;
+
+	for (size_t i = 0; i < uriLength; i++)
+	{
+		if (i + 2 < uriLength &&
+			uri[i] == ':' &&
+			uri[i + 1] == '/' &&
+			uri[i + 2] == '/')
+		{
+			serviceSize = i;
+			hostOffset = i + 3;
+
+			for (size_t j = i + 3; j < uriLength; j++)
+			{
+				if (uri[j] == '@')
+				{
+					serviceSize = i;
+					hostOffset = j + 1;
+					break;
+				}
+			}
+
+			break;
+		}
+	}
+
+	size_t portSize = 0, portOffset = 0, pathOffset = 0;
+
+	for (size_t i = hostOffset; i < uriLength; i++)
+	{
+		if (uri[i] == ':')
+		{
+			portSize = uriLength - i;
+			portOffset = i + 1;
+			pathOffset = uriLength;
+
+			for (size_t j = i + 1; j < uriLength; j++)
+			{
+				if (uri[j] == '/')
+				{
+					portSize = j - i;
+					portOffset = i + 1;
+					pathOffset = j + 1;
+					break;
+				}
+			}
+
+			break;
+		}
+	}
+
+	size_t hostSize = 0;
+
+	if (pathOffset == 0)
+	{
+		hostSize = uriLength - hostOffset;
+		pathOffset = uriLength;
+
+		for (size_t i = hostOffset; i < uriLength; i++)
+		{
+			if (uri[i] == '/')
+			{
+				hostSize = i - hostOffset;
+				pathOffset = i + 1;
+				break;
+			}
+		}
+	}
+	else
+	{
+		hostSize = pathOffset - hostOffset;
+	}
+
+	if (hostSize == 0)
+		return BAD_DATA_MPNW_RESULT;
+
+	char* host = malloc((hostSize + 1));
+
+	if (!host)
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	memcpy(host, uri + hostOffset, hostSize);
+	host[hostSize] = '\0';
+
+	char* service;
+
+	if (portSize != 0)
+	{
+		service = malloc((portSize + 1));
+
+		if (!service)
+		{
+			free(host);
+			return OUT_OF_MEMORY_MPNW_RESULT;
+		}
+
+		memcpy(service, uri + portOffset, portSize);
+		service[portSize] = '\0';
+	}
+	else if (serviceSize != 0)
+	{
+		service = malloc((serviceSize + 1));
+
+		if (!service)
+		{
+			free(host);
+			return OUT_OF_MEMORY_MPNW_RESULT;
+		}
+
+		memcpy(service, uri, serviceSize);
+		service[serviceSize] = '\0';
+	}
+	else
+	{
+		service = NULL;
+	}
+
+	MpnwResult mpnwResult = resolveSocketAddress(
+		host,
+		service ? service : defaultService,
+		family,
+		type,
+		socketAddress);
+
+	free(service);
+	free(host);
+
+	if (_pathOffset)
+		*_pathOffset = pathOffset;
+
+	return mpnwResult;
 }
 
 void destroySocketAddress(SocketAddress socketAddress)

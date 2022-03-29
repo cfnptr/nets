@@ -44,7 +44,7 @@ typedef void(*OnDatagramClientReceive)(
  * receiveBufferSize - datagram receive buffer size.
  * onReceive - datagram receive function.
  * handle - receive function argument.
- * datagramClient - pointer to the datagramClient value.
+ * datagramClient - pointer to the datagram client.
  */
 MpnwResult createDatagramClient(
 	SocketAddress remoteAddress,

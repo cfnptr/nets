@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "mpnw/http_client.h"
+#include <stdio.h>
 
 struct HttpClient_T
 {
@@ -35,9 +36,12 @@ static void onStreamClientReceive(
 
 MpnwResult creatHttpClient(
 	size_t receiveBufferSize,
+	double timeoutTime,
+	SslContext sslContext,
 	HttpClient* httpClient)
 {
 	assert(receiveBufferSize > 0);
+	assert(timeoutTime > 0.0);
 	assert(httpClient);
 
 	HttpClient httpClientInstance = calloc(
@@ -50,8 +54,10 @@ MpnwResult creatHttpClient(
 
 	MpnwResult mpnwResult = createStreamClient(
 		receiveBufferSize,
+		timeoutTime,
 		onStreamClientReceive,
 		httpClientInstance,
+		sslContext,
 		&handle);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -72,4 +78,69 @@ void destroyHttpClient(HttpClient httpClient)
 
 	destroyStreamClient(httpClient->handle);
 	free(httpClient);
+}
+
+StreamClient getHttpClientStream(HttpClient httpClient)
+{
+	assert(httpClient);
+	return httpClient->handle;
+}
+
+MpnwResult httpClientSendGET(
+	HttpClient httpClient,
+	const char* uri,
+	size_t uriLength,
+	AddressFamily addressFamily)
+{
+	assert(httpClient);
+	assert(uri);
+	assert(uriLength > 0);
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+
+	StreamClient streamClient = httpClient->handle;
+	SslContext sslContext = getStreamClientSslContext(streamClient);
+
+	SocketAddress remoteAddress;
+	size_t pathOffset;
+
+	MpnwResult mpnwResult = resolveUriSocketAddress(
+		uri,
+		uriLength,
+		addressFamily,
+		STREAM_SOCKET_TYPE,
+		sslContext ? "https" : "http",
+		&pathOffset,
+		&remoteAddress);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
+
+	mpnwResult = connectStreamClient(
+		streamClient,
+		remoteAddress);
+
+	destroySocketAddress(remoteAddress);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
+
+	const char* requestHeader = "GET /%.*s HTTP/1.1\r\n";
+
+	size_t pathLength = uriLength - pathOffset;
+	size_t requestLength = strlen(requestHeader) + pathLength;
+	char* request = malloc(requestLength);
+
+	if (!request)
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	sprintf(request, requestHeader,
+		pathLength, uri + pathOffset);
+
+	bool result = streamClientSend(
+		streamClient,
+		request,
+		requestLength);
+
+	if (!result)
+
 }

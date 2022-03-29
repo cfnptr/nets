@@ -176,7 +176,7 @@ MpnwResult lastErrorToMpnwResult();
  * socketAddress - socket local bind address.
  * isBlocking - socket in blocking mode.
  * sslContext - SSL context or NULL.
- * socket - pointer to the socket value.
+ * socket - pointer to the socket.
  */
 MpnwResult createSocket(
 	SocketType socketType,
@@ -196,6 +196,11 @@ void destroySocket(Socket socket);
  * socket - socket instance.
  */
 SocketType getSocketType(Socket socket);
+/*
+ * Returns socket address family type.
+ * socket - socket instance.
+ */
+AddressFamily getSocketFamily(Socket socket);
 /*
  * Returns true if socket blocking mode.
  * socket - socket instance.
@@ -228,12 +233,29 @@ bool getSocketRemoteAddress(
 SslContext getSocketSslContext(Socket socket);
 
 /*
- * Returns true if socket is in no delay mode.
+ * Returns true if IPV6 socket is not accepting IPV4.
  * socket - socket instance.
  */
-bool isSocketNoDelay(Socket socket);
+bool isSocketOnlyV6(
+	Socket socket);
 /*
- * Set socket no delay mode.
+ * Sets socket IPV6 only mode.
+ *
+ * socket - socket instance.
+ * value - IPV6 only mode value.
+ */
+void setSocketOnlyV6(
+	Socket socket,
+	bool value);
+
+/*
+ * Returns true if stream socket sends without caching.
+ * socket - socket instance.
+ */
+bool isSocketNoDelay(
+	Socket socket);
+/*
+ * Sets socket no delay mode.
  *
  * socket - socket instance.
  * value - no delay mode value.
@@ -273,7 +295,7 @@ MpnwResult listenSocket(
  * Returns true on success.
  *
  * socket - socket instance.
- * accepted - pointer to the accepted value.
+ * accepted - pointer to the accepted socket.
  */
 bool acceptSocket(
 	Socket socket,
@@ -323,7 +345,7 @@ MpnwResult shutdownSocket(
  * socket - socket instance.
  * receiveBuffer - message receive buffer.
  * bufferSize - message receive buffer size.
- * byteCount - pointer to the byte count value.
+ * byteCount - pointer to the byte count.
  */
 bool socketReceive(
 	Socket socket,
@@ -350,7 +372,7 @@ bool socketSend(
  * remoteAddress - remote socket address.
  * receiveBuffer - message receive buffer.
  * bufferSize - message receive buffer size.
- * byteCount - pointer to the count value.
+ * byteCount - pointer to the byte count.
  */
 bool socketReceiveFrom(
 	Socket socket,
@@ -379,11 +401,21 @@ bool socketSendTo(
  *
  * host - address host name string.
  * service - address service name string.
- * socketAddress - pointer to the address value.
+ * socketAddress - pointer to the address.
  */
 MpnwResult createSocketAddress(
 	const char* host,
 	const char* service,
+	SocketAddress* socketAddress);
+/*
+ * Create a new any socket address.
+ * Returns operation MPNW result.
+ *
+ * addressFamily - address family type.
+ * socketAddress - pointer to the address.
+ */
+MpnwResult createAnySocketAddress(
+	AddressFamily addressFamily,
 	SocketAddress* socketAddress);
 /*
  * Create a new socket address copy.
@@ -402,13 +434,33 @@ SocketAddress createSocketAddressCopy(
  * service - address service name string.
  * family - socket address family.
  * type - socket connection type.
- * socketAddress - pointer to the address value.
+ * socketAddress - pointer to the address.
  */
 MpnwResult resolveSocketAddress(
 	const char* host,
 	const char* service,
 	AddressFamily family,
 	SocketType type,
+	SocketAddress* socketAddress);
+/*
+ * Resolve a new URI socket addresses.
+ * Returns operation MPNW result.
+ *
+ * uri - uniform resource identifier string.
+ * uriLength - URI string length.
+ * family - socket address family.
+ * type - socket connection type.
+ * defaultService - default service name string.
+ * pathOffset - pointer to the path offset or NULL.
+ * socketAddress - pointer to the address.
+ */
+MpnwResult resolveUriSocketAddress(
+	const char* uri,
+	size_t uriLength,
+	AddressFamily family,
+	SocketType type,
+	const char* defaultService,
+	size_t* pathOffset,
 	SocketAddress* socketAddress);
 
 /*
@@ -493,7 +545,7 @@ void setSocketAddressPort(
  * Returns true on success.
  *
  * socketAddress - socket address instance.
- * host - pointer to the host name value.
+ * host - pointer to the host name.
  * length - host name string length.
  */
 bool getSocketAddressHost(
@@ -536,7 +588,7 @@ bool getSocketAddressHostService(
  * securityProtocol - security protocol type.
  * certificateFilePath - certificate file path string or NULL.
  * certificatesDirectory - certificate's directory path string or NULL.
- * sslContext - pointer to the sslContext value.
+ * sslContext - pointer to the SSL context.
  */
 MpnwResult createPublicSslContext(
 	SecurityProtocol securityProtocol,
@@ -551,7 +603,7 @@ MpnwResult createPublicSslContext(
  * certificateFilePath - certificates file path string.
  * privateKeyFilePath - private key file path string.
  * certificateChain - file path is certificate chain.
- * sslContext - pointer to the sslContext value.
+ * sslContext - pointer to the SSL context.
  */
 MpnwResult createPrivateSslContext(
 	SecurityProtocol securityProtocol,

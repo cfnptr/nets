@@ -41,14 +41,18 @@ typedef void(*OnStreamClientReceive)(
  * Returns operation MPNW result.
  *
  * receiveBufferSize - data receive buffer size.
+ * timeoutTime - time out time. (seconds)
  * onReceive - data receive function.
  * handle - receive function argument.
- * streamClient - pointer to the stream client value.
+ * sslContext - SSL context instance or NULL.
+ * streamClient - pointer to the stream client.
  */
 MpnwResult createStreamClient(
 	size_t receiveBufferSize,
+	double timeoutTime,
 	OnStreamClientReceive onReceive,
 	void* handle,
+	SslContext sslContext,
 	StreamClient* streamClient);
 /*
  * Destroys stream client instance.
@@ -78,6 +82,38 @@ void* getStreamClientHandle(StreamClient streamClient);
 Socket getStreamClientSocket(StreamClient streamClient);
 
 /*
+ * Returns stream client timeout time. (seconds)
+ * streamClient - stream client instance.
+ */
+double getStreamClientTimeoutTime(
+	StreamClient streamClient);
+/*
+ * Sets stream client timeout time. (seconds)
+ *
+ * streamClient - stream client instance.
+ * timeoutTime - timeout time value.
+ */
+void setStreamClientTimeoutTime(
+	StreamClient streamClient,
+	double timeoutTime);
+
+/*
+ * Returns stream client SSL context.
+ * streamClient - stream client instance.
+ */
+SslContext getStreamClientSslContext(
+	StreamClient streamClient);
+/*
+ * Sets stream client SSL context.
+ *
+ * streamClient - stream client instance.
+ * sslContext - SSL context instance or NULL.
+ */
+void setStreamClientSslContext(
+	StreamClient streamClient,
+	SslContext sslContext);
+
+/*
  * Returns true if stream client has been connected.
  * streamClient - stream client instance.
  */
@@ -88,14 +124,10 @@ bool isStreamClientConnected(StreamClient streamClient);
  *
  * streamClient - stream client instance.
  * remoteAddress - remote socket address.
- * timeoutTime - time out time. (seconds)
- * sslContext - SSL context instance or NULL.
  */
 MpnwResult connectStreamClient(
 	StreamClient streamClient,
-	SocketAddress remoteAddress,
-	double timeoutTime,
-	SslContext sslContext);
+	SocketAddress remoteAddress);
 /*
  * Disconnect stream client from the server.
  * streamClient - stream client instance.

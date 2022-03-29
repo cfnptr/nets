@@ -94,7 +94,7 @@ typedef bool(*OnStreamSessionReceive)(
  * onReceive - data receive function.
  * handle - receive function argument.
  * sslContext - SSL context or NULL.
- * streamServer - pointer to the stream server value.
+ * streamServer - pointer to the stream server.
  */
 MpnwResult createStreamServer(
 	AddressFamily addressFamily,

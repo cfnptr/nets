@@ -20,8 +20,10 @@
 struct StreamClient_T
 {
 	size_t receiveBufferSize;
+	double timeoutTime;
 	OnStreamClientReceive onReceive;
 	void* handle;
+	SslContext sslContext;
 	uint8_t* receiveBuffer;
 	Socket socket;
 	bool isConnected;
@@ -29,11 +31,14 @@ struct StreamClient_T
 
 MpnwResult createStreamClient(
 	size_t receiveBufferSize,
+	double timeoutTime,
 	OnStreamClientReceive onReceive,
 	void* handle,
+	SslContext sslContext,
 	StreamClient* streamClient)
 {
 	assert(receiveBufferSize > 0);
+	assert(timeoutTime > 0.0);
 	assert(onReceive);
 	assert(streamClient);
 
@@ -43,8 +48,10 @@ MpnwResult createStreamClient(
 	if (!streamClientInstance)
 		return OUT_OF_MEMORY_MPNW_RESULT;
 
+	streamClientInstance->timeoutTime = timeoutTime;
 	streamClientInstance->onReceive = onReceive;
 	streamClientInstance->handle = handle;
+	streamClientInstance->sslContext = sslContext;
 	streamClientInstance->socket = NULL;
 	streamClientInstance->isConnected = false;
 
@@ -101,6 +108,35 @@ Socket getStreamClientSocket(StreamClient streamClient)
 	return streamClient->socket;
 }
 
+double getStreamClientTimeoutTime(
+	StreamClient streamClient)
+{
+	assert(streamClient);
+	return streamClient->timeoutTime;
+}
+void setStreamClientTimeoutTime(
+	StreamClient streamClient,
+	double timeoutTime)
+{
+	assert(streamClient);
+	assert(timeoutTime > 0.0);
+	streamClient->timeoutTime = timeoutTime;
+}
+
+SslContext getStreamClientSslContext(
+	StreamClient streamClient)
+{
+	assert(streamClient);
+	return streamClient->sslContext;
+}
+void setStreamClientSslContext(
+	StreamClient streamClient,
+	SslContext sslContext)
+{
+	assert(streamClient);
+	streamClient->sslContext = sslContext;
+}
+
 bool isStreamClientConnected(StreamClient streamClient)
 {
 	assert(streamClient);
@@ -108,39 +144,20 @@ bool isStreamClientConnected(StreamClient streamClient)
 }
 MpnwResult connectStreamClient(
 	StreamClient streamClient,
-	SocketAddress remoteAddress,
-	double timeoutTime,
-	SslContext sslContext)
+	SocketAddress remoteAddress)
 {
 	assert(streamClient);
 	assert(remoteAddress);
-	assert(timeoutTime >= 0.0);
 	assert(!streamClient->isConnected);
 
 	AddressFamily addressFamily = getSocketAddressFamily(
 		remoteAddress);
 
-	MpnwResult mpnwResult;
 	SocketAddress socketAddress;
 
-	if (addressFamily == IP_V4_ADDRESS_FAMILY)
-	{
-		mpnwResult = createSocketAddress(
-			ANY_IP_ADDRESS_V4,
-			ANY_IP_ADDRESS_SERVICE,
-			&socketAddress);
-	}
-	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
-	{
-		mpnwResult = createSocketAddress(
-			ANY_IP_ADDRESS_V6,
-			ANY_IP_ADDRESS_SERVICE,
-			&socketAddress);
-	}
-	else
-	{
-		abort();
-	}
+	MpnwResult mpnwResult = createAnySocketAddress(
+		addressFamily,
+		&socketAddress);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 		return mpnwResult;
@@ -152,7 +169,7 @@ MpnwResult connectStreamClient(
 		addressFamily,
 		socketAddress,
 		false,
-		sslContext,
+		streamClient->sslContext,
 		&socket);
 
 	destroySocketAddress(socketAddress);
@@ -162,7 +179,8 @@ MpnwResult connectStreamClient(
 
 	streamClient->socket = socket;
 
-	double timeout = getCurrentClock() + timeoutTime;
+	double timeout = getCurrentClock() +
+		streamClient->timeoutTime;
 
 	while (getCurrentClock() < timeout)
 	{
@@ -193,7 +211,9 @@ void disconnectStreamClient(StreamClient streamClient)
 {
 	assert(streamClient);
 	assert(streamClient->isConnected);
-	destroySocket(streamClient->socket);
+	Socket socket = streamClient->socket;
+	shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+	destroySocket(socket);
 	streamClient->socket = NULL;
 }
 

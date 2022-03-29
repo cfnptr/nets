@@ -15,6 +15,10 @@
 #pragma once
 #include "mpnw/stream_client.h"
 
+// ================================================
+// Note: this is simple HTTP client implementation.
+// ================================================
+
 /*
  * HTTP client structure.
 */
@@ -24,9 +28,24 @@ typedef struct HttpClient_T HttpClient_T;
 */
 typedef HttpClient_T* HttpClient;
 
+/*
+ * Create a new HTTP client instance.
+ * Returns operation MPNW result.
+ *
+ * receiveBufferSize - data receive buffer size.
+ * timeoutTime - time out time. (seconds)
+ * sslContext - SSL context instance or NULL.
+ * httpClient - pointer to the HTTP client.
+ */
 MpnwResult creatHttpClient(
 	size_t receiveBufferSize,
+	double timeoutTime,
+	SslContext sslContext,
 	HttpClient* httpClient);
 void destroyHttpClient(HttpClient httpClient);
 
-
+/*
+ * Returns HTTP client stream.
+ * httpClient - HTTP client instance.
+ */
+StreamClient getHttpClientStream(HttpClient httpClient);

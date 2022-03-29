@@ -59,27 +59,11 @@ MpnwResult createDatagramClient(
 	uint8_t addressFamily =
 		getSocketAddressFamily(remoteAddress);
 
-	MpnwResult mpnwResult;
 	SocketAddress socketAddress;
 
-	if (addressFamily == IP_V4_ADDRESS_FAMILY)
-	{
-		mpnwResult = createSocketAddress(
-			ANY_IP_ADDRESS_V4,
-			ANY_IP_ADDRESS_SERVICE,
-			&socketAddress);
-	}
-	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
-	{
-		mpnwResult = createSocketAddress(
-			ANY_IP_ADDRESS_V6,
-			ANY_IP_ADDRESS_SERVICE,
-			&socketAddress);
-	}
-	else
-	{
-		abort();
-	}
+	MpnwResult mpnwResult = createAnySocketAddress(
+		addressFamily,
+		&socketAddress);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
