@@ -443,20 +443,20 @@ MpnwResult resolveSocketAddress(
 	SocketType type,
 	SocketAddress* socketAddress);
 /*
- * Resolve a new URI socket addresses.
+ * Resolve a new URL socket addresses.
  * Returns operation MPNW result.
  *
- * uri - uniform resource identifier string.
- * uriLength - URI string length.
+ * url - uniform resource locator string.
+ * urlLength - URL string length.
  * family - socket address family.
  * type - socket connection type.
  * defaultService - default service name string.
  * pathOffset - pointer to the path offset or NULL.
  * socketAddress - pointer to the address.
  */
-MpnwResult resolveUriSocketAddress(
-	const char* uri,
-	size_t uriLength,
+MpnwResult resolveUrlSocketAddress(
+	const char* url,
+	size_t urlLength,
 	AddressFamily family,
 	SocketType type,
 	const char* defaultService,

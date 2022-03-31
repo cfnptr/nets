@@ -68,6 +68,8 @@ MpnwResult creatHttpClient(
 
 	httpClientInstance->handle = handle;
 
+	// TODO: set nodelay
+
 	*httpClient = httpClientInstance;
 	return SUCCESS_MPNW_RESULT;
 }
@@ -88,14 +90,30 @@ StreamClient getHttpClientStream(HttpClient httpClient)
 
 MpnwResult httpClientSendGET(
 	HttpClient httpClient,
-	const char* uri,
-	size_t uriLength,
-	AddressFamily addressFamily)
+	const char* url,
+	size_t urlLength,
+	AddressFamily addressFamily,
+	const HttpHeader* headers,
+	size_t headerCount)
 {
 	assert(httpClient);
-	assert(uri);
-	assert(uriLength > 0);
+	assert(url);
+	assert(urlLength > 0);
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+
+	assert((headers && headerCount > 0) ||
+		(!headers && headerCount == 0));
+
+#ifndef NDEBUG
+	for (size_t i = 0; i < headerCount; i++)
+	{
+		HttpHeader header = headers[i];
+		assert(header.key);
+		assert(header.keyLength > 0);
+		assert(header.value);
+		assert(header.valueLength > 0);
+	}
+#endif
 
 	StreamClient streamClient = httpClient->handle;
 	SslContext sslContext = getStreamClientSslContext(streamClient);
@@ -103,9 +121,9 @@ MpnwResult httpClientSendGET(
 	SocketAddress remoteAddress;
 	size_t pathOffset;
 
-	MpnwResult mpnwResult = resolveUriSocketAddress(
-		uri,
-		uriLength,
+	MpnwResult mpnwResult = resolveUrlSocketAddress(
+		url,
+		urlLength,
 		addressFamily,
 		STREAM_SOCKET_TYPE,
 		sslContext ? "https" : "http",
@@ -124,23 +142,100 @@ MpnwResult httpClientSendGET(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 		return mpnwResult;
 
-	const char* requestHeader = "GET /%.*s HTTP/1.1\r\n";
+	size_t pathLength = urlLength - pathOffset;
+	size_t requestLength = pathLength + 16;
 
-	size_t pathLength = uriLength - pathOffset;
-	size_t requestLength = strlen(requestHeader) + pathLength;
+	if (headerCount > 0)
+	{
+		for (size_t i = 0; i < headerCount; i++)
+		{
+			const HttpHeader* header = &headers[i];
+			requestLength += header->keyLength + header->valueLength + 4;
+		}
+	}
+	else
+	{
+		requestLength += 3;
+	}
+
 	char* request = malloc(requestLength);
+	// TODO: possibly cache request buffer or create in constructor.
 
 	if (!request)
 		return OUT_OF_MEMORY_MPNW_RESULT;
 
-	sprintf(request, requestHeader,
-		pathLength, uri + pathOffset);
+	request[0] = 'G';
+	request[1] = 'E';
+	request[2] = 'T';
+	request[3] = ' ';
+	request[4] = '/';
+	size_t index = 5;
+
+	if (pathLength > 0)
+	{
+		memcpy(request + index, url + pathOffset, pathLength);
+		index += pathLength;
+	}
+
+	request[index + 0] = ' ';
+	request[index + 1] = 'H';
+	request[index + 2] = 'T';
+	request[index + 3] = 'T';
+	request[index + 4] = 'P';
+	request[index + 5] = '/';
+	request[index + 6] = '1';
+	request[index + 7] = '.';
+	request[index + 8] = '1';
+	request[index + 9] = '\r';
+	request[index + 10] = '\n';
+	index += 11;
+
+	if (headerCount > 0)
+	{
+		for (size_t i = 0; i < headerCount; i++)
+		{
+			HttpHeader header = headers[i];
+			memcpy(request + index, header.key, header.keyLength);
+
+			index += header.keyLength;
+			request[index + 1] = ':';
+			request[index + 2] = ' ';
+			index += 2;
+
+			memcpy(request + index, header.value, header.valueLength);
+			index += header.valueLength;
+
+			request[index + 1] = '\r';
+			request[index + 2] = '\n';
+			index += 2;
+		}
+	}
+	else
+	{
+		request[index + 0] = '\n';
+		request[index + 1] = '\r';
+		request[index + 2] = '\n';
+		index += 3;
+	}
+
+	assert(index == requestLength);
 
 	bool result = streamClientSend(
 		streamClient,
 		request,
 		requestLength);
 
-	if (!result)
+	free(request);
 
+	if (!result)
+	{
+		disconnectStreamClient(streamClient);
+		return lastErrorToMpnwResult();
+	}
+
+	// TODO: wait for response or timeout,
+	//  also take into account connect consumed time
+
+	disconnectStreamClient(streamClient);
+	return SUCCESS_MPNW_RESULT;
 }

@@ -394,10 +394,10 @@ MpnwResult createSocket(
 }
 void destroySocket(Socket socket)
 {
-	assert(networkInitialized);
-
 	if (!socket)
 		return;
+
+	assert(networkInitialized);
 
 #if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext)
@@ -1177,37 +1177,39 @@ MpnwResult resolveSocketAddress(
 	*socketAddress = socketAddressInstance;
 	return SUCCESS_MPNW_RESULT;
 }
-MpnwResult resolveUriSocketAddress(
-	const char* uri,
-	size_t uriLength,
+MpnwResult resolveUrlSocketAddress(
+	const char* url,
+	size_t urlLength,
 	AddressFamily family,
 	SocketType type,
 	const char* defaultService,
 	size_t* _pathOffset,
 	SocketAddress* socketAddress)
 {
-	assert(uri);
-	assert(uriLength > 0);
+	assert(url);
+	assert(urlLength > 0);
 	assert(family < ADDRESS_FAMILY_COUNT);
 	assert(type < SOCKET_TYPE_COUNT);
 	assert(defaultService);
 	assert(socketAddress);
 
+	// TODO: possibly create some sort of cache for malloc buffers.
+
 	size_t serviceSize = 0, hostOffset = 0;
 
-	for (size_t i = 0; i < uriLength; i++)
+	for (size_t i = 0; i < urlLength; i++)
 	{
-		if (i + 2 < uriLength &&
-			uri[i] == ':' &&
-			uri[i + 1] == '/' &&
-			uri[i + 2] == '/')
+		if (i + 2 < urlLength &&
+			url[i] == ':' &&
+			url[i + 1] == '/' &&
+			url[i + 2] == '/')
 		{
 			serviceSize = i;
 			hostOffset = i + 3;
 
-			for (size_t j = i + 3; j < uriLength; j++)
+			for (size_t j = i + 3; j < urlLength; j++)
 			{
-				if (uri[j] == '@')
+				if (url[j] == '@')
 				{
 					serviceSize = i;
 					hostOffset = j + 1;
@@ -1219,22 +1221,25 @@ MpnwResult resolveUriSocketAddress(
 		}
 	}
 
-	size_t portSize = 0, portOffset = 0, pathOffset = 0;
+	size_t portSize = 0, portOffset = 0, hostSize = 0, pathOffset = 0;
 
-	for (size_t i = hostOffset; i < uriLength; i++)
+	for (size_t i = hostOffset; i < urlLength; i++)
 	{
-		if (uri[i] == ':')
+		if (i + 1 < urlLength &&
+			url[i] == ':' &&
+			url[i + 1] != '/')
 		{
-			portSize = uriLength - i;
+			portSize = urlLength - i;
 			portOffset = i + 1;
-			pathOffset = uriLength;
+			hostSize =  i - hostOffset;
+			pathOffset = urlLength;
 
-			for (size_t j = i + 1; j < uriLength; j++)
+			for (size_t j = i + 1; j < urlLength; j++)
 			{
-				if (uri[j] == '/')
+				if (url[j] == '/')
 				{
-					portSize = j - i;
 					portOffset = i + 1;
+					portSize = j - portOffset;
 					pathOffset = j + 1;
 					break;
 				}
@@ -1244,26 +1249,20 @@ MpnwResult resolveUriSocketAddress(
 		}
 	}
 
-	size_t hostSize = 0;
-
 	if (pathOffset == 0)
 	{
-		hostSize = uriLength - hostOffset;
-		pathOffset = uriLength;
+		hostSize = urlLength - hostOffset;
+		pathOffset = urlLength;
 
-		for (size_t i = hostOffset; i < uriLength; i++)
+		for (size_t i = hostOffset; i < urlLength; i++)
 		{
-			if (uri[i] == '/')
+			if (url[i] == '/')
 			{
 				hostSize = i - hostOffset;
 				pathOffset = i + 1;
 				break;
 			}
 		}
-	}
-	else
-	{
-		hostSize = pathOffset - hostOffset;
 	}
 
 	if (hostSize == 0)
@@ -1274,7 +1273,7 @@ MpnwResult resolveUriSocketAddress(
 	if (!host)
 		return OUT_OF_MEMORY_MPNW_RESULT;
 
-	memcpy(host, uri + hostOffset, hostSize);
+	memcpy(host, url + hostOffset, hostSize);
 	host[hostSize] = '\0';
 
 	char* service;
@@ -1289,7 +1288,7 @@ MpnwResult resolveUriSocketAddress(
 			return OUT_OF_MEMORY_MPNW_RESULT;
 		}
 
-		memcpy(service, uri + portOffset, portSize);
+		memcpy(service, url + portOffset, portSize);
 		service[portSize] = '\0';
 	}
 	else if (serviceSize != 0)
@@ -1302,7 +1301,7 @@ MpnwResult resolveUriSocketAddress(
 			return OUT_OF_MEMORY_MPNW_RESULT;
 		}
 
-		memcpy(service, uri, serviceSize);
+		memcpy(service, url, serviceSize);
 		service[serviceSize] = '\0';
 	}
 	else
@@ -1328,6 +1327,9 @@ MpnwResult resolveUriSocketAddress(
 
 void destroySocketAddress(SocketAddress socketAddress)
 {
+	if (!socketAddress)
+		return;
+
 	assert(networkInitialized);
 	free(socketAddress);
 }
@@ -1751,10 +1753,10 @@ MpnwResult createPrivateSslContext(
 void destroySslContext(SslContext sslContext)
 {
 #if MPNW_SUPPORT_OPENSSL
-	assert(networkInitialized);
-
 	if (!sslContext)
 		return;
+
+	assert(networkInitialized);
 
 	SSL_CTX_free(sslContext->handle);
 	free(sslContext);

@@ -28,6 +28,14 @@ typedef struct HttpClient_T HttpClient_T;
 */
 typedef HttpClient_T* HttpClient;
 
+typedef struct HttpHeader
+{
+	const char* key;
+	size_t keyLength;
+	const char* value;
+	size_t valueLength;
+} HttpHeader;
+
 /*
  * Create a new HTTP client instance.
  * Returns operation MPNW result.
@@ -49,3 +57,22 @@ void destroyHttpClient(HttpClient httpClient);
  * httpClient - HTTP client instance.
  */
 StreamClient getHttpClientStream(HttpClient httpClient);
+
+/*
+ * Send HTTP GET request to the server.
+ * Returns operation MPNW result.
+ *
+ * httpClient - HTTP client instance.
+ * url - URL string.
+ * urlLength - URL string length
+ * addressFamily - address family type.
+ * headers - HTTP headers or NULL.
+ * headerCount - HTTP header count or 0.
+ */
+MpnwResult httpClientSendGET(
+	HttpClient httpClient,
+	const char* url,
+	size_t urlLength,
+	AddressFamily addressFamily,
+	const HttpHeader* headers,
+	size_t headerCount);
