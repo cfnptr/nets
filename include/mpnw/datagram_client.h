@@ -81,21 +81,21 @@ Socket getDatagramClientSocket(DatagramClient datagramClient);
 
 /*
  * Receive buffered datagrams.
- * Returns true if datagram received.
+ * Returns operation MPNW result.
  *
  * datagramClient - datagram client instance.
  */
-bool updateDatagramClient(DatagramClient datagramClient);
+MpnwResult updateDatagramClient(DatagramClient datagramClient);
 
 /*
  * Send message to the datagram server.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * datagramClient - datagram client instance.
  * sendBuffer - datagram send buffer.
  * byteCount - send byte count.
  */
-bool datagramClientSend(
+MpnwResult datagramClientSend(
 	DatagramClient datagramClient,
 	const void* sendBuffer,
 	size_t byteCount);

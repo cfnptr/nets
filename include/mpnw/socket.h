@@ -156,16 +156,15 @@ bool initializeNetwork();
  * Terminate network subsystems.
  */
 void terminateNetwork();
-
 /*
  * Returns true if network subsystems are initialized.
 */
 bool isNetworkInitialized();
 
 /*
- * Returns last network subsystems error as MPNW result.
+ * Disable SIGPIPE signal generation. (Linux only)
  */
-MpnwResult lastErrorToMpnwResult();
+void disableSigpipe();
 
 /*
  * Create a new socket instance.
@@ -292,26 +291,25 @@ MpnwResult listenSocket(
 
 /*
  * Accept a new socket connection.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * socket - socket instance.
  * accepted - pointer to the accepted socket.
  */
-bool acceptSocket(
+MpnwResult acceptSocket(
 	Socket socket,
 	Socket* accepted);
 /*
  * Accept socket SSL connection.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * socket - socket instance.
  */
-bool acceptSslSocket(Socket socket);
+MpnwResult acceptSslSocket(Socket socket);
 
 /*
  * Connect socket to the address.
- * Returns operation MPNW result,
- * and success if already connected.
+ * Returns operation MPNW result.
  *
  * socket - socket instance.
  * remoteAddress - remote address instance.
@@ -320,12 +318,15 @@ MpnwResult connectSocket(
 	Socket socket,
 	SocketAddress remoteAddress);
 /*
- * Connects socket SSL.
- * Returns true on success.
+ * Connect socket SSL.
+ * Returns operation MPNW result,
  *
  * socket - socket instance.
+ * hostname - SNI hostname or NULL.
  */
-bool connectSslSocket(Socket socket);
+MpnwResult connectSslSocket(
+	Socket socket,
+	const char* hostname);
 
 /*
  * Shutdown part of the full-duplex connection.
@@ -340,33 +341,33 @@ MpnwResult shutdownSocket(
 
 /*
  * Receive socket message.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * socket - socket instance.
  * receiveBuffer - message receive buffer.
  * bufferSize - message receive buffer size.
  * byteCount - pointer to the byte count.
  */
-bool socketReceive(
+MpnwResult socketReceive(
 	Socket socket,
 	void* receiveBuffer,
 	size_t bufferSize,
 	size_t* byteCount);
 /*
  * Send socket message.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * socket - socket instance.
  * sendBuffer - message send buffer.
  * byteCount - send byte count.
  */
-bool socketSend(
+MpnwResult socketSend(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount);
 /*
  * Receive socket message from address.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * socket - socket instance.
  * remoteAddress - remote socket address.
@@ -374,7 +375,7 @@ bool socketSend(
  * bufferSize - message receive buffer size.
  * byteCount - pointer to the byte count.
  */
-bool socketReceiveFrom(
+MpnwResult socketReceiveFrom(
 	Socket socket,
 	SocketAddress remoteAddress,
 	void* receiveBuffer,
@@ -382,14 +383,14 @@ bool socketReceiveFrom(
 	size_t* byteCount);
 /*
  * Send socket message to the address.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * socket - socket instance.
  * sendBuffer - message send buffer.
  * byteCount - message byte count to send.
  * socketAddress - remote socket address.
  */
-bool socketSendTo(
+MpnwResult socketSendTo(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount,
@@ -462,6 +463,8 @@ MpnwResult resolveUrlSocketAddress(
 	const char* defaultService,
 	size_t* pathOffset,
 	SocketAddress* socketAddress);
+
+// TODO: add async address resolve
 
 /*
  * Destroys socket address instance.

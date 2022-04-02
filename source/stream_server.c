@@ -227,6 +227,7 @@ void* getStreamSessionHandle(StreamSession streamSession)
 	return streamSession->handle;
 }
 
+// TODO: somehow handle receive, accept MPNW errors
 bool updateStreamServer(StreamServer streamServer)
 {
 	assert(streamServer);
@@ -256,7 +257,9 @@ bool updateStreamServer(StreamServer streamServer)
 
 		if (!streamSession->isSslAccepted)
 		{
-			if (!acceptSslSocket(receiveSocket))
+			MpnwResult mpnwResult = acceptSslSocket(receiveSocket);
+
+			if (mpnwResult != SUCCESS_MPNW_RESULT)
 				continue;
 
 			streamSession->isSslAccepted = true;
@@ -265,16 +268,16 @@ bool updateStreamServer(StreamServer streamServer)
 
 		size_t byteCount;
 
-		bool result = socketReceive(
+		MpnwResult mpnwResult = socketReceive(
 			receiveSocket,
 			receiveBuffer,
 			receiveBufferSize,
 			&byteCount);
 
-		if (!result)
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
 			continue;
 
-		result = onReceive(
+		bool result = onReceive(
 			streamServer,
 			streamSession,
 			receiveBuffer,
@@ -315,11 +318,11 @@ bool updateStreamServer(StreamServer streamServer)
 
 		Socket acceptedSocket;
 
-		bool result = acceptSocket(
+		MpnwResult mpnwResult = acceptSocket(
 			serverSocket,
 			&acceptedSocket);
 
-		if (!result)
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
 		{
 			streamServer->sessionCount = sessionCount;
 			return isUpdated;
@@ -327,7 +330,7 @@ bool updateStreamServer(StreamServer streamServer)
 
 		void* session;
 
-		result = onCreate(
+		bool result = onCreate(
 			streamServer,
 			acceptedSocket,
 			&session);
@@ -350,7 +353,7 @@ bool updateStreamServer(StreamServer streamServer)
 	}
 }
 
-bool streamSessionSend(
+MpnwResult streamSessionSend(
 	StreamSession streamSession,
 	const void* sendBuffer,
 	size_t byteCount)
@@ -364,7 +367,7 @@ bool streamSessionSend(
 		sendBuffer,
 		byteCount);
 }
-bool streamSessionSendMessage(
+MpnwResult streamSessionSendMessage(
 	StreamSession streamSession,
 	StreamMessage streamMessage)
 {

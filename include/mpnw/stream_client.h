@@ -120,14 +120,16 @@ void setStreamClientSslContext(
 bool isStreamClientConnected(StreamClient streamClient);
 /*
  * Connect stream client to the server.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * streamClient - stream client instance.
  * remoteAddress - remote socket address.
+ * hostname - SNI hostname or NULL.
  */
 MpnwResult connectStreamClient(
 	StreamClient streamClient,
-	SocketAddress remoteAddress);
+	SocketAddress remoteAddress,
+	const char* hostname);
 /*
  * Disconnect stream client from the server.
  * streamClient - stream client instance.
@@ -136,32 +138,32 @@ void disconnectStreamClient(StreamClient streamClient);
 
 /*
  * Receive buffered datagrams.
- * Returns true if any data is received.
+ * Returns operation MPNW result.
  *
  * streamClient - stream client instance.
  */
-bool updateStreamClient(StreamClient streamClient);
+MpnwResult updateStreamClient(StreamClient streamClient);
 
 /*
  * Send data to the server.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * streamClient - stream client instance.
  * sendBuffer - data send buffer.
  * byteCount - send byte count.
  */
-bool streamClientSend(
+MpnwResult streamClientSend(
 	StreamClient streamClient,
 	const void* sendBuffer,
 	size_t byteCount);
 
 /*
  * Send stream message to the server.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * streamClient - stream client instance.
  * sendBuffer - send stream message.
  */
-bool streamClientSendMessage(
+MpnwResult streamClientSendMessage(
 	StreamClient streamClient,
 	StreamMessage streamMessage);

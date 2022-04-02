@@ -13,13 +13,120 @@
 // limitations under the License.
 
 #include "mpnw/http_client.h"
+
+#include "mpmt/common.h"
+#include "mpmt/thread.h"
+
 #include <stdio.h>
 
 struct HttpClient_T
 {
 	StreamClient handle;
+	char* response;
+	size_t responseSize;
+	HttpHeader* headers;
+	size_t headerCapacity;
+	size_t headerCount;
+	uint16_t statusCode;
+	MpnwResult result;
+	bool isRunning;
 };
 
+inline static MpnwResult processResponseLine(
+	HttpClient httpClient,
+	const char* line,
+	size_t length)
+{
+	assert(httpClient);
+	assert(line);
+	assert(length > 0);
+
+	if (httpClient->statusCode == 0)
+	{
+		if (length < 10 || memcmp(line, "HTTP/1.1 ", 9) != 0)
+			return BAD_DATA_MPNW_RESULT;
+
+		uint16_t statusCode = strtol(
+			line + 9,
+			NULL,
+			10);
+
+		if (statusCode == 0)
+			return BAD_DATA_MPNW_RESULT;
+
+		httpClient->statusCode = statusCode;
+	}
+	else
+	{
+		size_t keyLength = 0;
+
+		for (size_t i = 0; i < length; i++)
+		{
+			char value = line[i];
+
+			if (value == ':')
+			{
+				keyLength = i;
+				break;
+			}
+		}
+
+		if (keyLength == 0 || length < keyLength + 2)
+			return BAD_DATA_MPNW_RESULT;
+
+		size_t valueLength = length - (keyLength + 2);
+
+		if (valueLength == 0)
+			return BAD_DATA_MPNW_RESULT;
+
+		char* key = malloc((keyLength + 1) * sizeof(char));
+
+		if (!key)
+			return OUT_OF_MEMORY_MPNW_RESULT;
+
+		memcpy(key, line, keyLength);
+		key[keyLength] = '\0';
+
+		char* value = malloc((valueLength + 1) * sizeof(char));
+
+		if (!value)
+		{
+			free(key);
+			return OUT_OF_MEMORY_MPNW_RESULT;
+		}
+
+		memcpy(value, line + (length - valueLength), valueLength);
+		value[valueLength] = '\0';
+
+		if (httpClient->headerCount == httpClient->headerCapacity)
+		{
+			size_t capacity = httpClient->headerCapacity * 2;
+
+			HttpHeader* newHeaders = realloc(
+				httpClient->headers,
+				capacity * sizeof(HttpHeader));
+
+			if (!newHeaders)
+			{
+				free(value);
+				free(key);
+				return OUT_OF_MEMORY_MPNW_RESULT;
+			}
+
+			httpClient->headers = newHeaders;
+			httpClient->headerCapacity = capacity;
+		}
+
+		HttpHeader header = {
+			key, keyLength,
+			value, valueLength
+		};
+
+		httpClient->headers[httpClient->headerCount++] = header;
+	}
+
+	return SUCCESS_MPNW_RESULT;
+}
 static void onStreamClientReceive(
 	StreamClient streamClient,
 	const uint8_t* receiveBuffer,
@@ -31,7 +138,55 @@ static void onStreamClientReceive(
 	HttpClient httpClient = (HttpClient)
 		getStreamClientHandle(streamClient);
 
+	if (byteCount == 0)
+	{
+		httpClient->result = CONNECTION_IS_CLOSED_MPNW_RESULT;
+		httpClient->isRunning = false;
+		return;
+	}
 
+	const char* buffer = (const char*)receiveBuffer;
+	size_t lineOffset = 0;
+
+	for (size_t i = 0; i < byteCount; i++)
+	{
+		char value = buffer[i];
+
+		if (value != '\n')
+			continue;
+
+		size_t lineLength = i - (lineOffset + 1);
+
+		if (lineLength > 0)
+		{
+			MpnwResult mpnwResult = processResponseLine(
+				httpClient,
+				buffer + lineOffset,
+				lineLength);
+
+			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			{
+				httpClient->result = mpnwResult;
+				httpClient->isRunning = false;
+				return;
+			}
+		}
+		else
+		{
+			// TODO: sort received header, get content length and then receive data
+		}
+
+		lineOffset = i + 1;
+	}
+
+	if (lineOffset != byteCount)
+	{
+		// TODO: store to the buffer
+	}
+
+	printf("%s", receiveBuffer);
+	httpClient->isRunning = false;
+	httpClient->result = SUCCESS_MPNW_RESULT;
 }
 
 MpnwResult creatHttpClient(
@@ -49,6 +204,10 @@ MpnwResult creatHttpClient(
 
 	if (!httpClientInstance)
 		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	httpClientInstance->statusCode = 0;
+	httpClientInstance->result = SUCCESS_MPNW_RESULT;
+	httpClientInstance->isRunning = false;
 
 	StreamClient handle;
 
@@ -68,7 +227,30 @@ MpnwResult creatHttpClient(
 
 	httpClientInstance->handle = handle;
 
-	// TODO: set nodelay
+	char* response = malloc(
+		receiveBufferSize * sizeof(char));
+
+	if (!response)
+	{
+		destroyHttpClient(httpClientInstance);
+		return OUT_OF_MEMORY_MPNW_RESULT;
+	}
+
+	httpClientInstance->response = response;
+	httpClientInstance->responseSize = 0;
+
+	HttpHeader* headers = malloc(
+		MPNW_DEFAULT_CAPACITY * sizeof(HttpHeader));
+
+	if (!headers)
+	{
+		destroyHttpClient(httpClientInstance);
+		return OUT_OF_MEMORY_MPNW_RESULT;
+	}
+
+	httpClientInstance->headers = headers;
+	httpClientInstance->headerCapacity = MPNW_DEFAULT_CAPACITY;
+	httpClientInstance->headerCount = 0;
 
 	*httpClient = httpClientInstance;
 	return SUCCESS_MPNW_RESULT;
@@ -78,6 +260,23 @@ void destroyHttpClient(HttpClient httpClient)
 	if (!httpClient)
 		return;
 
+	HttpHeader* headers = httpClient->headers;
+
+	if (headers)
+	{
+		size_t headerCount = httpClient->headerCount;
+
+		for (size_t i = 0; i < headerCount; i++)
+		{
+			HttpHeader* header = &headers[i];
+			free((char*)header->value);
+			free((char*)headers->key);
+		}
+
+		free(headers);
+	}
+
+	free(httpClient->response);
 	destroyStreamClient(httpClient->handle);
 	free(httpClient);
 }
@@ -115,6 +314,8 @@ MpnwResult httpClientSendGET(
 	}
 #endif
 
+	double time = getCurrentClock();
+
 	StreamClient streamClient = httpClient->handle;
 	SslContext sslContext = getStreamClientSslContext(streamClient);
 
@@ -135,15 +336,20 @@ MpnwResult httpClientSendGET(
 
 	mpnwResult = connectStreamClient(
 		streamClient,
-		remoteAddress);
+		remoteAddress,
+		"voxfield.com"); // TODO: get hostname from the address
 
 	destroySocketAddress(remoteAddress);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 		return mpnwResult;
 
+	setSocketNoDelay(
+		getStreamClientSocket(streamClient),
+		true);
+
 	size_t pathLength = urlLength - pathOffset;
-	size_t requestLength = pathLength + 16;
+	size_t requestLength = pathLength + 18;
 
 	if (headerCount > 0)
 	{
@@ -152,10 +358,6 @@ MpnwResult httpClientSendGET(
 			const HttpHeader* header = &headers[i];
 			requestLength += header->keyLength + header->valueLength + 4;
 		}
-	}
-	else
-	{
-		requestLength += 3;
 	}
 
 	char* request = malloc(requestLength);
@@ -210,32 +412,42 @@ MpnwResult httpClientSendGET(
 			index += 2;
 		}
 	}
-	else
-	{
-		request[index + 0] = '\n';
-		request[index + 1] = '\r';
-		request[index + 2] = '\n';
-		index += 3;
-	}
+
+	request[index + 0] = '\r';
+	request[index + 1] = '\n';
+	index += 2;
 
 	assert(index == requestLength);
 
-	bool result = streamClientSend(
+	mpnwResult = streamClientSend(
 		streamClient,
 		request,
 		requestLength);
 
 	free(request);
 
-	if (!result)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		disconnectStreamClient(streamClient);
-		return lastErrorToMpnwResult();
+		return mpnwResult;
 	}
 
-	// TODO: wait for response or timeout,
-	//  also take into account connect consumed time
+	httpClient->statusCode = 0;
+	httpClient->result = TIMED_OUT_MPNW_RESULT;
+	httpClient->isRunning = true;
+	time += getStreamClientTimeoutTime(streamClient);
+
+	while (httpClient->isRunning)
+	{
+		double currentTime = getCurrentClock();
+
+		if (currentTime > time)
+			break;
+
+		updateStreamClient(streamClient);
+		sleepThread(0.001);
+	}
 
 	disconnectStreamClient(streamClient);
-	return SUCCESS_MPNW_RESULT;
+	return httpClient->result;
 }

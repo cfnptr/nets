@@ -85,22 +85,22 @@ void* getDatagramServerHandle(DatagramServer datagramServer);
 Socket getDatagramServerSocket(DatagramServer datagramServer);
 /*
  * Receive buffered datagrams.
- * Returns true if datagram received.
+ * Returns operation MPNW result.
  *
  * datagramServer - datagram server instance.
  */
-bool updateDatagramServer(DatagramServer datagramServer);
+MpnwResult updateDatagramServer(DatagramServer datagramServer);
 
 /*
  * Send message to the specified address.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * datagramServer - datagram server instance.
  * sendBuffer - datagram send buffer.
  * byteCount - send byte count.
  * remoteAddress - destination socket address.
  */
-bool datagramServerSend(
+MpnwResult datagramServerSend(
 	DatagramServer datagramServer,
 	const void* sendBuffer,
 	size_t byteCount,

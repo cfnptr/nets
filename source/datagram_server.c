@@ -133,7 +133,7 @@ Socket getDatagramServerSocket(DatagramServer datagramServer)
 	return datagramServer->socket;
 }
 
-bool updateDatagramServer(DatagramServer datagramServer)
+MpnwResult updateDatagramServer(DatagramServer datagramServer)
 {
 	assert(datagramServer);
 
@@ -142,25 +142,25 @@ bool updateDatagramServer(DatagramServer datagramServer)
 
 	size_t byteCount;
 
-	bool result = socketReceiveFrom(
+	MpnwResult mpnwResult = socketReceiveFrom(
 		datagramServer->socket,
 		datagramServer->address,
 		receiveBuffer,
 		datagramServer->receiveBufferSize,
 		&byteCount);
 
-	if (!result)
-		return false;
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
 
 	datagramServer->onReceive(
 		datagramServer,
 		datagramServer->address,
 		receiveBuffer,
 		byteCount);
-	return true;
+	return SUCCESS_MPNW_RESULT;
 }
 
-bool datagramServerSend(
+MpnwResult datagramServerSend(
 	DatagramServer datagramServer,
 	const void* sendBuffer,
 	size_t byteCount,

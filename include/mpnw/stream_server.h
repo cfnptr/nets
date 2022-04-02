@@ -176,23 +176,23 @@ bool updateStreamServer(StreamServer streamServer);
 
 /*
  * Send data to the specified session.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * streamSession - stream session instance.
  * sendBuffer - data send buffer.
  * byteCount - send byte count.
  */
-bool streamSessionSend(
+MpnwResult streamSessionSend(
 	StreamSession streamSession,
 	const void* sendBuffer,
 	size_t byteCount);
 /*
  * Send stream message to the specified session.
- * Returns true on success.
+ * Returns operation MPNW result.
  *
  * streamSession - stream session instance.
  * sendBuffer - send stream message.
  */
-bool streamSessionSendMessage(
+MpnwResult streamSessionSendMessage(
 	StreamSession streamSession,
 	StreamMessage streamMessage);

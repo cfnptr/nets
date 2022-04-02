@@ -117,13 +117,22 @@ bool isNetworkInitialized()
 	return networkInitialized;
 }
 
-inline static MpnwResult toMpnwResult(int error)
+void disableSigpipe()
+{
+	signal(SIGPIPE, SIG_IGN);
+}
+
+inline static MpnwResult errorToMpnwResult(int error)
 {
 #if __linux__ || __APPLE__
 	switch (error)
 	{
 	default:
 		return UNKNOWN_ERROR_MPNW_RESULT;
+	case EALREADY:
+	case EINPROGRESS:
+	case EWOULDBLOCK:
+		return IN_PROGRESS_MPNW_RESULT;
 	case EAFNOSUPPORT:
 	case EPROTONOSUPPORT:
 	case ESOCKTNOSUPPORT:
@@ -146,6 +155,8 @@ inline static MpnwResult toMpnwResult(int error)
 	case ENOTSOCK:
 	case EBADF:
 		return BAD_DATA_MPNW_RESULT;
+	case EISCONN:
+		return ALREADY_CONNECTED_MPNW_RESULT;
 	case ECONNREFUSED:
 		return CONNECTION_IS_REFUSED_MPNW_RESULT;
 	case ECONNABORTED:
@@ -160,12 +171,18 @@ inline static MpnwResult toMpnwResult(int error)
 		return HOST_IS_NOT_REACHABLE_MPNW_RESULT;
 	case ETIMEDOUT:
 		return TIMED_OUT_MPNW_RESULT;
+	case EINTR:
+		return INTERRUPTED_MPNW_RESULT;
 	}
 #elif _WIN32
 	switch (error)
 	{
 	default:
 		return UNKNOWN_ERROR_MPNW_RESULT;
+	case WSAEALREADY:
+	case WSAEINPROGRESS:
+	case WSAEWOULDBLOCK:
+		return IN_PROGRESS_MPNW_RESULT;
 	case WSAEAFNOSUPPORT:
 	case WSAEPROTONOSUPPORT:
 	case WSAESOCKTNOSUPPORT:
@@ -186,6 +203,8 @@ inline static MpnwResult toMpnwResult(int error)
 	case WSAEFAULT:
 	case WSAENOTSOCK:
 		return BAD_DATA_MPNW_RESULT;
+	case WSAEISCONN:
+		return ALREADY_CONNECTED_MPNW_RESULT;
 	case WSAECONNREFUSED:
 		return CONNECTION_IS_REFUSED_MPNW_RESULT;
 	case WSAECONNABORTED:
@@ -198,16 +217,37 @@ inline static MpnwResult toMpnwResult(int error)
 		return HOST_IS_NOT_REACHABLE_MPNW_RESULT;
 	case WSAETIMEDOUT:
 		return TIMED_OUT_MPNW_RESULT;
+	case WSAEINTR:
+		return INTERRUPTED_MPNW_RESULT;
 	}
 #endif
 }
-MpnwResult lastErrorToMpnwResult()
+inline static MpnwResult lastErrorToMpnwResult()
 {
 #if __linux__ || __APPLE__
-	return toMpnwResult(errno);
+	return errorToMpnwResult(errno);
 #elif _WIN32
-	return toMpnwResult(WSAGetLastError());
+	return errorToMpnwResult(WSAGetLastError());
 #endif
+}
+inline static MpnwResult sslErrorToMpnwResult(int error)
+{
+	switch (error)
+	{
+	default:
+		return UNKNOWN_ERROR_MPNW_RESULT;
+	case SSL_ERROR_ZERO_RETURN:
+		return CONNECTION_IS_CLOSED_MPNW_RESULT;
+	case SSL_ERROR_WANT_READ:
+	case SSL_ERROR_WANT_WRITE:
+	case SSL_ERROR_WANT_CONNECT:
+	case SSL_ERROR_WANT_ACCEPT:
+	case SSL_ERROR_WANT_X509_LOOKUP:
+		return IN_PROGRESS_MPNW_RESULT;
+	case SSL_ERROR_SYSCALL:
+	case SSL_ERROR_SSL:
+		return lastErrorToMpnwResult();
+	}
 }
 
 inline static MpnwResult createSocketHandle(
@@ -656,7 +696,7 @@ MpnwResult listenSocket(
 	socket->queueSize = queueSize;
 	return SUCCESS_MPNW_RESULT;
 }
-bool acceptSocket(
+MpnwResult acceptSocket(
 	Socket socket,
 	Socket* accepted)
 {
@@ -670,14 +710,14 @@ bool acceptSocket(
 		1, sizeof(Socket_T));
 
 	if (!acceptedInstance)
-		return false;
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	SOCKET handle = accept(socket->handle, NULL, 0);
 
 	if (handle == INVALID_SOCKET)
 	{
 		destroySocket(acceptedInstance);
-		return false;
+		return lastErrorToMpnwResult();
 	}
 
 	if (!socket->isBlocking)
@@ -691,7 +731,7 @@ bool acceptSocket(
 		if (flags == -1)
 		{
 			destroySocket(acceptedInstance);
-			return false;
+			return FAILED_TO_SET_FLAG_MPNW_RESULT;
 		}
 
 		int result = fcntl(
@@ -710,7 +750,7 @@ bool acceptSocket(
 		if (result != 0)
 		{
 			destroySocket(acceptedInstance);
-			return false;
+			return FAILED_TO_SET_FLAG_MPNW_RESULT;
 		}
 	}
 
@@ -727,7 +767,7 @@ bool acceptSocket(
 		if (!ssl)
 		{
 			destroySocket(acceptedInstance);
-			return false;
+			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
 		int result = SSL_set_fd(ssl, (int)handle);
@@ -735,7 +775,7 @@ bool acceptSocket(
 		if (result != 1)
 		{
 			destroySocket(acceptedInstance);
-			return false;
+			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
 		acceptedInstance->sslContext = socket->sslContext;
@@ -748,17 +788,25 @@ bool acceptSocket(
 #endif
 
 	*accepted = acceptedInstance;
-	return true;
+	return SUCCESS_MPNW_RESULT;
 }
 
-bool acceptSslSocket(Socket socket)
+MpnwResult acceptSslSocket(Socket socket)
 {
 	assert(socket);
 	assert(networkInitialized);
 
 #if MPNW_SUPPORT_OPENSSL
 	assert(socket->sslContext);
-	return SSL_accept(socket->ssl) == 1;
+	int result = SSL_accept(socket->ssl) == 1;
+
+	if (result != 1)
+	{
+		return sslErrorToMpnwResult(SSL_get_error(
+			socket->ssl, result));
+	}
+
+	return SUCCESS_MPNW_RESULT;
 #else
 	abort();
 #endif
@@ -788,31 +836,31 @@ MpnwResult connectSocket(
 		(const struct sockaddr*)&remoteAddress->handle,
 		length);
 
-	if (result == 0)
-		return SUCCESS_MPNW_RESULT;
+	if (result != 0)
+		return lastErrorToMpnwResult();
 
-#if __linux__ || __APPLE__
-	int error = errno;
-
-	if (error == EISCONN)
-		return SUCCESS_MPNW_RESULT;
-#elif _WIN32
-	int error = WSAGetLastError();
-
-	if (error == WSAEISCONN)
-		return SUCCESS_MPNW_RESULT;
-#endif
-
-	return toMpnwResult(error);
+	return SUCCESS_MPNW_RESULT;
 }
-bool connectSslSocket(Socket socket)
+MpnwResult connectSslSocket(
+	Socket socket,
+	const char* hostname)
 {
 	assert(socket);
 	assert(networkInitialized);
 
 #if MPNW_SUPPORT_OPENSSL
 	assert(socket->sslContext);
-	return SSL_connect(socket->ssl) == 1;
+
+	if (hostname)
+		SSL_set_tlsext_host_name(socket->ssl, hostname);
+
+	int result = SSL_connect(socket->ssl);
+
+	if (result == 1)
+		return SUCCESS_MPNW_RESULT;
+
+	return sslErrorToMpnwResult(SSL_get_error(
+		socket->ssl, result));
 #else
 	abort();
 #endif
@@ -860,7 +908,7 @@ MpnwResult shutdownSocket(
 	return SUCCESS_MPNW_RESULT;
 }
 
-bool socketReceive(
+MpnwResult socketReceive(
 	Socket socket,
 	void* receiveBuffer,
 	size_t bufferSize,
@@ -881,10 +929,13 @@ bool socketReceive(
 			(int)bufferSize);
 
 		if (result < 0)
-			return false;
+		{
+			return sslErrorToMpnwResult(SSL_get_error(
+				socket->ssl, result));
+		}
 
 		*byteCount = (size_t)result;
-		return true;
+		return SUCCESS_MPNW_RESULT;
 	}
 #endif
 
@@ -895,12 +946,12 @@ bool socketReceive(
 		0);
 
 	if (result < 0)
-		return false;
+		return lastErrorToMpnwResult();
 
 	*byteCount = (size_t)result;
-	return true;
+	return SUCCESS_MPNW_RESULT;
 }
-bool socketSend(
+MpnwResult socketSend(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount)
@@ -912,20 +963,38 @@ bool socketSend(
 #if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
-		return SSL_write(
+		int result = SSL_write(
 			socket->ssl,
 			sendBuffer,
-			(int)byteCount) == byteCount;
+			(int)byteCount);
+
+		if (result < 0)
+		{
+			return sslErrorToMpnwResult(SSL_get_error(
+				socket->ssl, result));
+		}
+
+		if (result != byteCount)
+			return OUT_OF_MEMORY_MPNW_RESULT;
+
+		return SUCCESS_MPNW_RESULT;
 	}
 #endif
 
-	return send(
+	int64_t result = send(
 		socket->handle,
 		(const char*)sendBuffer,
 		(int)byteCount,
-		0) == byteCount;
+		0);
+
+	if (result < 0)
+		return lastErrorToMpnwResult();
+	if (result != byteCount)
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	return SUCCESS_MPNW_RESULT;
 }
-bool socketReceiveFrom(
+MpnwResult socketReceiveFrom(
 	Socket socket,
 	SocketAddress remoteAddress,
 	void* receiveBuffer,
@@ -960,13 +1029,13 @@ bool socketReceiveFrom(
 		&length);
 
 	if (count < 0)
-		return false;
+		return lastErrorToMpnwResult();
 
 	remoteAddress->handle = storage;
 	*byteCount = (size_t)count;
-	return true;
+	return SUCCESS_MPNW_RESULT;
 }
-bool socketSendTo(
+MpnwResult socketSendTo(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount,
@@ -992,13 +1061,20 @@ bool socketSendTo(
 	else
 		abort();
 
-	return sendto(
+	int64_t result = sendto(
 		socket->handle,
 		(const char*)sendBuffer,
 		(int)byteCount,
 		0,
 		(const struct sockaddr*)&remoteAddress->handle,
-		length) == byteCount;
+		length);
+
+	if (result < 0)
+		return lastErrorToMpnwResult();
+	if (result != byteCount)
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	return SUCCESS_MPNW_RESULT;
 }
 
 MpnwResult createSocketAddress(

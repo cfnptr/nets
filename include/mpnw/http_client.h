@@ -40,7 +40,7 @@ typedef struct HttpHeader
  * Create a new HTTP client instance.
  * Returns operation MPNW result.
  *
- * receiveBufferSize - data receive buffer size.
+ * receiveBufferSize - data and response buffer size.
  * timeoutTime - time out time. (seconds)
  * sslContext - SSL context instance or NULL.
  * httpClient - pointer to the HTTP client.
@@ -76,3 +76,5 @@ MpnwResult httpClientSendGET(
 	AddressFamily addressFamily,
 	const HttpHeader* headers,
 	size_t headerCount);
+
+// TODO: shrink headers buffer
