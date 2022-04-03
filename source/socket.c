@@ -120,7 +120,11 @@ bool isNetworkInitialized()
 
 void disableSigpipe()
 {
+#if __linux__ || __APPLE__
 	signal(SIGPIPE, SIG_IGN);
+#elif _WIN32
+	abort();
+#endif
 }
 
 inline static MpnwResult errorToMpnwResult(int error)
