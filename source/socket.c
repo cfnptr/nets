@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -1176,7 +1177,7 @@ MpnwResult resolveSocketAddress(
 	const char* service,
 	AddressFamily family,
 	SocketType type,
-	SocketAddress* socketAddress)
+	SocketAddress socketAddress)
 {
 	assert(host);
 	assert(service);
@@ -1186,12 +1187,6 @@ MpnwResult resolveSocketAddress(
 
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
-
-	SocketAddress socketAddressInstance = calloc(
-		1, sizeof(SocketAddress_T));
-
-	if (!socketAddressInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	struct addrinfo hints;
 
@@ -1240,36 +1235,40 @@ MpnwResult resolveSocketAddress(
 
 	if (result != 0)
 	{
-		free(socketAddressInstance);
 		return FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT;
 	}
 
-	memcpy(&socketAddressInstance->handle,
+	memcpy(&socketAddress->handle,
 		addressInfos->ai_addr,
 		addressInfos->ai_addrlen);
 
 	freeaddrinfo(addressInfos);
-
-	*socketAddress = socketAddressInstance;
 	return SUCCESS_MPNW_RESULT;
 }
-MpnwResult resolveUrlSocketAddress(
+void destroySocketAddress(SocketAddress socketAddress)
+{
+	if (!socketAddress)
+		return;
+
+	assert(networkInitialized);
+	free(socketAddress);
+}
+
+MpnwResult allocateUrlHostService(
 	const char* url,
 	size_t urlLength,
-	AddressFamily family,
-	SocketType type,
-	const char* defaultService,
-	size_t* _pathOffset,
-	SocketAddress* socketAddress)
+	char** host,
+	size_t* hostLength,
+	char** service,
+	size_t* serviceLength,
+	size_t* _pathOffset)
 {
 	assert(url);
 	assert(urlLength > 0);
-	assert(family < ADDRESS_FAMILY_COUNT);
-	assert(type < SOCKET_TYPE_COUNT);
-	assert(defaultService);
-	assert(socketAddress);
-
-	// TODO: possibly create some sort of cache for malloc buffers.
+	assert(host);
+	assert(hostLength);
+	assert(service);
+	assert(serviceLength);
 
 	size_t serviceSize = 0, hostOffset = 0;
 
@@ -1344,70 +1343,56 @@ MpnwResult resolveUrlSocketAddress(
 	if (hostSize == 0)
 		return BAD_DATA_MPNW_RESULT;
 
-	char* host = malloc((hostSize + 1));
+	char* hostInstance = malloc((hostSize + 1));
 
-	if (!host)
+	if (!hostInstance)
 		return OUT_OF_MEMORY_MPNW_RESULT;
 
-	memcpy(host, url + hostOffset, hostSize);
-	host[hostSize] = '\0';
+	memcpy(hostInstance, url + hostOffset, hostSize);
+	hostInstance[hostSize] = '\0';
 
-	char* service;
+	char* serviceInstance;
 
 	if (portSize != 0)
 	{
-		service = malloc((portSize + 1));
+		serviceInstance = malloc((portSize + 1));
 
-		if (!service)
+		if (!serviceInstance)
 		{
-			free(host);
+			free(hostInstance);
 			return OUT_OF_MEMORY_MPNW_RESULT;
 		}
 
-		memcpy(service, url + portOffset, portSize);
-		service[portSize] = '\0';
+		memcpy(serviceInstance, url + portOffset, portSize);
+		serviceInstance[portSize] = '\0';
 	}
 	else if (serviceSize != 0)
 	{
-		service = malloc((serviceSize + 1));
+		serviceInstance = malloc((serviceSize + 1));
 
-		if (!service)
+		if (!serviceInstance)
 		{
-			free(host);
+			free(hostInstance);
 			return OUT_OF_MEMORY_MPNW_RESULT;
 		}
 
-		memcpy(service, url, serviceSize);
-		service[serviceSize] = '\0';
+		memcpy(serviceInstance, url, serviceSize);
+		serviceInstance[serviceSize] = '\0';
 	}
 	else
 	{
-		service = NULL;
+		serviceInstance = NULL;
 	}
 
-	MpnwResult mpnwResult = resolveSocketAddress(
-		host,
-		service ? service : defaultService,
-		family,
-		type,
-		socketAddress);
-
-	free(service);
-	free(host);
+	*host = hostInstance;
+	*hostLength = hostSize;
+	*service = serviceInstance;
+	*serviceLength = serviceSize;
 
 	if (_pathOffset)
 		*_pathOffset = pathOffset;
 
-	return mpnwResult;
-}
-
-void destroySocketAddress(SocketAddress socketAddress)
-{
-	if (!socketAddress)
-		return;
-
-	assert(networkInitialized);
-	free(socketAddress);
+	return SUCCESS_MPNW_RESULT;
 }
 
 void copySocketAddress(

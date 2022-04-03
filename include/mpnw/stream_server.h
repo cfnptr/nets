@@ -87,7 +87,7 @@ typedef bool(*OnStreamSessionReceive)(
  * service - local address service string.
  * sessionBufferSize - session receive buffer size.
  * connectionQueueSize - pending connections queue size.
- * receiveBufferSize - data receive buffer size.
+ * dataBufferSize - data buffer size.
  * onCreate - session create function.
  * onDestroy - session destroy function.
  * onUpdate - session update function.
@@ -101,7 +101,7 @@ MpnwResult createStreamServer(
 	const char* service,
 	size_t sessionBufferSize,
 	size_t connectionQueueSize,
-	size_t receiveBufferSize,
+	size_t dataBufferSize,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
 	OnStreamSessionUpdate onUpdate,
@@ -121,10 +121,10 @@ void destroyStreamServer(StreamServer streamServer);
  */
 size_t getStreamServerSessionBufferSize(StreamServer streamServer);
 /*
- * Returns stream server receive buffer size.
+ * Returns stream server data buffer size.
  * streamServer - stream server instance.
  */
-size_t getStreamServerReceiveBufferSize(StreamServer streamServer);
+size_t getStreamServerDataBufferSize(StreamServer streamServer);
 /*
  * Returns stream server create function.
  * streamServer - stream server instance.
@@ -150,6 +150,11 @@ OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer);
  * streamServer - stream server instance.
  */
 void* getStreamServerHandle(StreamServer streamServer);
+/*
+ * Returns stream server data buffer.
+ * streamServer - stream server instance.
+ */
+uint8_t* getStreamServerDataBuffer(StreamServer streamServer);
 /*
  * Returns stream server socket.
  * streamServer - stream server instance.

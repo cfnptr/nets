@@ -41,14 +41,14 @@ typedef void(*OnDatagramClientReceive)(
  * Returns operation MPNW result.
  *
  * remoteAddress - remote socket address.
- * receiveBufferSize - datagram receive buffer size.
+ * bufferSize - data buffer size.
  * onReceive - datagram receive function.
  * handle - receive function argument.
  * datagramClient - pointer to the datagram client.
  */
 MpnwResult createDatagramClient(
 	SocketAddress remoteAddress,
-	size_t receiveBufferSize,
+	size_t bufferSize,
 	OnDatagramClientReceive onReceive,
 	void* handle,
 	DatagramClient* datagramClient);
@@ -59,10 +59,10 @@ MpnwResult createDatagramClient(
 void destroyDatagramClient(DatagramClient datagramClient);
 
 /*
- * Returns datagram client receive buffer size.
+ * Returns datagram client data buffer size.
  * datagramClient - datagram client instance.
  */
-size_t getDatagramClientReceiveBufferSize(DatagramClient datagramClient);
+size_t getDatagramClientBufferSize(DatagramClient datagramClient);
 /*
  * Returns datagram client receive function.
  * datagramClient - datagram client instance.
@@ -73,6 +73,11 @@ OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient datagramClient
  * datagramClient - datagram client instance.
  */
 void* getDatagramClientHandle(DatagramClient datagramClient);
+/*
+ * Returns datagram client data buffer.
+ * datagramClient - datagram client instance.
+ */
+uint8_t* getDatagramClientBuffer(DatagramClient datagramClient);
 /*
  * Returns datagram client socket.
  * datagramClient - datagram client instance.

@@ -44,7 +44,7 @@ typedef void(*OnDatagramServerReceive)(
  *
  * addressFamily - local socket address family.
  * service - local address service string.
- * receiveBufferSize - datagram receive buffer size.
+ * bufferSize - data buffer size.
  * onReceive - datagram receive function.
  * handle - receive function argument.
  * datagramServer - pointer to the datagram server.
@@ -52,7 +52,7 @@ typedef void(*OnDatagramServerReceive)(
 MpnwResult createDatagramServer(
 	AddressFamily addressFamily,
 	const char* service,
-	size_t receiveBufferSize,
+	size_t bufferSize,
 	OnDatagramServerReceive onReceive,
 	void* handle,
 	DatagramServer* datagramServer);
@@ -63,11 +63,10 @@ MpnwResult createDatagramServer(
 void destroyDatagramServer(DatagramServer datagramServer);
 
 /*
- * Returns datagram server receive buffer size.
+ * Returns datagram server data buffer size.
  * datagramServer - datagram server instance.
  */
-size_t getDatagramServerReceiveBufferSize(DatagramServer datagramServer);
-
+size_t getDatagramServerBufferSize(DatagramServer datagramServer);
 /*
  * Returns datagram server receive function.
  * datagramServer - datagram server instance.

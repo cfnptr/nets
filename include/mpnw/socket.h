@@ -437,40 +437,39 @@ SocketAddress createSocketAddressCopy(
  * type - socket connection type.
  * socketAddress - pointer to the address.
  */
-MpnwResult resolveSocketAddress(
+MpnwResult resolveSocketAddress( // TODO: add async address resolve
 	const char* host,
 	const char* service,
 	AddressFamily family,
 	SocketType type,
-	SocketAddress* socketAddress);
-/*
- * Resolve a new URL socket addresses.
- * Returns operation MPNW result.
- *
- * url - uniform resource locator string.
- * urlLength - URL string length.
- * family - socket address family.
- * type - socket connection type.
- * defaultService - default service name string.
- * pathOffset - pointer to the path offset or NULL.
- * socketAddress - pointer to the address.
- */
-MpnwResult resolveUrlSocketAddress(
-	const char* url,
-	size_t urlLength,
-	AddressFamily family,
-	SocketType type,
-	const char* defaultService,
-	size_t* pathOffset,
-	SocketAddress* socketAddress);
-
-// TODO: add async address resolve
-
+	SocketAddress socketAddress);
 /*
  * Destroys socket address instance.
  * socketAddress - socket address or NULL.
  */
 void destroySocketAddress(SocketAddress socketAddress);
+
+/*
+ * Parse and allocate URL host and service names.
+ * Returns operation MPNW result.
+ *
+ * url - uniform resource locator string.
+ * urlLength - URL string length.
+ * host - pointer to the host name string.
+ * hostLength - pointer to the host name string length.
+ * service - pointer to the service name string.
+ * serviceLength - pointer to the service name string length.
+ * pathOffset - pointer to the path offset or NULL.
+ */
+MpnwResult allocateUrlHostService(
+	const char* url,
+	size_t urlLength,
+	char** host,
+	size_t* hostLength,
+	char** service,
+	size_t* serviceLength,
+	size_t* pathOffset);
+// TODO: also return username, and parse URI format
 
 /*
  * Copy source socket address to the destination.

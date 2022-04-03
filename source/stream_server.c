@@ -24,13 +24,13 @@ struct StreamSession_T
 struct StreamServer_T
 {
 	size_t sessionBufferSize;
-	size_t receiveBufferSize;
+	size_t dataBufferSize;
 	OnStreamSessionCreate onCreate;
 	OnStreamSessionDestroy onDestroy;
 	OnStreamSessionReceive onReceive;
 	OnStreamSessionUpdate onUpdate;
 	void* handle;
-	uint8_t* receiveBuffer;
+	uint8_t* dataBuffer;
 	StreamSession sessionBuffer;
 	size_t sessionCount;
 	Socket acceptSocket;
@@ -41,7 +41,7 @@ MpnwResult createStreamServer(
 	const char* service,
 	size_t sessionBufferSize,
 	size_t connectionQueueSize,
-	size_t receiveBufferSize,
+	size_t dataBufferSize,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
 	OnStreamSessionUpdate onUpdate,
@@ -54,7 +54,7 @@ MpnwResult createStreamServer(
 	assert(service);
 	assert(sessionBufferSize > 0);
 	assert(connectionQueueSize > 0);
-	assert(receiveBufferSize > 0);
+	assert(dataBufferSize > 0);
 	assert(onCreate);
 	assert(onDestroy);
 	assert(onUpdate);
@@ -73,17 +73,17 @@ MpnwResult createStreamServer(
 	streamServerInstance->onReceive = onReceive;
 	streamServerInstance->handle = handle;
 
-	uint8_t* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(uint8_t));
+	uint8_t* dataBuffer = malloc(
+		dataBufferSize * sizeof(uint8_t));
 
-	if (!receiveBuffer)
+	if (!dataBuffer)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
 
-	streamServerInstance->receiveBufferSize = receiveBufferSize;
-	streamServerInstance->receiveBuffer = receiveBuffer;
+	streamServerInstance->dataBuffer = dataBuffer;
+	streamServerInstance->dataBufferSize = dataBufferSize;
 
 	StreamSession sessionBuffer = malloc(
 		sessionBufferSize * sizeof(StreamSession_T));
@@ -171,7 +171,7 @@ void destroyStreamServer(StreamServer streamServer)
 		destroySocket(socket);
 	}
 
-	free(streamServer->receiveBuffer);
+	free(streamServer->dataBuffer);
 	free(sessionBuffer);
 	free(streamServer);
 }
@@ -181,10 +181,10 @@ size_t getStreamServerSessionBufferSize(StreamServer streamServer)
 	assert(streamServer);
 	return streamServer->sessionBufferSize;
 }
-size_t getStreamServerReceiveBufferSize(StreamServer streamServer)
+size_t getStreamServerDataBufferSize(StreamServer streamServer)
 {
 	assert(streamServer);
-	return streamServer->receiveBufferSize;
+	return streamServer->dataBufferSize;
 }
 OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer)
 {
@@ -210,6 +210,11 @@ void* getStreamServerHandle(StreamServer streamServer)
 {
 	assert(streamServer);
 	return streamServer->handle;
+}
+uint8_t* getStreamServerDataBuffer(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->dataBuffer;
 }
 Socket getStreamServerSocket(StreamServer streamServer)
 {
@@ -237,8 +242,8 @@ bool updateStreamServer(StreamServer streamServer)
 	StreamSession sessionBuffer = streamServer->sessionBuffer;
 	size_t sessionBufferSize = streamServer->sessionBufferSize;
 	size_t sessionCount = streamServer->sessionCount;
-	uint8_t* receiveBuffer = streamServer->receiveBuffer;
-	size_t receiveBufferSize = streamServer->receiveBufferSize;
+	uint8_t* dataBuffer = streamServer->dataBuffer;
+	size_t dataBufferSize = streamServer->dataBufferSize;
 	OnStreamSessionCreate onCreate = streamServer->onCreate;
 	OnStreamSessionDestroy onDestroy = streamServer->onDestroy;
 	OnStreamSessionUpdate onUpdate = streamServer->onUpdate;
@@ -270,8 +275,8 @@ bool updateStreamServer(StreamServer streamServer)
 
 		MpnwResult mpnwResult = socketReceive(
 			receiveSocket,
-			receiveBuffer,
-			receiveBufferSize,
+			dataBuffer,
+			dataBufferSize,
 			&byteCount);
 
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -280,7 +285,7 @@ bool updateStreamServer(StreamServer streamServer)
 		bool result = onReceive(
 			streamServer,
 			streamSession,
-			receiveBuffer,
+			dataBuffer,
 			byteCount);
 
 		if (result)

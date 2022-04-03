@@ -19,24 +19,24 @@
 
 struct StreamClient_T
 {
-	size_t receiveBufferSize;
+	size_t bufferSize;
 	double timeoutTime;
 	OnStreamClientReceive onReceive;
 	void* handle;
 	SslContext sslContext;
-	uint8_t* receiveBuffer;
+	uint8_t* buffer;
 	Socket socket;
 };
 
 MpnwResult createStreamClient(
-	size_t receiveBufferSize,
+	size_t bufferSize,
 	double timeoutTime,
 	OnStreamClientReceive onReceive,
 	void* handle,
 	SslContext sslContext,
 	StreamClient* streamClient)
 {
-	assert(receiveBufferSize > 0);
+	assert(bufferSize > 0);
 	assert(timeoutTime > 0.0);
 	assert(onReceive);
 	assert(streamClient);
@@ -53,17 +53,17 @@ MpnwResult createStreamClient(
 	streamClientInstance->sslContext = sslContext;
 	streamClientInstance->socket = NULL;
 
-	uint8_t* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(uint8_t));
+	uint8_t* buffer = malloc(
+		bufferSize * sizeof(uint8_t));
 
-	if (!receiveBuffer)
+	if (!buffer)
 	{
 		destroyStreamClient(streamClientInstance);
 		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
 
-	streamClientInstance->receiveBufferSize = receiveBufferSize;
-	streamClientInstance->receiveBuffer = receiveBuffer;
+	streamClientInstance->buffer = buffer;
+	streamClientInstance->bufferSize = bufferSize;
 
 	*streamClient = streamClientInstance;
 	return SUCCESS_MPNW_RESULT;
@@ -81,14 +81,14 @@ void destroyStreamClient(StreamClient streamClient)
 		destroySocket(socket);
 	}
 
-	free(streamClient->receiveBuffer);
+	free(streamClient->buffer);
 	free(streamClient);
 }
 
-size_t getStreamClientReceiveBufferSize(StreamClient streamClient)
+size_t getStreamClientBufferSize(StreamClient streamClient)
 {
 	assert(streamClient);
-	return streamClient->receiveBufferSize;
+	return streamClient->bufferSize;
 }
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient)
 {
@@ -99,6 +99,11 @@ void* getStreamClientHandle(StreamClient streamClient)
 {
 	assert(streamClient);
 	return streamClient->handle;
+}
+uint8_t* getStreamClientBuffer(StreamClient streamClient)
+{
+	assert(streamClient);
+	return streamClient->buffer;
 }
 Socket getStreamClientSocket(StreamClient streamClient)
 {
@@ -240,15 +245,13 @@ MpnwResult updateStreamClient(StreamClient streamClient)
 {
 	assert(streamClient);
 
-	uint8_t* receiveBuffer =
-		streamClient->receiveBuffer;
-
+	uint8_t* receiveBuffer = streamClient->buffer;
 	size_t byteCount;
 
 	MpnwResult mpnwResult = socketReceive(
 		streamClient->socket,
 		receiveBuffer,
-		streamClient->receiveBufferSize,
+		streamClient->bufferSize,
 		&byteCount);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)

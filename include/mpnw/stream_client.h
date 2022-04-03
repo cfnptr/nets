@@ -40,7 +40,7 @@ typedef void(*OnStreamClientReceive)(
  * Create a new stream client instance (TCP).
  * Returns operation MPNW result.
  *
- * receiveBufferSize - data receive buffer size.
+ * bufferSize - data buffer size.
  * timeoutTime - time out time. (seconds)
  * onReceive - data receive function.
  * handle - receive function argument.
@@ -48,7 +48,7 @@ typedef void(*OnStreamClientReceive)(
  * streamClient - pointer to the stream client.
  */
 MpnwResult createStreamClient(
-	size_t receiveBufferSize,
+	size_t bufferSize,
 	double timeoutTime,
 	OnStreamClientReceive onReceive,
 	void* handle,
@@ -61,10 +61,10 @@ MpnwResult createStreamClient(
 void destroyStreamClient(StreamClient streamClient);
 
 /*
-* Returns stream client receive buffer size.
+* Returns stream client data buffer size.
 * streamClient - stream client instance.
 */
-size_t getStreamClientReceiveBufferSize(StreamClient streamClient);
+size_t getStreamClientBufferSize(StreamClient streamClient);
 /*
 * Returns stream client receive function.
 * streamClient - stream client instance.
@@ -75,6 +75,11 @@ OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient);
  * streamClient - stream client instance.
  */
 void* getStreamClientHandle(StreamClient streamClient);
+/*
+ * Returns stream client data buffer.
+ * streamClient - stream client instance.
+ */
+uint8_t* getStreamClientBuffer(StreamClient streamClient);
 /*
  * Returns stream client socket.
  * streamClient - stream client instance.

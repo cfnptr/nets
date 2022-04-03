@@ -28,35 +28,84 @@ typedef struct HttpClient_T HttpClient_T;
 */
 typedef HttpClient_T* HttpClient;
 
+/*
+ * HTTP header structure.
+ */
 typedef struct HttpHeader
 {
 	const char* key;
-	size_t keyLength;
 	const char* value;
-	size_t valueLength;
+	int keyLength;
+	int valueLength;
 } HttpHeader;
+
+/*
+ * Automatically set headers by the implementation.
+ */
+static const char* defaultHttpHeaders[] ={
+	"Host",
+};
 
 /*
  * Create a new HTTP client instance.
  * Returns operation MPNW result.
  *
- * receiveBufferSize - data and response buffer size.
+ * dataBufferSize - data buffer size.
+ * responseBufferSize - HTTP response buffer size.
+ * headerBufferSize - HTTP header buffer size.
  * timeoutTime - time out time. (seconds)
  * sslContext - SSL context instance or NULL.
  * httpClient - pointer to the HTTP client.
  */
 MpnwResult creatHttpClient(
-	size_t receiveBufferSize,
+	size_t dataBufferSize,
+	size_t responseBufferSize,
+	size_t headerBufferSize,
 	double timeoutTime,
 	SslContext sslContext,
 	HttpClient* httpClient);
 void destroyHttpClient(HttpClient httpClient);
 
 /*
+ * Returns HTTP client response buffer size.
+ * httpClient - HTTP client instance.
+ */
+size_t getHttpResponseBufferSize(HttpClient httpClient);
+/*
+ * Returns HTTP client header buffer size.
+ * httpClient - HTTP client instance.
+ */
+size_t getHttpHeaderBufferSize(HttpClient httpClient);
+/*
  * Returns HTTP client stream.
  * httpClient - HTTP client instance.
  */
 StreamClient getHttpClientStream(HttpClient httpClient);
+/*
+ * Returns HTTP client status code.
+ * httpClient - HTTP client instance.
+ */
+int getHttpClientStatusCode(HttpClient httpClient);
+/*
+ * Returns HTTP client server response.
+ * httpClient - HTTP client instance.
+ */
+const char* getHttpClientResponse(HttpClient httpClient);
+/*
+ * Returns HTTP client server response length.
+ * httpClient - HTTP client instance.
+ */
+size_t getHttpClientResponseLength(HttpClient httpClient);
+/*
+ * Returns HTTP client server response headers.
+ * httpClient - HTTP client instance.
+ */
+const HttpHeader* getHttpClientHeaders(HttpClient httpClient);
+/*
+ * Returns HTTP client server response headers count.
+ * httpClient - HTTP client instance.
+ */
+size_t getHttpClientHeaderCount(HttpClient httpClient);
 
 /*
  * Send HTTP GET request to the server.
@@ -77,4 +126,15 @@ MpnwResult httpClientSendGET(
 	const HttpHeader* headers,
 	size_t headerCount);
 
-// TODO: shrink headers buffer
+/*
+ * Returns HTTP client header value
+ * on success, otherwise NULL.
+ *
+ * httpClient - HTTP client instance.
+ * key - header key string.
+ * length - key string length.
+ */
+const char* getHttpClientHeader(
+	HttpClient httpClient,
+	const char* key,
+	int length);

@@ -106,6 +106,7 @@ typedef uint8_t MpnwResult;
  */
 static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
 	"Success",
+	"In progress",
 	"Network is not initialized",
 	"Out of memory",
 	"Out of descriptors",
@@ -114,7 +115,8 @@ static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
 	"Address is already in use",
 	"Bad address",
 	"Bad data",
-	"Failed to set flag"
+	"Failed to set flag",
+	"Already connected",
 	"Connection is refused",
 	"Connection is aborted",
 	"Connection is reset",
@@ -122,6 +124,7 @@ static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
 	"Network is not reachable",
 	"Host is not reachable",
 	"Timed out",
+	"Interrupted",
 	"Failed to get address info",
 	"Failed to create SSL",
 	"Failed to load certificate",

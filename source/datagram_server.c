@@ -16,10 +16,10 @@
 
 struct DatagramServer_T
 {
-	size_t receiveBufferSize;
+	size_t bufferSize;
 	OnDatagramServerReceive onReceive;
 	void* handle;
-	uint8_t* receiveBuffer;
+	uint8_t* buffer;
 	SocketAddress address;
 	Socket socket;
 };
@@ -27,14 +27,14 @@ struct DatagramServer_T
 MpnwResult createDatagramServer(
 	AddressFamily addressFamily,
 	const char* service,
-	size_t receiveBufferSize,
+	size_t bufferSize,
 	OnDatagramServerReceive onReceive,
 	void* handle,
 	DatagramServer* datagramServer)
 {
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(service);
-	assert(receiveBufferSize > 0);
+	assert(bufferSize > 0);
 	assert(onReceive);
 	assert(datagramServer);
 
@@ -48,7 +48,7 @@ MpnwResult createDatagramServer(
 	datagramServerInstance->handle = handle;
 
 	uint8_t* receiveBuffer = malloc(
-		receiveBufferSize * sizeof(uint8_t));
+		bufferSize * sizeof(uint8_t));
 
 	if (!receiveBuffer)
 	{
@@ -56,8 +56,8 @@ MpnwResult createDatagramServer(
 		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
 
-	datagramServerInstance->receiveBufferSize = receiveBufferSize;
-	datagramServerInstance->receiveBuffer = receiveBuffer;
+	datagramServerInstance->buffer = receiveBuffer;
+	datagramServerInstance->bufferSize = bufferSize;
 
 	SocketAddress socketAddress;
 
@@ -108,14 +108,14 @@ void destroyDatagramServer(DatagramServer datagramServer)
 	}
 
 	destroySocketAddress(datagramServer->address);
-	free(datagramServer->receiveBuffer);
+	free(datagramServer->buffer);
 	free(datagramServer);
 }
 
 size_t getDatagramServerReceiveBufferSize(DatagramServer datagramServer)
 {
 	assert(datagramServer);
-	return datagramServer->receiveBufferSize;
+	return datagramServer->bufferSize;
 }
 OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer datagramServer)
 {
@@ -137,16 +137,14 @@ MpnwResult updateDatagramServer(DatagramServer datagramServer)
 {
 	assert(datagramServer);
 
-	uint8_t* receiveBuffer =
-		datagramServer->receiveBuffer;
-
+	uint8_t* receiveBuffer = datagramServer->buffer;
 	size_t byteCount;
 
 	MpnwResult mpnwResult = socketReceiveFrom(
 		datagramServer->socket,
 		datagramServer->address,
 		receiveBuffer,
-		datagramServer->receiveBufferSize,
+		datagramServer->bufferSize,
 		&byteCount);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
