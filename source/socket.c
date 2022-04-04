@@ -237,6 +237,7 @@ inline static MpnwResult lastErrorToMpnwResult()
 }
 inline static MpnwResult sslErrorToMpnwResult(int error)
 {
+#if MPNW_SUPPORT_OPENSSL
 	switch (error)
 	{
 	default:
@@ -253,6 +254,9 @@ inline static MpnwResult sslErrorToMpnwResult(int error)
 	case SSL_ERROR_SSL:
 		return lastErrorToMpnwResult();
 	}
+#else
+	abort();
+#endif
 }
 
 inline static MpnwResult createSocketHandle(

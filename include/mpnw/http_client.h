@@ -127,14 +127,14 @@ MpnwResult httpClientSendGET(
 	size_t headerCount);
 
 /*
- * Returns HTTP client header value
+ * Returns HTTP client header
  * on success, otherwise NULL.
  *
  * httpClient - HTTP client instance.
  * key - header key string.
  * length - key string length.
  */
-const char* getHttpClientHeader(
+const HttpHeader* getHttpClientHeader(
 	HttpClient httpClient,
 	const char* key,
 	int length);

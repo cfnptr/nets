@@ -32,8 +32,8 @@ struct HttpClient_T
 	size_t responseLength;
 	size_t headerCount;
 	uint16_t statusCode;
-	bool isBody;
 	bool isChunked;
+	bool isBody;
 	MpnwResult result;
 	bool isRunning;
 };
@@ -63,6 +63,8 @@ static int cmpHttpHeaders(const void* a, const void* b)
 	return 0;
 }
 
+// TODO: ignore \r symbol as described in the spec
+
 inline static MpnwResult processResponseLine(
 	HttpClient httpClient,
 	const char* line,
@@ -73,48 +75,54 @@ inline static MpnwResult processResponseLine(
 
 	if (length == 0)
 	{
-		qsort(httpClient->headers,
-			httpClient->headerCount,
-			sizeof(HttpHeader),
-			cmpHttpHeaders);
-
-		const char* contentLength = getHttpClientHeader(
-			httpClient,
-			"Content-Length",
-			14);
-
-		if (contentLength)
+		if (!httpClient->isBody)
 		{
-			int64_t responseLength = (int64_t)strtol(
-				contentLength,
-				NULL,
-				10);
+			qsort(httpClient->headers,
+				httpClient->headerCount,
+				sizeof(HttpHeader),
+				cmpHttpHeaders);
 
-			if (responseLength == 0)
-				return SUCCESS_MPNW_RESULT;
-			if (responseLength < 0)
-				return BAD_DATA_MPNW_RESULT;
-
-			httpClient->responseLength = responseLength;
-		}
-		else
-		{
-			const char* transferEncoding = getHttpClientHeader(
+			const HttpHeader* contentLength = getHttpClientHeader(
 				httpClient,
-				"Transfer-Encoding",
-				17);
+				"Content-Length",
+				14);
 
-			if (!transferEncoding ||
-				memcmp(transferEncoding, "chunked", 7) != 0)
+			if (contentLength)
 			{
-				// TODO: support compression
-				return BAD_DATA_MPNW_RESULT;
+				int64_t chunkSize = (int64_t)strtol(
+					contentLength->value,
+					NULL,
+					10);
+
+				if (chunkSize == 0)
+					return SUCCESS_MPNW_RESULT;
+				if (chunkSize < 0)
+					return BAD_DATA_MPNW_RESULT;
+				if (chunkSize > httpClient->responseBufferSize)
+					return OUT_OF_MEMORY_MPNW_RESULT;
+
+				httpClient->chunkSize = chunkSize;
+			}
+			else
+			{
+				const HttpHeader* transferEncoding = getHttpClientHeader(
+					httpClient,
+					"Transfer-Encoding",
+					17);
+
+				if (!transferEncoding || transferEncoding->valueLength != 7 ||
+					memcmp(transferEncoding->value, "chunked", 7) != 0)
+				{
+					// TODO: support compression
+					return BAD_DATA_MPNW_RESULT;
+				}
+
+				httpClient->isChunked = true;
 			}
 
-			httpClient->isChunked = true;
+			httpClient->isBody = true;
 		}
 
-		httpClient->isBody = true;
 		return SUCCESS_MPNW_RESULT;
 	}
 
@@ -133,7 +141,7 @@ inline static MpnwResult processResponseLine(
 
 		httpClient->statusCode = statusCode;
 	}
-	else if (httpClient->isChunked == false)
+	else if (!httpClient->isBody)
 	{
 		if (httpClient->headerCount == httpClient->headerBufferSize)
 			return OUT_OF_MEMORY_MPNW_RESULT;
@@ -193,9 +201,16 @@ inline static MpnwResult processResponseLine(
 			16);
 
 		if (chunkSize == 0)
+		{
+			httpClient->result = SUCCESS_MPNW_RESULT;
+			httpClient->isRunning = false;
 			return SUCCESS_MPNW_RESULT;
+		}
+
 		if (chunkSize < 0)
 			return BAD_DATA_MPNW_RESULT;
+		if (httpClient->responseLength + chunkSize > httpClient->responseBufferSize)
+			return OUT_OF_MEMORY_MPNW_RESULT;
 
 		httpClient->chunkSize = chunkSize;
 	}
@@ -223,32 +238,60 @@ static void onStreamClientReceive(
 	const char* buffer = (const char*)receiveBuffer;
 	size_t lineOffset = 0;
 
-	if (httpClient->isBody == true)
+	if (httpClient->isBody && httpClient->chunkSize > 0)
 	{
-		// TODO: read chunkdata until zero
+		size_t chunkSize = httpClient->chunkSize;
+		char* response = httpClient->response;
+
+		if (chunkSize < byteCount)
+		{
+			memcpy(response + httpClient->responseLength,
+				receiveBuffer, chunkSize);
+			httpClient->responseLength += chunkSize;
+			httpClient->chunkSize = 0;
+			lineOffset += chunkSize;
+		}
+		else
+		{
+			memcpy(response + httpClient->responseLength,
+				receiveBuffer, byteCount);
+			httpClient->responseLength += byteCount;
+			httpClient->chunkSize -= byteCount;
+
+			if (!httpClient->isChunked && httpClient->chunkSize == 0)
+			{
+				httpClient->result = SUCCESS_MPNW_RESULT;
+				httpClient->isRunning = false;
+			}
+			return;
+		}
 	}
 
-	for (size_t i = 0; i < byteCount; i++)
+	for (size_t i = lineOffset; i < byteCount; i++)
 	{
 		char value = buffer[i];
 
 		if (value != '\n')
 			continue;
 
-		if (lineOffset + 1 > i)
+		MpnwResult mpnwResult;
+
+		if (httpClient->chunkSize > 0)
 		{
-			httpClient->result = BAD_DATA_MPNW_RESULT;
-			httpClient->isRunning = false;
-			return;
-		}
+			size_t chunkSize = httpClient->chunkSize;
+			size_t size;
 
-		size_t length = i - (lineOffset + 1);
+			if (lineOffset == i)
+			{
+				size = 0;
+				chunkSize--;
+			}
+			else
+			{
+				size = i - (lineOffset + 1);
+			}
 
-		if (httpClient->responseLength > 0)
-		{
-			size_t responseLength = httpClient->responseLength;
-
-			if (responseLength + length > httpClient->responseBufferSize)
+			if (chunkSize + size > httpClient->responseBufferSize)
 			{
 				httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
 				httpClient->isRunning = false;
@@ -257,56 +300,88 @@ static void onStreamClientReceive(
 
 			char* response = httpClient->response;
 
-			memcpy(response + responseLength,
-				receiveBuffer, length);
+			memcpy(response + chunkSize,
+				receiveBuffer, size);
 
-			MpnwResult mpnwResult = processResponseLine(
+			mpnwResult = processResponseLine(
 				httpClient,
 				response,
-				responseLength + length);
+				chunkSize + size);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
-			{
-				httpClient->result = mpnwResult;
-				httpClient->isRunning = false;
-				return;
-			}
-
-			httpClient->responseLength = 0;
+			httpClient->chunkSize = 0;
 		}
 		else
 		{
-			MpnwResult mpnwResult = processResponseLine(
-				httpClient,
-				buffer + lineOffset,
-				length);
-
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			if (lineOffset + 1 > i)
 			{
-				httpClient->result = mpnwResult;
+				httpClient->result = BAD_DATA_MPNW_RESULT;
 				httpClient->isRunning = false;
 				return;
 			}
+
+			size_t length = i - (lineOffset + 1);
+
+			mpnwResult = processResponseLine(
+				httpClient,
+				buffer + lineOffset,
+				length);
+		}
+
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		{
+			httpClient->result = mpnwResult;
+			httpClient->isRunning = false;
+			return;
 		}
 
 		lineOffset = i + 1;
+
+		if (httpClient->isBody)
+		{
+			size_t length = byteCount - lineOffset;
+			size_t chunkSize = httpClient->chunkSize;
+			char* response = httpClient->response;
+
+			if (chunkSize < length)
+			{
+				memcpy(response + httpClient->responseLength,
+					receiveBuffer + lineOffset, chunkSize);
+				httpClient->responseLength += chunkSize;
+				httpClient->chunkSize = 0;
+				lineOffset += chunkSize;
+			}
+			else
+			{
+				memcpy(response + httpClient->responseLength,
+					receiveBuffer + lineOffset, length);
+				httpClient->responseLength += length;
+				httpClient->chunkSize -= length;
+
+				if (!httpClient->isChunked && httpClient->chunkSize == 0)
+				{
+					httpClient->result = SUCCESS_MPNW_RESULT;
+					httpClient->isRunning = false;
+				}
+				return;
+			}
+		}
 	}
 
 	if (lineOffset != byteCount)
 	{
-		size_t count = byteCount - lineOffset;
-		size_t responseLength = httpClient->responseLength;
+		size_t size = byteCount - lineOffset;
+		size_t chunkSize = httpClient->chunkSize;
 
-		if (responseLength + count > httpClient->responseBufferSize)
+		if (chunkSize + size > httpClient->responseBufferSize)
 		{
 			httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
 			httpClient->isRunning = false;
 			return;
 		}
 
-		memcpy(httpClient->response + responseLength,
-			receiveBuffer + lineOffset, count);
-		httpClient->responseLength += count;
+		memcpy(httpClient->response + chunkSize,
+			receiveBuffer + lineOffset, size);
+		httpClient->chunkSize += size;
 	}
 }
 
@@ -333,8 +408,8 @@ MpnwResult creatHttpClient(
 	httpClientInstance->responseLength = 0;
 	httpClientInstance->headerCount = 0;
 	httpClientInstance->statusCode = 0;
-	httpClientInstance->isBody = false;
 	httpClientInstance->isChunked = false;
+	httpClientInstance->isBody = false;
 	httpClientInstance->result = SUCCESS_MPNW_RESULT;
 	httpClientInstance->isRunning = false;
 
@@ -412,7 +487,7 @@ void destroyHttpClient(HttpClient httpClient)
 		{
 			const HttpHeader* header = &headers[i];
 			free((char*)header->value);
-			free((char*)headers->key);
+			free((char*)header->key);
 		}
 
 		free(headers);
@@ -477,6 +552,7 @@ MpnwResult httpClientSendGET(
 	assert(url);
 	assert(urlLength > 0);
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(!httpClient->isRunning);
 
 	assert((headers && headerCount > 0) ||
 		(!headers && headerCount == 0));
@@ -659,8 +735,8 @@ MpnwResult httpClientSendGET(
 	httpClient->responseLength = 0;
 	httpClient->headerCount = 0;
 	httpClient->statusCode = 0;
-	httpClient->isBody = false;
 	httpClient->isChunked = false;
+	httpClient->isBody = false;
 	httpClient->result = TIMED_OUT_MPNW_RESULT;
 	httpClient->isRunning = true;
 	time += getStreamClientTimeoutTime(streamClient);
@@ -680,7 +756,7 @@ MpnwResult httpClientSendGET(
 	return httpClient->result;
 }
 
-const char* getHttpClientHeader(
+const HttpHeader* getHttpClientHeader(
 	HttpClient httpClient,
 	const char* key,
 	int length)
@@ -694,15 +770,10 @@ const char* getHttpClientHeader(
 		length, 0,
 	};
 
-	HttpHeader* header = bsearch(
+	return bsearch(
 		&searchHeader,
 		httpClient->headers,
 		httpClient->headerCount,
 		sizeof(HttpHeader),
 		cmpHttpHeaders);
-
-	if (!header)
-		return NULL;
-
-	return header->value;
 }
