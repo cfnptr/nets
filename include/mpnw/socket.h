@@ -396,6 +396,8 @@ MpnwResult socketSendTo(
 	size_t byteCount,
 	SocketAddress remoteAddress);
 
+// TODO: add async address resolve
+
 /*
  * Create a new socket address.
  * Returns operation MPNW result.
@@ -437,7 +439,7 @@ SocketAddress createSocketAddressCopy(
  * type - socket connection type.
  * socketAddress - pointer to the address.
  */
-MpnwResult resolveSocketAddress( // TODO: add async address resolve
+MpnwResult resolveSocketAddress(
 	const char* host,
 	const char* service,
 	AddressFamily family,
@@ -450,23 +452,22 @@ MpnwResult resolveSocketAddress( // TODO: add async address resolve
 void destroySocketAddress(SocketAddress socketAddress);
 
 /*
- * Parse and allocate URL host and service names.
- * Returns operation MPNW result.
+ * Returns URL part locations.
  *
  * url - uniform resource locator string.
  * urlLength - URL string length.
- * host - pointer to the host name string.
- * hostLength - pointer to the host name string length.
- * service - pointer to the service name string.
- * serviceLength - pointer to the service name string length.
- * pathOffset - pointer to the path offset or NULL.
+ * hostOffset - pointer to the host part offset or NULL.
+ * hostLength - pointer to the host part length or NULL.
+ * serviceOffset - pointer to the service part offset or NULL.
+ * serviceLength - pointer to the service part length or NULL.
+ * pathOffset - pointer to the path part offset or NULL.
  */
-MpnwResult allocateUrlHostService(
+void getUrlParts(
 	const char* url,
 	size_t urlLength,
-	char** host,
+	size_t* hostOffset,
 	size_t* hostLength,
-	char** service,
+	size_t* serviceOffset,
 	size_t* serviceLength,
 	size_t* pathOffset);
 // TODO: also return username, and parse URI format

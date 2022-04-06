@@ -146,18 +146,8 @@ inline static MpnwResult processResponseLine(
 		if (httpClient->headerCount == httpClient->headerBufferSize)
 			return OUT_OF_MEMORY_MPNW_RESULT;
 
-		int keyLength = 0;
-
-		for (size_t i = 0; i < length; i++)
-		{
-			char value = line[i];
-
-			if (value == ':')
-			{
-				keyLength = (int)i;
-				break;
-			}
-		}
+		const char* pointer = memchr(line, ':', length);
+		int keyLength = pointer ? (int)(pointer - line) : 0;
 
 		if (keyLength == 0 || length < keyLength + 2)
 			return BAD_DATA_MPNW_RESULT;
@@ -267,12 +257,15 @@ static void onStreamClientReceive(
 		}
 	}
 
-	for (size_t i = lineOffset; i < byteCount; i++)
+	while (lineOffset < byteCount)
 	{
-		char value = buffer[i];
+		const char* string = buffer + lineOffset;
+		const char* pointer = memchr(string, '\n', byteCount);
 
-		if (value != '\n')
-			continue;
+		if (!pointer)
+			break;
+
+		size_t index = pointer - buffer;
 
 		MpnwResult mpnwResult;
 
@@ -281,14 +274,14 @@ static void onStreamClientReceive(
 			size_t chunkSize = httpClient->chunkSize;
 			size_t size;
 
-			if (lineOffset == i)
+			if (lineOffset == index)
 			{
 				size = 0;
 				chunkSize--;
 			}
 			else
 			{
-				size = i - (lineOffset + 1);
+				size = index - (lineOffset + 1);
 			}
 
 			if (chunkSize + size > httpClient->responseBufferSize)
@@ -312,14 +305,14 @@ static void onStreamClientReceive(
 		}
 		else
 		{
-			if (lineOffset + 1 > i)
+			if (lineOffset + 1 > index)
 			{
 				httpClient->result = BAD_DATA_MPNW_RESULT;
 				httpClient->isRunning = false;
 				return;
 			}
 
-			size_t length = i - (lineOffset + 1);
+			size_t length = index - (lineOffset + 1);
 
 			mpnwResult = processResponseLine(
 				httpClient,
@@ -334,7 +327,7 @@ static void onStreamClientReceive(
 			return;
 		}
 
-		lineOffset = i + 1;
+		lineOffset = index + 1;
 
 		if (httpClient->isBody)
 		{
@@ -573,49 +566,70 @@ MpnwResult httpClientSendGET(
 	StreamClient streamClient = httpClient->handle;
 	SslContext sslContext = getStreamClientSslContext(streamClient);
 
-	char* host;
-	size_t hostLength;
-	char* service;
-	size_t serviceLength;
-	size_t pathOffset;
+	size_t hostOffset, hostLength, serviceOffset, serviceLength, pathOffset;
 
-	// TODO: possibly cache, use url length as target size
-	MpnwResult mpnwResult = allocateUrlHostService(
-		url,
+	getUrlParts(url,
 		urlLength,
-		&host,
+		&hostOffset,
 		&hostLength,
-		&service,
+		&serviceOffset,
 		&serviceLength,
 		&pathOffset);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (hostLength == 0)
+		return BAD_DATA_MPNW_RESULT;
 
-	SocketAddress remoteAddress = httpClient->address;
+	char* host = malloc((hostLength + 1) + sizeof(char));
 
-	mpnwResult = resolveSocketAddress(
-		host,
+	if (!host)
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	memcpy(host, url + hostOffset, hostLength);
+	host[hostLength] = '\0';
+
+	char* service;
+
+	if (serviceLength != 0)
+	{
+		service = malloc((serviceLength + 1) + sizeof(char));
+
+		if (!service)
+		{
+			free(host);
+			return OUT_OF_MEMORY_MPNW_RESULT;
+		}
+
+		memcpy(service, url + serviceOffset, serviceLength);
+		service[serviceLength] = '\0';
+	}
+	else
+	{
+		service = NULL;
+	}
+
+	SocketAddress address = httpClient->address;
+
+	MpnwResult mpnwResult = resolveSocketAddress(host,
 		service ? service : (sslContext ? "https" : "http"),
 		addressFamily,
 		STREAM_SOCKET_TYPE,
-		remoteAddress);
+		address);
+
+	free(service);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(service);
 		free(host);
 		return mpnwResult;
 	}
 
 	mpnwResult = connectStreamClient(
 		streamClient,
-		remoteAddress,
+		address,
 		host);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		free(service);
 		free(host);
 		return mpnwResult;
 	}
@@ -637,7 +651,11 @@ MpnwResult httpClientSendGET(
 	}
 
 	if (requestLength > getStreamClientBufferSize(streamClient))
+	{
+		free(host);
+		disconnectStreamClient(streamClient);
 		return OUT_OF_MEMORY_MPNW_RESULT;
+	}
 
 	char* request = (char*)getStreamClientBuffer(streamClient);
 
@@ -676,7 +694,6 @@ MpnwResult httpClientSendGET(
 	memcpy(request + index, host, hostLength);
 	index += hostLength;
 
-	free(service);
 	free(host);
 
 	request[index + 0] = '\r';

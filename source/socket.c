@@ -1242,9 +1242,7 @@ MpnwResult resolveSocketAddress(
 		&addressInfos);
 
 	if (result != 0)
-	{
 		return FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT;
-	}
 
 	memcpy(&socketAddress->handle,
 		addressInfos->ai_addr,
@@ -1262,145 +1260,138 @@ void destroySocketAddress(SocketAddress socketAddress)
 	free(socketAddress);
 }
 
-MpnwResult allocateUrlHostService(
+void getUrlParts(
 	const char* url,
 	size_t urlLength,
-	char** host,
-	size_t* hostLength,
-	char** service,
-	size_t* serviceLength,
+	size_t* _hostOffset,
+	size_t* _hostLength,
+	size_t* _serviceOffset,
+	size_t* _serviceLength,
 	size_t* _pathOffset)
 {
 	assert(url);
 	assert(urlLength > 0);
-	assert(host);
-	assert(hostLength);
-	assert(service);
-	assert(serviceLength);
 
-	size_t serviceSize = 0, hostOffset = 0;
+	assert((_hostOffset && _hostLength) ||
+		(!_hostOffset && !_hostLength));
+	assert((_serviceOffset && _serviceLength) ||
+		(!_serviceOffset && !_serviceLength));
 
-	for (size_t i = 0; i < urlLength; i++)
+	size_t serviceLength = 0, hostOffset = 0, i = 0;
+
+	while (i < urlLength)
 	{
+		const char* pointer = memchr(
+			url + i, ':', urlLength);
+
+		if (!pointer)
+			break;
+
+		i = pointer - url;
+
 		if (i + 2 < urlLength &&
-			url[i] == ':' &&
 			url[i + 1] == '/' &&
 			url[i + 2] == '/')
 		{
-			serviceSize = i;
-			hostOffset = i + 3;
+			pointer = memchr(url + i + 3,
+				'@', urlLength);
 
-			for (size_t j = i + 3; j < urlLength; j++)
+			if (pointer)
 			{
-				if (url[j] == '@')
-				{
-					serviceSize = i;
-					hostOffset = j + 1;
-					break;
-				}
+				size_t j = pointer - url;
+				serviceLength = i;
+				hostOffset = j + 1;
+			}
+			else
+			{
+				serviceLength = i;
+				hostOffset = i + 3;
 			}
 
 			break;
 		}
+
+		i++;
 	}
 
-	size_t portSize = 0, portOffset = 0, hostSize = 0, pathOffset = 0;
+	size_t portLength = 0, portOffset = 0,
+		hostLength = 0, pathOffset = 0;
 
-	for (size_t i = hostOffset; i < urlLength; i++)
+	i = 0;
+
+	while (i < urlLength)
 	{
-		if (i + 1 < urlLength &&
-			url[i] == ':' &&
-			url[i + 1] != '/')
-		{
-			portSize = urlLength - i;
-			portOffset = i + 1;
-			hostSize =  i - hostOffset;
-			pathOffset = urlLength;
+		const char* pointer = memchr(
+			url + i, ':', urlLength);
 
-			for (size_t j = i + 1; j < urlLength; j++)
+		if (!pointer)
+			break;
+
+		i = pointer - url;
+
+		if (i + 1 < urlLength && url[i + 1] != '/')
+		{
+			hostLength = i - hostOffset;
+			portOffset = i + 1;
+
+			pointer = memchr(url + portOffset,
+				'/', urlLength);
+
+			if (pointer)
 			{
-				if (url[j] == '/')
-				{
-					portOffset = i + 1;
-					portSize = j - portOffset;
-					pathOffset = j + 1;
-					break;
-				}
+				size_t j = pointer - url;
+				portLength = j - portOffset;
+				pathOffset = j + 1;
+			}
+			else
+			{
+				portLength = urlLength - i;
+				pathOffset = urlLength;
 			}
 
 			break;
 		}
+
+		i++;
 	}
 
 	if (pathOffset == 0)
 	{
-		hostSize = urlLength - hostOffset;
-		pathOffset = urlLength;
+		const char* pointer = memchr(
+			url + hostOffset, '/', urlLength);
 
-		for (size_t i = hostOffset; i < urlLength; i++)
+		if (pointer)
 		{
-			if (url[i] == '/')
-			{
-				hostSize = i - hostOffset;
-				pathOffset = i + 1;
-				break;
-			}
+			size_t index = pointer - url;
+			hostLength = index - hostOffset;
+			pathOffset = index + 1;
+		}
+		else
+		{
+			hostLength = urlLength - hostOffset;
+			pathOffset = urlLength;
 		}
 	}
 
-	if (hostSize == 0)
-		return BAD_DATA_MPNW_RESULT;
-
-	char* hostInstance = malloc((hostSize + 1));
-
-	if (!hostInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
-
-	memcpy(hostInstance, url + hostOffset, hostSize);
-	hostInstance[hostSize] = '\0';
-
-	char* serviceInstance;
-
-	if (portSize != 0)
+	if (_hostOffset)
 	{
-		serviceInstance = malloc((portSize + 1));
-
-		if (!serviceInstance)
-		{
-			free(hostInstance);
-			return OUT_OF_MEMORY_MPNW_RESULT;
-		}
-
-		memcpy(serviceInstance, url + portOffset, portSize);
-		serviceInstance[portSize] = '\0';
+		*_hostOffset = hostOffset;
+		*_hostLength = hostLength;
 	}
-	else if (serviceSize != 0)
+
+	if (portLength != 0)
 	{
-		serviceInstance = malloc((serviceSize + 1));
-
-		if (!serviceInstance)
-		{
-			free(hostInstance);
-			return OUT_OF_MEMORY_MPNW_RESULT;
-		}
-
-		memcpy(serviceInstance, url, serviceSize);
-		serviceInstance[serviceSize] = '\0';
+		*_serviceOffset = portOffset;
+		*_serviceLength = portLength;
 	}
 	else
 	{
-		serviceInstance = NULL;
+		*_serviceOffset = 0;
+		*_serviceLength = serviceLength;
 	}
-
-	*host = hostInstance;
-	*hostLength = hostSize;
-	*service = serviceInstance;
-	*serviceLength = serviceSize;
 
 	if (_pathOffset)
 		*_pathOffset = pathOffset;
-
-	return SUCCESS_MPNW_RESULT;
 }
 
 void copySocketAddress(
