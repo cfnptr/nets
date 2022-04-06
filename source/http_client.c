@@ -578,29 +578,25 @@ MpnwResult httpClientSendGET(
 
 	if (hostLength == 0)
 		return BAD_DATA_MPNW_RESULT;
-
-	char* host = malloc((hostLength + 1) + sizeof(char));
-
-	if (!host)
+	if (hostLength > 255)
 		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	char host[256];
 
 	memcpy(host, url + hostOffset, hostLength);
 	host[hostLength] = '\0';
 
+	char serviceBuffer[256];
 	char* service;
 
 	if (serviceLength != 0)
 	{
-		service = malloc((serviceLength + 1) + sizeof(char));
-
-		if (!service)
-		{
-			free(host);
+		if (serviceLength > 255)
 			return OUT_OF_MEMORY_MPNW_RESULT;
-		}
 
-		memcpy(service, url + serviceOffset, serviceLength);
-		service[serviceLength] = '\0';
+		memcpy(serviceBuffer, url + serviceOffset, serviceLength);
+		serviceBuffer[serviceLength] = '\0';
+		service = serviceBuffer;
 	}
 	else
 	{
@@ -615,13 +611,8 @@ MpnwResult httpClientSendGET(
 		STREAM_SOCKET_TYPE,
 		address);
 
-	free(service);
-
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
-	{
-		free(host);
 		return mpnwResult;
-	}
 
 	mpnwResult = connectStreamClient(
 		streamClient,
@@ -629,10 +620,7 @@ MpnwResult httpClientSendGET(
 		host);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
-	{
-		free(host);
 		return mpnwResult;
-	}
 
 	setSocketNoDelay(
 		getStreamClientSocket(streamClient),
@@ -652,7 +640,6 @@ MpnwResult httpClientSendGET(
 
 	if (requestLength > getStreamClientBufferSize(streamClient))
 	{
-		free(host);
 		disconnectStreamClient(streamClient);
 		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
@@ -693,8 +680,6 @@ MpnwResult httpClientSendGET(
 
 	memcpy(request + index, host, hostLength);
 	index += hostLength;
-
-	free(host);
 
 	request[index + 0] = '\r';
 	request[index + 1] = '\n';
