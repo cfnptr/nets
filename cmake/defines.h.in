@@ -87,8 +87,7 @@ typedef enum MpnwResult_T
 	HOST_IS_NOT_REACHABLE_MPNW_RESULT = 17,
 	TIMED_OUT_MPNW_RESULT = 18,
 	INTERRUPTED_MPNW_RESULT = 19,
-	// TODO: add specific get address errors
-	FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT = 20,
+	FAILED_TO_RESOLVE_ADDRESS_MPNW_RESULT = 20,
 	FAILED_TO_CREATE_SSL_MPNW_RESULT = 21,
 	FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT = 22,
 	NO_OPENSSL_SUPPORT_MPNW_RESULT = 23,
@@ -125,7 +124,7 @@ static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
 	"Host is not reachable",
 	"Timed out",
 	"Interrupted",
-	"Failed to get address info",
+	"Failed to resolve address",
 	"Failed to create SSL",
 	"Failed to load certificate",
 	"No OpenSSL support",

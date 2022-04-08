@@ -29,22 +29,15 @@ typedef struct HttpClient_T HttpClient_T;
 typedef HttpClient_T* HttpClient;
 
 /*
- * HTTP header structure.
+ * HTTP key value pair structure.
  */
-typedef struct HttpHeader
+typedef struct HttpPair
 {
 	const char* key;
 	const char* value;
 	int keyLength;
 	int valueLength;
-} HttpHeader;
-
-/*
- * Automatically set headers by the implementation.
- */
-static const char* defaultHttpHeaders[] ={
-	"Host",
-};
+} HttpPair;
 
 /*
  * Create a new HTTP client instance.
@@ -100,7 +93,7 @@ size_t getHttpClientResponseLength(HttpClient httpClient);
  * Returns HTTP client server response headers.
  * httpClient - HTTP client instance.
  */
-const HttpHeader* getHttpClientHeaders(HttpClient httpClient);
+const HttpPair* getHttpClientHeaders(HttpClient httpClient);
 /*
  * Returns HTTP client server response headers count.
  * httpClient - HTTP client instance.
@@ -123,8 +116,32 @@ MpnwResult httpClientSendGET(
 	const char* url,
 	size_t urlLength,
 	AddressFamily addressFamily,
-	const HttpHeader* headers,
+	const HttpPair* headers,
 	size_t headerCount);
+/*
+ * Send HTTP POST request to the server.
+ * Returns operation MPNW result.
+ *
+ * httpClient - HTTP client instance.
+ * url - URL string.
+ * urlLength - URL string length
+ * pairs - key/value pairs.
+ * pairCount -key/value pair count.
+ * addressFamily - address family type.
+ * headers - HTTP headers or NULL.
+ * headerCount - HTTP header count or 0.
+ * isMultipart - use for binary values.
+ */
+MpnwResult httpClientSendPOST(
+	HttpClient httpClient,
+	const char* url,
+	size_t urlLength,
+	const HttpPair* pairs,
+	size_t pairCount,
+	AddressFamily addressFamily,
+	const HttpPair* headers,
+	size_t headerCount,
+	bool isMultipart);
 
 /*
  * Returns HTTP client header
@@ -134,7 +151,7 @@ MpnwResult httpClientSendGET(
  * key - header key string.
  * length - key string length.
  */
-const HttpHeader* getHttpClientHeader(
+const HttpPair* getHttpClientHeader(
 	HttpClient httpClient,
 	const char* key,
 	int length);

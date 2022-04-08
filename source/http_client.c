@@ -27,7 +27,7 @@ struct HttpClient_T
 	SocketAddress address;
 	StreamClient handle;
 	char* response;
-	HttpHeader* headers;
+	HttpPair* headers;
 	size_t chunkSize;
 	size_t responseLength;
 	size_t headerCount;
@@ -40,8 +40,8 @@ struct HttpClient_T
 
 static int cmpHttpHeaders(const void* a, const void* b)
 {
-	const HttpHeader* ah = (const HttpHeader*)a;
-	const HttpHeader* bh = (const HttpHeader*)b;
+	const HttpPair* ah = (const HttpPair*)a;
+	const HttpPair* bh = (const HttpPair*)b;
 
 	int difference = ah->keyLength - bh->keyLength;
 
@@ -79,10 +79,10 @@ inline static MpnwResult processResponseLine(
 		{
 			qsort(httpClient->headers,
 				httpClient->headerCount,
-				sizeof(HttpHeader),
+				sizeof(HttpPair),
 				cmpHttpHeaders);
 
-			const HttpHeader* contentLength = getHttpClientHeader(
+			const HttpPair* contentLength = getHttpClientHeader(
 				httpClient,
 				"Content-Length",
 				14);
@@ -105,7 +105,7 @@ inline static MpnwResult processResponseLine(
 			}
 			else
 			{
-				const HttpHeader* transferEncoding = getHttpClientHeader(
+				const HttpPair* transferEncoding = getHttpClientHeader(
 					httpClient,
 					"Transfer-Encoding",
 					17);
@@ -176,7 +176,7 @@ inline static MpnwResult processResponseLine(
 		memcpy(value, line + (length - valueLength), valueLength);
 		value[valueLength] = '\0';
 
-		HttpHeader header = {
+		HttpPair header = {
 			key, value,
 			keyLength, valueLength
 		};
@@ -450,8 +450,8 @@ MpnwResult creatHttpClient(
 	httpClientInstance->response = response;
 	httpClientInstance->responseBufferSize = responseBufferSize;
 
-	HttpHeader* headers = malloc(
-		headerBufferSize * sizeof(HttpHeader));
+	HttpPair* headers = malloc(
+		headerBufferSize * sizeof(HttpPair));
 
 	if (!headers)
 	{
@@ -470,7 +470,7 @@ void destroyHttpClient(HttpClient httpClient)
 	if (!httpClient)
 		return;
 
-	HttpHeader* headers = httpClient->headers;
+	HttpPair* headers = httpClient->headers;
 
 	if (headers)
 	{
@@ -478,7 +478,7 @@ void destroyHttpClient(HttpClient httpClient)
 
 		for (size_t i = 0; i < headerCount; i++)
 		{
-			const HttpHeader* header = &headers[i];
+			const HttpPair* header = &headers[i];
 			free((char*)header->value);
 			free((char*)header->key);
 		}
@@ -522,7 +522,7 @@ size_t getHttpClientResponseLength(HttpClient httpClient)
 	assert(httpClient);
 	return httpClient->responseLength;
 }
-const HttpHeader* getHttpClientHeaders(HttpClient httpClient)
+const HttpPair* getHttpClientHeaders(HttpClient httpClient)
 {
 	assert(httpClient);
 	return httpClient->headers;
@@ -533,12 +533,35 @@ size_t getHttpClientHeaderCount(HttpClient httpClient)
 	return httpClient->headerCount;
 }
 
+inline static void clearHttpClient(HttpClient httpClient)
+{
+	assert(httpClient);
+
+	HttpPair* headerBuffer = httpClient->headers;
+	size_t headerBufferSize = httpClient->headerCount;
+
+	for (size_t i = 0; i < headerBufferSize; i++)
+	{
+		const HttpPair* header = &headerBuffer[i];
+		free((char*)header->value);
+		free((char*)header->key);
+	}
+
+	httpClient->chunkSize = 0;
+	httpClient->responseLength = 0;
+	httpClient->headerCount = 0;
+	httpClient->statusCode = 0;
+	httpClient->isChunked = false;
+	httpClient->isBody = false;
+	httpClient->result = TIMED_OUT_MPNW_RESULT;
+	httpClient->isRunning = true;
+}
 MpnwResult httpClientSendGET(
 	HttpClient httpClient,
 	const char* url,
 	size_t urlLength,
 	AddressFamily addressFamily,
-	const HttpHeader* headers,
+	const HttpPair* headers,
 	size_t headerCount)
 {
 	assert(httpClient);
@@ -553,7 +576,7 @@ MpnwResult httpClientSendGET(
 #ifndef NDEBUG
 	for (size_t i = 0; i < headerCount; i++)
 	{
-		HttpHeader header = headers[i];
+		HttpPair header = headers[i];
 		assert(header.key);
 		assert(header.keyLength > 0);
 		assert(header.value);
@@ -564,8 +587,6 @@ MpnwResult httpClientSendGET(
 	double time = getCurrentClock();
 
 	StreamClient streamClient = httpClient->handle;
-	SslContext sslContext = getStreamClientSslContext(streamClient);
-
 	size_t hostOffset, hostLength, serviceOffset, serviceLength, pathOffset;
 
 	getUrlParts(url,
@@ -586,12 +607,12 @@ MpnwResult httpClientSendGET(
 	memcpy(host, url + hostOffset, hostLength);
 	host[hostLength] = '\0';
 
-	char serviceBuffer[256];
+	char serviceBuffer[32];
 	char* service;
 
 	if (serviceLength != 0)
 	{
-		if (serviceLength > 255)
+		if (serviceLength > 31)
 			return OUT_OF_MEMORY_MPNW_RESULT;
 
 		memcpy(serviceBuffer, url + serviceOffset, serviceLength);
@@ -603,7 +624,68 @@ MpnwResult httpClientSendGET(
 		service = NULL;
 	}
 
+	size_t pathLength = urlLength - pathOffset;
+	size_t requestLength = pathLength + hostLength + 26;
+
+	for (size_t i = 0; i < headerCount; i++)
+	{
+		const HttpPair* header = &headers[i];
+		requestLength += header->keyLength + header->valueLength + 4;
+	}
+
+	if (requestLength > getStreamClientBufferSize(streamClient))
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	char* request = (char*)getStreamClientBuffer(streamClient);
+
+	request[0] = 'G'; request[1] = 'E'; request[2] = 'T';
+	request[3] = ' '; request[4] = '/';
+	size_t index = 5;
+
+	memcpy(request + index, url + pathOffset, pathLength);
+	index += pathLength;
+
+	request[index + 0] = ' '; request[index + 1] = 'H';
+	request[index + 2] = 'T'; request[index + 3] = 'T';
+	request[index + 4] = 'P'; request[index + 5] = '/';
+	request[index + 6] = '1'; request[index + 7] = '.';
+	request[index + 8] = '1'; request[index + 9] = '\r';
+	request[index + 10] = '\n'; request[index + 11] = 'H';
+	request[index + 12] = 'o'; request[index + 13] = 's';
+	request[index + 14] = 't'; request[index + 15] = ':';
+	request[index + 16] = ' ';
+	index += 17;
+
+	memcpy(request + index, host, hostLength);
+	index += hostLength;
+
+	request[index + 0] = '\r'; request[index + 1] = '\n';
+	index += 2;
+
+	for (size_t i = 0; i < headerCount; i++)
+	{
+		HttpPair header = headers[i];
+		memcpy(request + index, header.key, header.keyLength);
+		index += header.keyLength;
+
+		request[index + 0] = ':'; request[index + 1] = ' ';
+		index += 2;
+
+		memcpy(request + index, header.value, header.valueLength);
+		index += header.valueLength;
+
+		request[index + 0] = '\r'; request[index + 1] = '\n';
+		index += 2;
+	}
+
+	request[index + 0] = '\r'; request[index + 1] = '\n';
+	index += 2;
+
+	assert(index == requestLength);
+	clearHttpClient(httpClient);
+
 	SocketAddress address = httpClient->address;
+	SslContext sslContext = getStreamClientSslContext(streamClient);
 
 	MpnwResult mpnwResult = resolveSocketAddress(host,
 		service ? service : (sslContext ? "https" : "http"),
@@ -626,91 +708,287 @@ MpnwResult httpClientSendGET(
 		getStreamClientSocket(streamClient),
 		true);
 
-	size_t pathLength = urlLength - pathOffset;
-	size_t requestLength = pathLength + hostLength + 26;
+	mpnwResult = streamClientSend(
+		streamClient,
+		request,
+		requestLength);
 
-	if (headerCount > 0)
-	{
-		for (size_t i = 0; i < headerCount; i++)
-		{
-			const HttpHeader* header = &headers[i];
-			requestLength += header->keyLength + header->valueLength + 4;
-		}
-	}
-
-	if (requestLength > getStreamClientBufferSize(streamClient))
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
 		disconnectStreamClient(streamClient);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return mpnwResult;
 	}
+
+	time += getStreamClientTimeoutTime(streamClient);
+
+	while (httpClient->isRunning)
+	{
+		double currentTime = getCurrentClock();
+
+		if (currentTime > time)
+			break;
+
+		updateStreamClient(streamClient);
+		sleepThread(0.001);
+	}
+
+	disconnectStreamClient(streamClient);
+	return httpClient->result;
+}
+MpnwResult httpClientSendPOST(
+	HttpClient httpClient,
+	const char* url,
+	size_t urlLength,
+	const HttpPair* pairs,
+	size_t pairCount,
+	AddressFamily addressFamily,
+	const HttpPair* headers,
+	size_t headerCount,
+	bool isMultipart)
+{
+	assert(httpClient);
+	assert(url);
+	assert(urlLength > 0);
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(pairs);
+	assert(pairCount > 0);
+	assert(!isMultipart); // TODO:
+	assert(!httpClient->isRunning);
+
+	assert((headers && headerCount > 0) ||
+		(!headers && headerCount == 0));
+
+#ifndef NDEBUG
+	for (size_t i = 0; i < headerCount; i++)
+	{
+		HttpPair header = headers[i];
+		assert(header.key);
+		assert(header.keyLength > 0);
+		assert(header.value);
+		assert(header.valueLength > 0);
+	}
+	for (size_t i = 0; i < pairCount; i++)
+	{
+		HttpPair pair = pairs[i];
+		assert(pair.key);
+		assert(pair.keyLength > 0);
+		assert(pair.value);
+		assert(pair.valueLength > 0);
+	}
+#endif
+
+	double time = getCurrentClock();
+
+	StreamClient streamClient = httpClient->handle;
+	size_t hostOffset, hostLength, serviceOffset, serviceLength, pathOffset;
+
+	getUrlParts(url,
+		urlLength,
+		&hostOffset,
+		&hostLength,
+		&serviceOffset,
+		&serviceLength,
+		&pathOffset);
+
+	if (hostLength == 0)
+		return BAD_DATA_MPNW_RESULT;
+	if (hostLength > 255)
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	char host[256];
+
+	memcpy(host, url + hostOffset, hostLength);
+	host[hostLength] = '\0';
+
+	char serviceBuffer[32];
+	char* service;
+
+	if (serviceLength != 0)
+	{
+		if (serviceLength > 31)
+			return OUT_OF_MEMORY_MPNW_RESULT;
+
+		memcpy(serviceBuffer, url + serviceOffset, serviceLength);
+		serviceBuffer[serviceLength] = '\0';
+		service = serviceBuffer;
+	}
+	else
+	{
+		service = NULL;
+	}
+
+	size_t pathLength = urlLength - pathOffset;
+	size_t requestLength = pathLength + hostLength + 61; // TODO: adjust
+
+	for (size_t i = 0; i < headerCount; i++)
+	{
+		const HttpPair* header = &headers[i];
+		requestLength += header->keyLength + header->valueLength + 4;
+	}
+
+	if (!isMultipart)
+		requestLength += 33;
+
+	size_t minPairCount = pairCount - 1;
+	size_t contentLength = 0;
+
+	for (size_t i = 0; i < pairCount; i++)
+	{
+		const HttpPair* pair = &pairs[i];
+		contentLength += pair->keyLength + pair->valueLength + 1;
+
+		if (i < minPairCount)
+			requestLength++;
+	}
+
+	if (contentLength > UINT32_MAX)
+		return OUT_OF_MEMORY_MPNW_RESULT;
+
+	requestLength += contentLength;
+
+	char clString[16];
+	int clStringLength = sprintf(clString, "%u", (uint32_t)contentLength);
+
+	if (clStringLength <= 0)
+		return UNKNOWN_ERROR_MPNW_RESULT;
+
+	requestLength += clStringLength;
+
+	if (requestLength > getStreamClientBufferSize(streamClient))
+		return OUT_OF_MEMORY_MPNW_RESULT;
 
 	char* request = (char*)getStreamClientBuffer(streamClient);
 
-	request[0] = 'G';
-	request[1] = 'E';
-	request[2] = 'T';
-	request[3] = ' ';
-	request[4] = '/';
-	size_t index = 5;
+	request[0] = 'P'; request[1] = 'O'; request[2] = 'S';
+	request[3] = 'T'; request[4] = ' '; request[5] = '/';
+	size_t index = 6;
 
-	if (pathLength > 0)
-	{
-		memcpy(request + index, url + pathOffset, pathLength);
-		index += pathLength;
-	}
+	memcpy(request + index, url + pathOffset, pathLength);
+	index += pathLength;
 
-	request[index + 0] = ' ';
-	request[index + 1] = 'H';
-	request[index + 2] = 'T';
-	request[index + 3] = 'T';
-	request[index + 4] = 'P';
-	request[index + 5] = '/';
-	request[index + 6] = '1';
-	request[index + 7] = '.';
-	request[index + 8] = '1';
-	request[index + 9] = '\r';
-	request[index + 10] = '\n';
-	request[index + 11] = 'H';
-	request[index + 12] = 'o';
-	request[index + 13] = 's';
-	request[index + 14] = 't';
-	request[index + 15] = ':';
+	request[index + 0] = ' '; request[index + 1] = 'H';
+	request[index + 2] = 'T'; request[index + 3] = 'T';
+	request[index + 4] = 'P'; request[index + 5] = '/';
+	request[index + 6] = '1'; request[index + 7] = '.';
+	request[index + 8] = '1'; request[index + 9] = '\r';
+	request[index + 10] = '\n'; request[index + 11] = 'H';
+	request[index + 12] = 'o'; request[index + 13] = 's';
+	request[index + 14] = 't'; request[index + 15] = ':';
 	request[index + 16] = ' ';
 	index += 17;
 
 	memcpy(request + index, host, hostLength);
 	index += hostLength;
 
-	request[index + 0] = '\r';
-	request[index + 1] = '\n';
-	index += 2;
+	request[index + 0] = '\r'; request[index + 1] = '\n';
+	request[index + 2] = 'C'; request[index + 3] = 'o';
+	request[index + 4] = 'n'; request[index + 5] = 't';
+	request[index + 6] = 'e'; request[index + 7] = 'n';
+	request[index + 8] = 't'; request[index + 9] = '-';
+	request[index + 10] = 'T'; request[index + 11] = 'y';
+	request[index + 12] = 'p'; request[index + 13] = 'e';
+	request[index + 14] = ':'; request[index + 15] = ' ';
+	index += 16;
 
-	if (headerCount > 0)
+	if (!isMultipart)
 	{
-		for (size_t i = 0; i < headerCount; i++)
-		{
-			HttpHeader header = headers[i];
-			memcpy(request + index, header.key, header.keyLength);
-
-			index += header.keyLength;
-			request[index + 0] = ':';
-			request[index + 1] = ' ';
-			index += 2;
-
-			memcpy(request + index, header.value, header.valueLength);
-			index += header.valueLength;
-
-			request[index + 0] = '\r';
-			request[index + 1] = '\n';
-			index += 2;
-		}
+		request[index + 0] = 'a'; request[index + 1] = 'p';
+		request[index + 2] = 'p'; request[index + 3] = 'l';
+		request[index + 4] = 'i'; request[index + 5] = 'c';
+		request[index + 6] = 'a'; request[index + 7] = 't';
+		request[index + 8] = 'i'; request[index + 9] = 'o';
+		request[index + 10] = 'n'; request[index + 11] = '/';
+		request[index + 12] = 'x'; request[index + 13] = '-';
+		request[index + 14] = 'w'; request[index + 15] = 'w';
+		request[index + 16] = 'w'; request[index + 17] = '-';
+		request[index + 18] = 'f'; request[index + 19] = 'o';
+		request[index + 20] = 'r'; request[index + 21] = 'm';
+		request[index + 22] = '-'; request[index + 23] = 'u';
+		request[index + 24] = 'r'; request[index + 25] = 'l';
+		request[index + 26] = 'e'; request[index + 27] = 'n';
+		request[index + 28] = 'c'; request[index + 29] = 'o';
+		request[index + 30] = 'd'; request[index + 31] = 'e';
+		request[index + 32] = 'd';
+		index += 33;
 	}
 
-	request[index + 0] = '\r';
-	request[index + 1] = '\n';
+	request[index + 0] = '\r'; request[index + 1] = '\n';
+	request[index + 2] = 'C'; request[index + 3] = 'o';
+	request[index + 4] = 'n'; request[index + 5] = 't';
+	request[index + 6] = 'e'; request[index + 7] = 'n';
+	request[index + 8] = 't'; request[index + 9] = '-';
+	request[index + 10] = 'L'; request[index + 11] = 'e';
+	request[index + 12] = 'n'; request[index + 13] = 'g';
+	request[index + 14] = 't'; request[index + 15] = 'h';
+	request[index + 16] = ':'; request[index + 17] = ' ';
+	index += 18;
+
+	memcpy(request + index, clString, clStringLength);
+	index += clStringLength;
+
+	request[index + 0] = '\r'; request[index + 1] = '\n';
 	index += 2;
 
+	for (size_t i = 0; i < headerCount; i++)
+	{
+		HttpPair header = headers[i];
+		memcpy(request + index, header.key, header.keyLength);
+		index += header.keyLength;
+
+		request[index + 0] = ':'; request[index + 1] = ' ';
+		index += 2;
+
+		memcpy(request + index, header.value, header.valueLength);
+		index += header.valueLength;
+
+		request[index + 0] = '\r'; request[index + 1] = '\n';
+		index += 2;
+	}
+
+	request[index + 0] = '\r'; request[index + 1] = '\n';
+	index += 2;
+
+	for (size_t i = 0; i < pairCount; i++)
+	{
+		HttpPair pair = pairs[i];
+		memcpy(request + index, pair.key, pair.keyLength);
+		index += pair.keyLength;
+
+		request[index++] = '=';
+
+		memcpy(request + index, pair.value, pair.valueLength);
+		index += pair.valueLength;
+
+		if (i < minPairCount)
+			request[index++] = '&';
+	}
+
 	assert(index == requestLength);
+	clearHttpClient(httpClient);
+
+	SocketAddress address = httpClient->address;
+	SslContext sslContext = getStreamClientSslContext(streamClient);
+
+	MpnwResult mpnwResult = resolveSocketAddress(host,
+		service ? service : (sslContext ? "https" : "http"),
+		addressFamily,
+		STREAM_SOCKET_TYPE,
+		address);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
+
+	mpnwResult = connectStreamClient(
+		streamClient,
+		address,
+		host);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
+
+	setSocketNoDelay(
+		getStreamClientSocket(streamClient),
+		true);
 
 	mpnwResult = streamClientSend(
 		streamClient,
@@ -723,24 +1001,6 @@ MpnwResult httpClientSendGET(
 		return mpnwResult;
 	}
 
-	HttpHeader* headerBuffer = httpClient->headers;
-	size_t headerBufferSize = httpClient->headerCount;
-
-	for (size_t i = 0; i < headerBufferSize; i++)
-	{
-		const HttpHeader* header = &headerBuffer[i];
-		free((char*)header->value);
-		free((char*)header->key);
-	}
-
-	httpClient->chunkSize = 0;
-	httpClient->responseLength = 0;
-	httpClient->headerCount = 0;
-	httpClient->statusCode = 0;
-	httpClient->isChunked = false;
-	httpClient->isBody = false;
-	httpClient->result = TIMED_OUT_MPNW_RESULT;
-	httpClient->isRunning = true;
 	time += getStreamClientTimeoutTime(streamClient);
 
 	while (httpClient->isRunning)
@@ -758,7 +1018,7 @@ MpnwResult httpClientSendGET(
 	return httpClient->result;
 }
 
-const HttpHeader* getHttpClientHeader(
+const HttpPair* getHttpClientHeader(
 	HttpClient httpClient,
 	const char* key,
 	int length)
@@ -767,7 +1027,7 @@ const HttpHeader* getHttpClientHeader(
 	assert(key);
 	assert(length > 0);
 
-	HttpHeader searchHeader = {
+	HttpPair searchHeader = {
 		key, NULL,
 		length, 0,
 	};
@@ -776,6 +1036,6 @@ const HttpHeader* getHttpClientHeader(
 		&searchHeader,
 		httpClient->headers,
 		httpClient->headerCount,
-		sizeof(HttpHeader),
+		sizeof(HttpPair),
 		cmpHttpHeaders);
 }

@@ -1124,7 +1124,7 @@ MpnwResult createSocketAddress(
 	if (result != 0)
 	{
 		free(socketAddressInstance);
-		return FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT;
+		return FAILED_TO_RESOLVE_ADDRESS_MPNW_RESULT;
 	}
 
 	memcpy(&socketAddressInstance->handle,
@@ -1242,7 +1242,7 @@ MpnwResult resolveSocketAddress(
 		&addressInfos);
 
 	if (result != 0)
-		return FAILED_TO_GET_ADDRESS_INFO_MPNW_RESULT;
+		return FAILED_TO_RESOLVE_ADDRESS_MPNW_RESULT;
 
 	memcpy(&socketAddress->handle,
 		addressInfos->ai_addr,
