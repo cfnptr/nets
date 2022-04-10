@@ -155,3 +155,66 @@ const HttpPair* getHttpClientHeader(
 	HttpClient httpClient,
 	const char* key,
 	int length);
+
+/*
+ * Encode URL ASCII string.
+ * Returns encoded string length on success, otherwise 0.
+ *
+ * string - source string.
+ * stringLength - source string length.
+ * buffer - encoded string buffer.
+ * bufferSize - encoded string buffer size.
+ */
+inline static size_t encodeAsciiUrl(
+	const char* string,
+	size_t stringLength,
+	char* buffer,
+	size_t bufferSize)
+{
+	assert(string);
+	assert(stringLength > 0);
+	assert(buffer);
+	assert(bufferSize > 0);
+	assert(stringLength <= bufferSize);
+
+	const char hexChars[16] = {
+		'0', '1', '2', '3', '4',
+		'5', '6', '7', '8', '9',
+		'A', 'B', 'C', 'D', 'E', 'F',
+	};
+
+	const uint8_t* array = (const uint8_t*)string;
+	size_t index = 0;
+
+	for (size_t i = 0; i < stringLength; i++)
+	{
+		uint8_t value = array[i];
+
+		if ((value > '/' && value < ':') ||
+			(value > '@' && value < '[') ||
+			(value > '`' && value < '{') ||
+			value == '-' || value == '.' || value == '_')
+		{
+			if (index == bufferSize)
+				return 0;
+
+			buffer[index++] = (char)value;
+		}
+		else
+		{
+			if (index + 3 > bufferSize)
+				return 0;
+
+			buffer[index + 0] = '%';
+			buffer[index + 1] = hexChars[(value >> 4u) & 15u];
+			buffer[index + 2] = hexChars[value & 15u];
+			index += 3;
+		}
+	}
+
+	if (index == bufferSize)
+		return 0;
+
+	buffer[index] = '\0';
+	return index;
+}

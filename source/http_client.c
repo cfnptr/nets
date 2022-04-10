@@ -838,7 +838,7 @@ MpnwResult httpClientSendPOST(
 		contentLength += pair->keyLength + pair->valueLength + 1;
 
 		if (i < minPairCount)
-			requestLength++;
+			contentLength++;
 	}
 
 	if (contentLength > UINT32_MAX)
