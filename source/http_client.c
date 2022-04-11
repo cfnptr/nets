@@ -259,8 +259,10 @@ static void onStreamClientReceive(
 
 	while (lineOffset < byteCount)
 	{
-		const char* string = buffer + lineOffset;
-		const char* pointer = memchr(string, '\n', byteCount);
+		const char* pointer = memchr(
+			buffer + lineOffset,
+			'\n',
+			byteCount - lineOffset);
 
 		if (!pointer)
 			break;

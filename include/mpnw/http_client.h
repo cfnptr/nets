@@ -157,7 +157,7 @@ const HttpPair* getHttpClientHeader(
 	int length);
 
 /*
- * Encode URL ASCII string.
+ * Encode URL string.
  * Returns encoded string length on success, otherwise 0.
  *
  * string - source string.
@@ -165,7 +165,7 @@ const HttpPair* getHttpClientHeader(
  * buffer - encoded string buffer.
  * bufferSize - encoded string buffer size.
  */
-inline static size_t encodeAsciiUrl(
+inline static size_t encodeUrl(
 	const char* string,
 	size_t stringLength,
 	char* buffer,
@@ -217,4 +217,66 @@ inline static size_t encodeAsciiUrl(
 
 	buffer[index] = '\0';
 	return index;
+}
+/*
+ * Decode URL string.
+ * Returns decoded string length on success, otherwise 0.
+ *
+ * string - encoded string.
+ * stringLength - encoded string length.
+ * buffer - decoded string buffer.
+ */
+inline static size_t decodeUrl(
+	const char* string,
+	size_t stringLength,
+	char* buffer)
+{
+	const uint8_t* inputArray = (const uint8_t*)string;
+	uint8_t* outputArray = (uint8_t*)buffer;
+	size_t size = 0, index = 0;
+
+	while (index < stringLength)
+	{
+		char* pointer = memchr(
+			string + index,
+			'%',
+			stringLength - index);
+
+		if (!pointer)
+			return 0;
+
+		size_t newIndex = pointer - string;
+
+		if (newIndex + 3 > stringLength)
+			return 0;
+
+		size_t copySize = newIndex - index;
+		memcpy(buffer + size, string + index, copySize);
+		index = newIndex;
+		size += copySize;
+
+		uint8_t value;
+		uint8_t charValue = inputArray[index + 1];
+
+		if (charValue > '/' && charValue < ':')
+			value = (charValue - '0') << 4u;
+		else if (charValue > '@' && charValue < 'G')
+			value = (charValue - '7') << 4u;
+		else
+			return 0;
+
+		charValue = inputArray[index + 2];
+
+		if (charValue > '/' && charValue < ':')
+			value |= charValue - '0';
+		else if (charValue > '@' && charValue < 'G')
+			value |= charValue - '7';
+		else
+			return 0;
+
+		outputArray[size++] = value;
+		index += 3;
+	}
+
+	return size;
 }

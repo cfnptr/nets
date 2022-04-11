@@ -1282,7 +1282,9 @@ void getUrlParts(
 	while (i < urlLength)
 	{
 		const char* pointer = memchr(
-			url + i, ':', urlLength);
+			url + i,
+			':',
+			urlLength - i);
 
 		if (!pointer)
 			break;
@@ -1293,8 +1295,10 @@ void getUrlParts(
 			url[i + 1] == '/' &&
 			url[i + 2] == '/')
 		{
-			pointer = memchr(url + i + 3,
-				'@', urlLength);
+			pointer = memchr(
+				url + i + 3,
+				'@',
+				urlLength - (i + 3));
 
 			if (pointer)
 			{
@@ -1322,7 +1326,9 @@ void getUrlParts(
 	while (i < urlLength)
 	{
 		const char* pointer = memchr(
-			url + i, ':', urlLength);
+			url + i,
+			':',
+			urlLength - i);
 
 		if (!pointer)
 			break;
@@ -1334,8 +1340,10 @@ void getUrlParts(
 			hostLength = i - hostOffset;
 			portOffset = i + 1;
 
-			pointer = memchr(url + portOffset,
-				'/', urlLength);
+			pointer = memchr(
+				url + portOffset,
+				'/',
+				urlLength - portOffset);
 
 			if (pointer)
 			{
@@ -1358,7 +1366,9 @@ void getUrlParts(
 	if (pathOffset == 0)
 	{
 		const char* pointer = memchr(
-			url + hostOffset, '/', urlLength);
+			url + hostOffset,
+			'/',
+			urlLength - hostOffset);
 
 		if (pointer)
 		{
