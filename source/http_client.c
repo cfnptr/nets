@@ -570,7 +570,6 @@ MpnwResult httpClientSendGET(
 	assert(url);
 	assert(urlLength > 0);
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(!httpClient->isRunning);
 
 	assert((headers && headerCount > 0) ||
 		(!headers && headerCount == 0));
@@ -755,7 +754,6 @@ MpnwResult httpClientSendPOST(
 	assert(pairs);
 	assert(pairCount > 0);
 	assert(!isMultipart); // TODO:
-	assert(!httpClient->isRunning);
 
 	assert((headers && headerCount > 0) ||
 		(!headers && headerCount == 0));
