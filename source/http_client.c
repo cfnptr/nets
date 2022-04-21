@@ -192,6 +192,10 @@ inline static MpnwResult processResponseLine(
 
 		if (chunkSize == 0)
 		{
+			if (httpClient->responseLength + 1 > httpClient->responseBufferSize)
+				return OUT_OF_MEMORY_MPNW_RESULT;
+
+			httpClient->response[httpClient->responseLength] = '\0';
 			httpClient->result = SUCCESS_MPNW_RESULT;
 			httpClient->isRunning = false;
 			return SUCCESS_MPNW_RESULT;
@@ -250,6 +254,14 @@ static void onStreamClientReceive(
 
 			if (!httpClient->isChunked && httpClient->chunkSize == 0)
 			{
+				if (httpClient->responseLength + 1 > httpClient->responseBufferSize)
+				{
+					httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
+					httpClient->isRunning = false;
+					return;
+				}
+
+				httpClient->response[httpClient->responseLength] = '\0';
 				httpClient->result = SUCCESS_MPNW_RESULT;
 				httpClient->isRunning = false;
 			}
@@ -354,6 +366,14 @@ static void onStreamClientReceive(
 
 				if (!httpClient->isChunked && httpClient->chunkSize == 0)
 				{
+					if (httpClient->responseLength + 1 > httpClient->responseBufferSize)
+					{
+						httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
+						httpClient->isRunning = false;
+						return;
+					}
+
+					httpClient->response[httpClient->responseLength] = '\0';
 					httpClient->result = SUCCESS_MPNW_RESULT;
 					httpClient->isRunning = false;
 				}
