@@ -50,10 +50,12 @@ typedef bool(*OnStreamSessionCreate)(
  *
  * streamServer - stream server instance.
  * streamSession - stream session instance.
+ * mpnwResult - destruction reason.
  */
 typedef void(*OnStreamSessionDestroy)(
 	StreamServer streamServer,
-	StreamSession streamSession);
+	StreamSession streamSession,
+	MpnwResult mpnwResult);
 /*
  * Stream session update function.
  * Destroys session on false return result.

@@ -156,10 +156,8 @@ void destroyStreamServer(StreamServer streamServer)
 	{
 		StreamSession streamSession = &sessionBuffer[i];
 		Socket receiveSocket = streamSession->receiveSocket;
-
-		onDestroy(streamServer, streamSession);
-		shutdownSocket(receiveSocket,
-			RECEIVE_SEND_SOCKET_SHUTDOWN);
+		onDestroy(streamServer, streamSession, SUCCESS_MPNW_RESULT);
+		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
 	}
 
@@ -232,13 +230,9 @@ void* getStreamSessionHandle(StreamSession streamSession)
 	return streamSession->handle;
 }
 
-// TODO: somehow handle receive, accept MPNW errors
 bool updateStreamServer(StreamServer streamServer)
 {
 	assert(streamServer);
-
-	bool isUpdated = false;
-
 	StreamSession sessionBuffer = streamServer->sessionBuffer;
 	size_t sessionBufferSize = streamServer->sessionBufferSize;
 	size_t sessionCount = streamServer->sessionCount;
@@ -251,21 +245,23 @@ bool updateStreamServer(StreamServer streamServer)
 	Socket serverSocket = streamServer->acceptSocket;
 	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
 
+	bool isUpdated = false;
+
 	for (size_t i = 0; i < sessionCount; i++)
 	{
 		StreamSession streamSession = &sessionBuffer[i];
-
-		if (!onUpdate(streamServer, streamSession))
-			goto DESTROY_SESSION;
-
 		Socket receiveSocket = streamSession->receiveSocket;
+
+		MpnwResult mpnwResult;
 
 		if (!streamSession->isSslAccepted)
 		{
-			MpnwResult mpnwResult = acceptSslSocket(receiveSocket);
+			mpnwResult = acceptSslSocket(receiveSocket);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
 				continue;
+			if (mpnwResult != SUCCESS_MPNW_RESULT)
+				goto DESTROY_SESSION;
 
 			streamSession->isSslAccepted = true;
 			isUpdated = true;
@@ -273,14 +269,21 @@ bool updateStreamServer(StreamServer streamServer)
 
 		size_t byteCount;
 
-		MpnwResult mpnwResult = socketReceive(
+		mpnwResult = socketReceive(
 			receiveSocket,
 			dataBuffer,
 			dataBufferSize,
 			&byteCount);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+		{
+			if (!onUpdate(streamServer, streamSession))
+				goto DESTROY_SESSION;
 			continue;
+		}
+
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+			goto DESTROY_SESSION;
 
 		bool result = onReceive(
 			streamServer,
@@ -288,27 +291,24 @@ bool updateStreamServer(StreamServer streamServer)
 			dataBuffer,
 			byteCount);
 
-		if (result)
-		{
-			isUpdated = true;
-			continue;
-		}
+		if (!result)
+			goto DESTROY_SESSION;
+
+		if (!onUpdate(streamServer, streamSession))
+			goto DESTROY_SESSION;
+
+		isUpdated = true;
+		continue;
 
 	DESTROY_SESSION:
-		onDestroy(
-			streamServer,
-			streamSession);
-		shutdownSocket(
-			receiveSocket,
-			RECEIVE_SEND_SOCKET_SHUTDOWN);
+		onDestroy(streamServer, streamSession, mpnwResult);
+		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
 
 		for (size_t j = i + 1; j < sessionCount; j++)
 			sessionBuffer[j - 1] = sessionBuffer[j];
 
-		if (i > 0)
-			i--;
-
+		if (i > 0) i--;
 		sessionCount--;
 		isUpdated = true;
 	}
@@ -350,8 +350,7 @@ bool updateStreamServer(StreamServer streamServer)
 		}
 		else
 		{
-			shutdownSocket(
-				acceptedSocket,
+			shutdownSocket(acceptedSocket,
 				RECEIVE_SEND_SOCKET_SHUTDOWN);
 			destroySocket(acceptedSocket);
 		}

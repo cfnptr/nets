@@ -47,7 +47,7 @@ MpnwResult createDatagramClient(
 	uint8_t* buffer = malloc(
 		bufferSize * sizeof(uint8_t));
 
-	if (!bufferSize)
+	if (!buffer)
 	{
 		destroyDatagramClient(datagramClientInstance);
 		return OUT_OF_MEMORY_MPNW_RESULT;
