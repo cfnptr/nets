@@ -825,7 +825,17 @@ MpnwResult httpClientSendGET(
 		if (currentTime > time)
 			break;
 
-		updateStreamClient(streamClient);
+		mpnwResult = updateStreamClient(streamClient);
+
+		if (mpnwResult == SUCCESS_MPNW_RESULT)
+			continue;
+
+		if (mpnwResult != IN_PROGRESS_MPNW_RESULT)
+		{
+			disconnectStreamClient(streamClient);
+			return mpnwResult;
+		}
+
 		sleepThread(0.001);
 	}
 
@@ -1176,7 +1186,17 @@ MpnwResult httpClientSendPOST(
 		if (currentTime > time)
 			break;
 
-		updateStreamClient(streamClient);
+		mpnwResult = updateStreamClient(streamClient);
+
+		if (mpnwResult == SUCCESS_MPNW_RESULT)
+			continue;
+
+		if (mpnwResult != IN_PROGRESS_MPNW_RESULT)
+		{
+			disconnectStreamClient(streamClient);
+			return mpnwResult;
+		}
+
 		sleepThread(0.001);
 	}
 

@@ -137,6 +137,7 @@ void setStreamClientSslContext(
 	SslContext sslContext)
 {
 	assert(streamClient);
+	assert(!streamClient->socket);
 	streamClient->sslContext = sslContext;
 }
 
@@ -244,6 +245,7 @@ void disconnectStreamClient(StreamClient streamClient)
 MpnwResult updateStreamClient(StreamClient streamClient)
 {
 	assert(streamClient);
+	assert(streamClient->socket);
 
 	uint8_t* receiveBuffer = streamClient->buffer;
 	size_t byteCount;
@@ -272,6 +274,7 @@ MpnwResult streamClientSend(
 	assert(streamClient);
 	assert(sendBuffer);
 	assert(byteCount > 0);
+	assert(streamClient->socket);
 
 	return socketSend(
 		streamClient->socket,
@@ -287,6 +290,7 @@ MpnwResult streamClientSendMessage(
 	assert(streamMessage.buffer);
 	assert(streamMessage.size > 0);
 	assert(streamMessage.size == streamMessage.offset);
+	assert(streamClient->socket);
 
 	return socketSend(
 		streamClient->socket,
