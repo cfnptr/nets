@@ -110,6 +110,7 @@ size_t getHttpClientHeaderCount(HttpClient httpClient);
  * addressFamily - address family type.
  * headers - HTTP headers or NULL.
  * headerCount - HTTP header count or 0.
+ * keepAlive - keep connection alice. (speedup)
  */
 MpnwResult httpClientSendGET(
 	HttpClient httpClient,
@@ -117,7 +118,8 @@ MpnwResult httpClientSendGET(
 	size_t urlLength,
 	AddressFamily addressFamily,
 	const HttpPair* headers,
-	size_t headerCount);
+	size_t headerCount,
+	bool keepAlive);
 /*
  * Send HTTP POST request to the server.
  * Returns operation MPNW result.
@@ -131,6 +133,7 @@ MpnwResult httpClientSendGET(
  * headers - HTTP headers or NULL.
  * headerCount - HTTP header count or 0.
  * isMultipart - use for binary values.
+ * keepAlive - keep connection alice. (speedup)
  */
 MpnwResult httpClientSendPOST(
 	HttpClient httpClient,
@@ -141,7 +144,8 @@ MpnwResult httpClientSendPOST(
 	AddressFamily addressFamily,
 	const HttpPair* headers,
 	size_t headerCount,
-	bool isMultipart);
+	bool isMultipart,
+	bool keepAlive);
 
 /*
  * Returns HTTP client header
