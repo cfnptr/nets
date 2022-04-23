@@ -13,25 +13,26 @@
 // limitations under the License.
 
 #include "mpnw/stream_server.h"
+#include "mpmt/common.h"
 
 struct StreamSession_T
 {
 	Socket receiveSocket;
+	SocketAddress socketAddress;
 	void* handle;
-	uint8_t isSslAccepted;
-	uint8_t _alignment[7];
+	double lastUpdateTime;
 };
 struct StreamServer_T
 {
 	size_t sessionBufferSize;
 	size_t dataBufferSize;
+	double timeoutTime;
 	OnStreamSessionCreate onCreate;
 	OnStreamSessionDestroy onDestroy;
 	OnStreamSessionReceive onReceive;
-	OnStreamSessionUpdate onUpdate;
 	void* handle;
 	uint8_t* dataBuffer;
-	StreamSession sessionBuffer;
+	StreamSession* sessionBuffer;
 	size_t sessionCount;
 	Socket acceptSocket;
 };
@@ -42,9 +43,9 @@ MpnwResult createStreamServer(
 	size_t sessionBufferSize,
 	size_t connectionQueueSize,
 	size_t dataBufferSize,
+	double timeoutTime,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
-	OnStreamSessionUpdate onUpdate,
 	OnStreamSessionReceive onReceive,
 	void* handle,
 	SslContext sslContext,
@@ -55,9 +56,9 @@ MpnwResult createStreamServer(
 	assert(sessionBufferSize > 0);
 	assert(connectionQueueSize > 0);
 	assert(dataBufferSize > 0);
+	assert(timeoutTime > 0.0);
 	assert(onCreate);
 	assert(onDestroy);
-	assert(onUpdate);
 	assert(onReceive);
 	assert(streamServer);
 
@@ -67,9 +68,9 @@ MpnwResult createStreamServer(
 	if (!streamServerInstance)
 		return OUT_OF_MEMORY_MPNW_RESULT;
 
+	streamServerInstance->timeoutTime = timeoutTime;
 	streamServerInstance->onCreate = onCreate;
 	streamServerInstance->onDestroy = onDestroy;
-	streamServerInstance->onUpdate = onUpdate;
 	streamServerInstance->onReceive = onReceive;
 	streamServerInstance->handle = handle;
 
@@ -85,8 +86,8 @@ MpnwResult createStreamServer(
 	streamServerInstance->dataBuffer = dataBuffer;
 	streamServerInstance->dataBufferSize = dataBufferSize;
 
-	StreamSession sessionBuffer = malloc(
-		sessionBufferSize * sizeof(StreamSession_T));
+	StreamSession* sessionBuffer = malloc(
+		sessionBufferSize * sizeof(StreamSession));
 
 	if (!sessionBuffer)
 	{
@@ -148,17 +149,19 @@ void destroyStreamServer(StreamServer streamServer)
 	if (!streamServer)
 		return;
 
-	StreamSession sessionBuffer = streamServer->sessionBuffer;
+	StreamSession* sessionBuffer = streamServer->sessionBuffer;
 	size_t sessionCount = streamServer->sessionCount;
 	OnStreamSessionDestroy onDestroy = streamServer->onDestroy;
 
 	for (size_t i = 0; i < sessionCount; i++)
 	{
-		StreamSession streamSession = &sessionBuffer[i];
+		StreamSession streamSession = sessionBuffer[i];
 		Socket receiveSocket = streamSession->receiveSocket;
 		onDestroy(streamServer, streamSession, SUCCESS_MPNW_RESULT);
+		destroySocketAddress(streamSession->socketAddress);
 		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
+		free(streamSession);
 	}
 
 	Socket socket = streamServer->acceptSocket;
@@ -194,15 +197,15 @@ OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer)
 	assert(streamServer);
 	return streamServer->onDestroy;
 }
-OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer)
-{
-	assert(streamServer);
-	return streamServer->onUpdate;
-}
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer)
 {
 	assert(streamServer);
 	return streamServer->onReceive;
+}
+double getStreamServerTimeoutTime(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->timeoutTime;
 }
 void* getStreamServerHandle(StreamServer streamServer)
 {
@@ -224,38 +227,68 @@ Socket getStreamSessionSocket(StreamSession streamSession)
 	assert(streamSession);
 	return streamSession->receiveSocket;
 }
+SocketAddress getStreamSessionAddress(StreamSession streamSession)
+{
+	assert(streamSession);
+	return streamSession->socketAddress;
+}
 void* getStreamSessionHandle(StreamSession streamSession)
 {
 	assert(streamSession);
 	return streamSession->handle;
 }
 
+inline static void destroyStreamSession(StreamSession streamSession)
+{
+	if (!streamSession)
+		return;
+
+	Socket receiveSocket = streamSession->receiveSocket;
+
+	if (receiveSocket)
+	{
+		shutdownSocket(receiveSocket,
+			RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(receiveSocket);
+	}
+
+	destroySocketAddress(streamSession->socketAddress);
+	free(streamSession);
+}
 bool updateStreamServer(StreamServer streamServer)
 {
 	assert(streamServer);
-	StreamSession sessionBuffer = streamServer->sessionBuffer;
+	StreamSession* sessionBuffer = streamServer->sessionBuffer;
 	size_t sessionBufferSize = streamServer->sessionBufferSize;
 	size_t sessionCount = streamServer->sessionCount;
 	uint8_t* dataBuffer = streamServer->dataBuffer;
 	size_t dataBufferSize = streamServer->dataBufferSize;
+	double timeoutTime = streamServer->timeoutTime;
 	OnStreamSessionCreate onCreate = streamServer->onCreate;
 	OnStreamSessionDestroy onDestroy = streamServer->onDestroy;
-	OnStreamSessionUpdate onUpdate = streamServer->onUpdate;
 	OnStreamSessionReceive onReceive = streamServer->onReceive;
 	Socket serverSocket = streamServer->acceptSocket;
 	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
+	double currentTime = getCurrentClock();
 
 	bool isUpdated = false;
 
 	for (size_t i = 0; i < sessionCount; i++)
 	{
-		StreamSession streamSession = &sessionBuffer[i];
+		StreamSession streamSession = sessionBuffer[i];
 		Socket receiveSocket = streamSession->receiveSocket;
+		double lastUpdateTime = streamSession->lastUpdateTime;
 
 		MpnwResult mpnwResult;
 
-		if (!streamSession->isSslAccepted)
+		if (lastUpdateTime < 0.0)
 		{
+			if (lastUpdateTime + currentTime > timeoutTime)
+			{
+				mpnwResult = TIMED_OUT_MPNW_RESULT;
+				goto DESTROY_SESSION;
+			}
+
 			mpnwResult = acceptSslSocket(receiveSocket);
 
 			if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
@@ -263,8 +296,14 @@ bool updateStreamServer(StreamServer streamServer)
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
 				goto DESTROY_SESSION;
 
-			streamSession->isSslAccepted = true;
+			streamSession->lastUpdateTime = -currentTime;
 			isUpdated = true;
+		}
+
+		if (currentTime - lastUpdateTime > timeoutTime)
+		{
+			mpnwResult = TIMED_OUT_MPNW_RESULT;
+			goto DESTROY_SESSION;
 		}
 
 		size_t byteCount;
@@ -276,12 +315,7 @@ bool updateStreamServer(StreamServer streamServer)
 			&byteCount);
 
 		if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
-		{
-			if (!onUpdate(streamServer, streamSession))
-				goto DESTROY_SESSION;
 			continue;
-		}
-
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
 			goto DESTROY_SESSION;
 
@@ -294,16 +328,13 @@ bool updateStreamServer(StreamServer streamServer)
 		if (!result)
 			goto DESTROY_SESSION;
 
-		if (!onUpdate(streamServer, streamSession))
-			goto DESTROY_SESSION;
-
+		streamSession->lastUpdateTime = currentTime;
 		isUpdated = true;
 		continue;
 
 	DESTROY_SESSION:
 		onDestroy(streamServer, streamSession, mpnwResult);
-		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
-		destroySocket(receiveSocket);
+		destroyStreamSession(streamSession);
 
 		for (size_t j = i + 1; j < sessionCount; j++)
 			sessionBuffer[j - 1] = sessionBuffer[j];
@@ -333,27 +364,58 @@ bool updateStreamServer(StreamServer streamServer)
 			return isUpdated;
 		}
 
+		isUpdated = true;
+
+		StreamSession streamSession = calloc(
+			1, sizeof(StreamSession_T));
+
+		if (!streamSession)
+			continue;
+
+		streamSession->receiveSocket = acceptedSocket;
+
+		SocketAddress socketAddress;
+
+		mpnwResult = createAnySocketAddress(
+			IP_V6_ADDRESS_FAMILY,
+			&socketAddress);
+
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		{
+			destroyStreamSession(streamSession);
+			continue;
+		}
+
+		streamSession->socketAddress = socketAddress;
+
+		bool result = getSocketRemoteAddress(
+			acceptedSocket,
+			socketAddress);
+
+		if (!result)
+		{
+			destroyStreamSession(streamSession);
+			continue;
+		}
+
 		void* session;
 
-		bool result = onCreate(
+		result = onCreate(
 			streamServer,
 			acceptedSocket,
+			socketAddress,
 			&session);
 
-		if (result)
+		if (!result)
 		{
-			StreamSession_T streamSession;
-			streamSession.receiveSocket = acceptedSocket;
-			streamSession.handle = session;
-			streamSession.isSslAccepted = !isServerSocketSsl;
-			sessionBuffer[sessionCount++] = streamSession;
+			destroyStreamSession(streamSession);
+			continue;
 		}
-		else
-		{
-			shutdownSocket(acceptedSocket,
-				RECEIVE_SEND_SOCKET_SHUTDOWN);
-			destroySocket(acceptedSocket);
-		}
+
+		streamSession->lastUpdateTime =
+			isServerSocketSsl ? -currentTime : currentTime;
+		streamSession->handle = session;
+		sessionBuffer[sessionCount++] = streamSession;
 	}
 }
 

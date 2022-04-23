@@ -38,12 +38,14 @@ typedef StreamSession_T* StreamSession;
  * Destroys session on false return result.
  *
  * streamServer - stream server instance.
- * socket - a new socket instance.
+ * socket - a new accepted socket instance.
+ * address - accepted socket address.
  * handle - pointer to the handle.
  */
 typedef bool(*OnStreamSessionCreate)(
 	StreamServer streamServer,
 	Socket socket,
+	SocketAddress address,
 	void** handle);
 /*
  * Stream session destroy function.
@@ -56,16 +58,6 @@ typedef void(*OnStreamSessionDestroy)(
 	StreamServer streamServer,
 	StreamSession streamSession,
 	MpnwResult mpnwResult);
-/*
- * Stream session update function.
- * Destroys session on false return result.
- *
- * streamServer - stream server instance.
- * streamSession - stream session instance.
- */
-typedef bool(*OnStreamSessionUpdate)(
-	StreamServer streamServer,
-	StreamSession streamSession);
 /*
  * Stream session receive function
  * Destroys session on false return result.
@@ -90,6 +82,8 @@ typedef bool(*OnStreamSessionReceive)(
  * sessionBufferSize - session receive buffer size.
  * connectionQueueSize - pending connections queue size.
  * dataBufferSize - data buffer size.
+ * timeoutTime - session timeout time. (seconds)
+ * allowMultipleSessions - allow multiple session from the one address.
  * onCreate - session create function.
  * onDestroy - session destroy function.
  * onUpdate - session update function.
@@ -104,9 +98,9 @@ MpnwResult createStreamServer(
 	size_t sessionBufferSize,
 	size_t connectionQueueSize,
 	size_t dataBufferSize,
+	double timeoutTime,
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
-	OnStreamSessionUpdate onUpdate,
 	OnStreamSessionReceive onReceive,
 	void* handle,
 	SslContext sslContext,
@@ -138,15 +132,15 @@ OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer);
  */
 OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer);
 /*
- * Returns stream server update function.
- * streamServer - stream server instance.
- */
-OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer);
-/*
  * Returns stream server receive function.
  * streamServer - stream server instance.
  */
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer);
+/*
+ * Returns stream server session timeout time. (seconds)
+ * streamServer - stream server instance.
+ */
+double getStreamServerTimeoutTime(StreamServer streamServer);
 /*
  * Returns stream server handle.
  * streamServer - stream server instance.
@@ -167,6 +161,11 @@ Socket getStreamServerSocket(StreamServer streamServer);
  * streamSession - stream session instance.
  */
 Socket getStreamSessionSocket(StreamSession streamSession);
+/*
+ * Returns stream session socket address.
+ * streamSession - stream session instance.
+ */
+SocketAddress getStreamSessionAddress(StreamSession streamSession);
 /*
  * Returns stream session handle.
  * streamSession - stream session instance.
