@@ -56,8 +56,8 @@ struct Socket_T
 	SocketType type;
 	AddressFamily family;
 	bool isBlocking;
+	bool isOnlyIPV6;
 #if MPNW_SUPPORT_OPENSSL
-	uint8_t _alignment[1];
 	SslContext sslContext;
 	SSL* ssl;
 #endif
@@ -264,6 +264,7 @@ inline static MpnwResult createSocketHandle(
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
 	bool isBlocking,
+	bool isOnlyIPV6,
 	SOCKET* handle)
 {
 	assert(socketType < SOCKET_TYPE_COUNT);
@@ -313,15 +314,28 @@ inline static MpnwResult createSocketHandle(
 	if (handleInstance == INVALID_SOCKET)
 		return lastErrorToMpnwResult();
 
-	int result = bind(
-		handleInstance,
-		(const struct sockaddr*)&socketAddress->handle,
-		length);
-
-	if (result != 0)
+	if (addressFamily == IP_V6_ADDRESS_FAMILY)
 	{
-		closesocket(handleInstance);
-		return lastErrorToMpnwResult();
+#if __linux__ || __APPLE__
+		int onlyV6 = isOnlyIPV6 ? 1 : 0;
+		SOCKET_LENGTH v6Length = sizeof(int);
+#elif _WIN32
+		BOOL onlyV6 = isOnlyIPV6 ? TRUE : FALSE;
+		SOCKET_LENGTH v6Length = sizeof(BOOL);
+#endif
+
+		int result = setsockopt(
+			handleInstance,
+			IPPROTO_IPV6,
+			IPV6_V6ONLY,
+			(char*)&onlyV6,
+			v6Length);
+
+		if (result != 0)
+		{
+			closesocket(handleInstance);
+			return lastErrorToMpnwResult();
+		}
 	}
 
 	if (!isBlocking)
@@ -338,14 +352,14 @@ inline static MpnwResult createSocketHandle(
 			return FAILED_TO_SET_FLAG_MPNW_RESULT;
 		}
 
-		result = fcntl(
+		int result = fcntl(
 			handleInstance,
 			F_SETFL,
 			flags | O_NONBLOCK);
 #elif _WIN32
 		u_long flags = 1;
 
-		result = ioctlsocket(
+		int result = ioctlsocket(
     		handleInstance,
     		FIONBIO,
     		&flags);
@@ -358,6 +372,17 @@ inline static MpnwResult createSocketHandle(
 		}
 	}
 
+	int result = bind(
+		handleInstance,
+		(const struct sockaddr*)&socketAddress->handle,
+		length);
+
+	if (result != 0)
+	{
+		closesocket(handleInstance);
+		return lastErrorToMpnwResult();
+	}
+
 	*handle = handleInstance;
 	return SUCCESS_MPNW_RESULT;
 }
@@ -366,6 +391,7 @@ MpnwResult createSocket(
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
 	bool isBlocking,
+	bool isOnlyIPV6,
 	SslContext sslContext,
 	Socket* _socket)
 {
@@ -373,6 +399,9 @@ MpnwResult createSocket(
 	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(socketAddress);
 	assert(_socket);
+
+	assert(addressFamily == IP_V6_ADDRESS_FAMILY ||
+		(addressFamily == IP_V4_ADDRESS_FAMILY && !isOnlyIPV6));
 
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
@@ -394,9 +423,7 @@ MpnwResult createSocket(
 	socketInstance->type = socketType;
 	socketInstance->family = addressFamily;
 	socketInstance->isBlocking = isBlocking;
-#if MPNW_SUPPORT_OPENSSL
-	socketInstance->sslContext = sslContext;
-#endif
+	socketInstance->isOnlyIPV6 = isOnlyIPV6;
 
 	SOCKET handle;
 
@@ -405,6 +432,7 @@ MpnwResult createSocket(
 		addressFamily,
 		socketAddress,
 		isBlocking,
+		isOnlyIPV6,
 		&handle);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -426,6 +454,7 @@ MpnwResult createSocket(
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
+		socketInstance->sslContext = sslContext;
 		socketInstance->ssl = ssl;
 
 		int result = SSL_set_fd(ssl, (int)handle);
@@ -435,6 +464,10 @@ MpnwResult createSocket(
 			destroySocket(socketInstance);
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
+	}
+	else
+	{
+		socketInstance->sslContext = NULL;
 	}
 #endif
 
@@ -476,6 +509,12 @@ bool isSocketBlocking(Socket socket)
 	assert(socket);
 	assert(networkInitialized);
 	return socket->isBlocking;
+}
+bool isSocketOnlyV6(Socket socket)
+{
+	assert(socket);
+	assert(networkInitialized);
+	return socket->isOnlyIPV6;
 }
 bool getSocketLocalAddress(
 	Socket socket,
@@ -548,62 +587,6 @@ SslContext getSocketSslContext(Socket socket)
 #else
 	abort();
 #endif
-}
-
-bool isSocketOnlyV6(
-	Socket socket)
-{
-	assert(socket);
-	assert(networkInitialized);
-
-#if __linux__ || __APPLE__
-	int value;
-#elif _WIN32
-	BOOL value;
-#endif
-
-	SOCKET_LENGTH length;
-
-	int result = getsockopt(
-		socket->handle,
-		IPPROTO_IPV6,
-		IPV6_V6ONLY,
-		(char*)&value,
-		&length);
-
-	if (result != 0)
-		abort();
-
-#if __linux__ || __APPLE__
-	return value != 0;
-#elif _WIN32
-	return value != FALSE;
-#endif
-}
-void setSocketOnlyV6(
-	Socket socket,
-	bool value)
-{
-	assert(socket);
-	assert(networkInitialized);
-
-#if __linux__ || __APPLE__
-	int noDelay = value ? 1 : 0;
-	SOCKET_LENGTH length = sizeof(int);
-#elif _WIN32
-	BOOL noDelay = value ? TRUE : FALSE;
-	SOCKET_LENGTH length = sizeof(BOOL);
-#endif
-
-	int result = setsockopt(
-		socket->handle,
-		IPPROTO_IPV6,
-		IPV6_V6ONLY,
-		(char*)&noDelay,
-		length);
-
-	if (result != 0)
-		abort();
 }
 
 bool isSocketNoDelay(
@@ -715,19 +698,21 @@ MpnwResult acceptSocket(
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized);
 
+	SOCKET handle = accept(socket->handle, NULL, 0);
+
+	if (handle == INVALID_SOCKET)
+		return lastErrorToMpnwResult();
+
 	Socket acceptedInstance = calloc(
 		1, sizeof(Socket_T));
 
 	if (!acceptedInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
-
-	SOCKET handle = accept(socket->handle, NULL, 0);
-
-	if (handle == INVALID_SOCKET)
 	{
-		destroySocket(acceptedInstance);
-		return lastErrorToMpnwResult();
+		closesocket(socket->handle);
+		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
+
+	acceptedInstance->handle = handle;
 
 	if (!socket->isBlocking)
 	{
@@ -763,11 +748,6 @@ MpnwResult acceptSocket(
 		}
 	}
 
-	acceptedInstance->queueSize = 0;
-	acceptedInstance->handle = handle;
-	acceptedInstance->type = socket->type;
-	acceptedInstance->isBlocking = socket->isBlocking;
-
 #if MPNW_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
@@ -779,6 +759,9 @@ MpnwResult acceptSocket(
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
 
+		acceptedInstance->sslContext = socket->sslContext;
+		acceptedInstance->ssl = ssl;
+
 		int result = SSL_set_fd(ssl, (int)handle);
 
 		if (result != 1)
@@ -786,15 +769,17 @@ MpnwResult acceptSocket(
 			destroySocket(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
 		}
-
-		acceptedInstance->sslContext = socket->sslContext;
-		acceptedInstance->ssl = ssl;
 	}
 	else
 	{
 		acceptedInstance->sslContext = NULL;
 	}
 #endif
+
+	acceptedInstance->queueSize = 0;
+	acceptedInstance->type = socket->type;
+	acceptedInstance->isBlocking = socket->isBlocking;
+	acceptedInstance->isOnlyIPV6 = socket->isOnlyIPV6;
 
 	*accepted = acceptedInstance;
 	return SUCCESS_MPNW_RESULT;

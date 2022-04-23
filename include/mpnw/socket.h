@@ -174,6 +174,7 @@ void disableSigpipe();
  * addressFamily - internet protocol address family.
  * socketAddress - socket local bind address.
  * isBlocking - socket in blocking mode.
+ * isOnlyIPV6 - socket in IPv6 only mode.
  * sslContext - SSL context or NULL.
  * socket - pointer to the socket.
  */
@@ -182,6 +183,7 @@ MpnwResult createSocket(
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
 	bool isBlocking,
+	bool isOnlyIPV6,
 	SslContext sslContext,
 	Socket* socket);
 /*
@@ -201,10 +203,15 @@ SocketType getSocketType(Socket socket);
  */
 AddressFamily getSocketFamily(Socket socket);
 /*
- * Returns true if socket blocking mode.
+ * Returns true if socket is in blocking mode.
  * socket - socket instance.
  */
 bool isSocketBlocking(Socket socket);
+/*
+ * Returns true if IPV6 socket is not accepting IPV4.
+ * socket - socket instance.
+ */
+bool isSocketOnlyV6(Socket socket);
 /*
  * Get local socket address.
  * Returns true on success.
@@ -230,22 +237,6 @@ bool getSocketRemoteAddress(
  * socket - socket instance.
  */
 SslContext getSocketSslContext(Socket socket);
-
-/*
- * Returns true if IPV6 socket is not accepting IPV4.
- * socket - socket instance.
- */
-bool isSocketOnlyV6(
-	Socket socket);
-/*
- * Sets socket IPV6 only mode.
- *
- * socket - socket instance.
- * value - IPV6 only mode value.
- */
-void setSocketOnlyV6(
-	Socket socket,
-	bool value);
 
 /*
  * Returns true if stream socket sends without caching.

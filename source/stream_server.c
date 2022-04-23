@@ -101,8 +101,10 @@ MpnwResult createStreamServer(
 
 	SocketAddress socketAddress;
 
-	MpnwResult mpnwResult = createAnySocketAddress(
-		addressFamily,
+	MpnwResult mpnwResult = createSocketAddress(
+		addressFamily == IP_V4_ADDRESS_FAMILY ?
+			ANY_IP_ADDRESS_V4 : ANY_IP_ADDRESS_V6,
+		service,
 		&socketAddress);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -117,6 +119,7 @@ MpnwResult createStreamServer(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
 		socketAddress,
+		false,
 		false,
 		sslContext,
 		&acceptSocket);

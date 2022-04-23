@@ -174,6 +174,7 @@ MpnwResult connectStreamClient(
 		addressFamily,
 		socketAddress,
 		false,
+		false,
 		streamClient->sslContext,
 		&socket);
 
@@ -197,6 +198,12 @@ MpnwResult connectStreamClient(
 			continue;
 		}
 
+		if (mpnwResult != SUCCESS_MPNW_RESULT &&
+			mpnwResult != ALREADY_CONNECTED_MPNW_RESULT)
+		{
+			return mpnwResult;
+		}
+
 		goto CONNECT_SSL;
 	}
 
@@ -207,7 +214,6 @@ CONNECT_SSL:
 	if (!getSocketSslContext(socket))
 	{
 		assert(hostname == NULL);
-		streamClient->socket = socket;
 		return SUCCESS_MPNW_RESULT;
 	}
 
@@ -221,7 +227,9 @@ CONNECT_SSL:
 			continue;
 		}
 
-		streamClient->socket = socket;
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+			return mpnwResult;
+
 		return SUCCESS_MPNW_RESULT;
 	}
 
