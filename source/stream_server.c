@@ -299,14 +299,16 @@ bool updateStreamServer(StreamServer streamServer)
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
 				goto DESTROY_SESSION;
 
-			streamSession->lastUpdateTime = -currentTime;
+			streamSession->lastUpdateTime = currentTime;
 			isUpdated = true;
 		}
-
-		if (currentTime - lastUpdateTime > timeoutTime)
+		else
 		{
-			mpnwResult = TIMED_OUT_MPNW_RESULT;
-			goto DESTROY_SESSION;
+			if (currentTime - lastUpdateTime > timeoutTime)
+			{
+				mpnwResult = TIMED_OUT_MPNW_RESULT;
+				goto DESTROY_SESSION;
+			}
 		}
 
 		size_t byteCount;

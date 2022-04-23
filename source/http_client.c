@@ -99,7 +99,7 @@ inline static MpnwResult processResponseLine(
 					return SUCCESS_MPNW_RESULT;
 				if (chunkSize < 0)
 					return BAD_DATA_MPNW_RESULT;
-				if (chunkSize > httpClient->responseBufferSize)
+				if ((size_t)chunkSize > httpClient->responseBufferSize)
 					return OUT_OF_MEMORY_MPNW_RESULT;
 
 				httpClient->chunkSize = chunkSize;
