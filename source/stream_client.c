@@ -26,6 +26,7 @@ struct StreamClient_T
 	SslContext sslContext;
 	uint8_t* buffer;
 	Socket socket;
+	double timeout;
 };
 
 MpnwResult createStreamClient(
@@ -52,6 +53,7 @@ MpnwResult createStreamClient(
 	streamClientInstance->handle = handle;
 	streamClientInstance->sslContext = sslContext;
 	streamClientInstance->socket = NULL;
+	streamClientInstance->timeout = 0.0;
 
 	uint8_t* buffer = malloc(
 		bufferSize * sizeof(uint8_t));
@@ -161,8 +163,7 @@ MpnwResult connectStreamClient(
 	SocketAddress socketAddress;
 
 	MpnwResult mpnwResult = createAnySocketAddress(
-		addressFamily,
-		&socketAddress);
+		addressFamily, &socketAddress);
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 		return mpnwResult;
@@ -214,6 +215,7 @@ CONNECT_SSL:
 	if (!getSocketSslContext(socket))
 	{
 		assert(hostname == NULL);
+		streamClient->timeout = timeout;
 		return SUCCESS_MPNW_RESULT;
 	}
 
@@ -230,6 +232,7 @@ CONNECT_SSL:
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
 			return mpnwResult;
 
+		streamClient->timeout = timeout;
 		return SUCCESS_MPNW_RESULT;
 	}
 
@@ -247,6 +250,7 @@ void disconnectStreamClient(StreamClient streamClient)
 			RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
 		streamClient->socket = NULL;
+		streamClient->timeout = 0.0;
 	}
 }
 
@@ -254,6 +258,11 @@ MpnwResult updateStreamClient(StreamClient streamClient)
 {
 	assert(streamClient);
 	assert(streamClient->socket);
+
+	double currentTime = getCurrentClock();
+
+	if (currentTime > streamClient->timeout)
+		return TIMED_OUT_MPNW_RESULT;
 
 	uint8_t* receiveBuffer = streamClient->buffer;
 	size_t byteCount;
@@ -271,6 +280,9 @@ MpnwResult updateStreamClient(StreamClient streamClient)
 		streamClient,
 		receiveBuffer,
 		byteCount);
+
+	streamClient->timeout = currentTime +
+		streamClient->timeoutTime;
 	return SUCCESS_MPNW_RESULT;
 }
 
@@ -284,10 +296,17 @@ MpnwResult streamClientSend(
 	assert(byteCount > 0);
 	assert(streamClient->socket);
 
-	return socketSend(
+	MpnwResult mpnwResult = socketSend(
 		streamClient->socket,
 		sendBuffer,
 		byteCount);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
+
+	streamClient->timeout = getCurrentClock() +
+		streamClient->timeoutTime;
+	return SUCCESS_MPNW_RESULT;
 }
 
 MpnwResult streamClientSendMessage(
@@ -300,8 +319,15 @@ MpnwResult streamClientSendMessage(
 	assert(streamMessage.size == streamMessage.offset);
 	assert(streamClient->socket);
 
-	return socketSend(
+	MpnwResult mpnwResult = socketSend(
 		streamClient->socket,
 		streamMessage.buffer,
 		streamMessage.size);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
+
+	streamClient->timeout = getCurrentClock() +
+		streamClient->timeoutTime;
+	return SUCCESS_MPNW_RESULT;
 }

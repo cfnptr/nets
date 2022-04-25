@@ -622,8 +622,6 @@ MpnwResult httpClientSendGET(
 	}
 #endif
 
-	double time = getCurrentClock();
-
 	StreamClient streamClient = httpClient->handle;
 	size_t hostOffset, hostLength, serviceOffset, serviceLength, pathOffset;
 
@@ -816,15 +814,8 @@ MpnwResult httpClientSendGET(
 		}
 	}
 
-	time += getStreamClientTimeoutTime(streamClient);
-
 	while (httpClient->isRunning)
 	{
-		double currentTime = getCurrentClock();
-
-		if (currentTime > time)
-			break;
-
 		mpnwResult = updateStreamClient(streamClient);
 
 		if (mpnwResult == SUCCESS_MPNW_RESULT)
@@ -893,8 +884,6 @@ MpnwResult httpClientSendPOST(
 		assert(pair.valueLength > 0);
 	}
 #endif
-
-	double time = getCurrentClock();
 
 	StreamClient streamClient = httpClient->handle;
 	size_t hostOffset, hostLength, serviceOffset, serviceLength, pathOffset;
@@ -1177,15 +1166,8 @@ MpnwResult httpClientSendPOST(
 		}
 	}
 
-	time += getStreamClientTimeoutTime(streamClient);
-
 	while (httpClient->isRunning)
 	{
-		double currentTime = getCurrentClock();
-
-		if (currentTime > time)
-			break;
-
 		mpnwResult = updateStreamClient(streamClient);
 
 		if (mpnwResult == SUCCESS_MPNW_RESULT)

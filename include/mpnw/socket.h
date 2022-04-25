@@ -620,7 +620,7 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext);
 
 /*
  * Splits and handles received stream data to the messages.
- * Returns true on all handle success
+ * Returns operation MPNW result.
  *
  * receiveBuffer - message receive buffer.
  * byteCount - message received byte count.
@@ -628,17 +628,18 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext);
  * messageBufferSiz - receive message buffer size.
  * messageByteCount - pointer to the message buffer byte count.
  * messageLengthSize - message length header size.
- * receiveFunction - pointer to the receive handler.
+ * receiveFunction - pointer to the reception handler.
  * functionHandle - receive function handle or NULL.
  */
-inline static bool handleStreamMessage(
+inline static MpnwResult handleStreamMessage(
 	const uint8_t* receiveBuffer,
 	size_t byteCount,
 	uint8_t* messageBuffer,
 	size_t messageBufferSize,
 	size_t* messageByteCount,
 	uint8_t messageLengthSize,
-	bool(*receiveFunction)(const uint8_t*, size_t, void*),
+	MpnwResult(*receiveFunction)(
+		const uint8_t*, size_t, void*),
 	void* functionHandle)
 {
 	assert(receiveBuffer);
@@ -654,7 +655,7 @@ inline static bool handleStreamMessage(
 
 	// Check instead of assert for safety
 	if (byteCount == 0)
-		return false;
+		return CONNECTION_IS_CLOSED_MPNW_RESULT;
 
 	size_t _messageByteCount = *messageByteCount;
 	size_t pointer = 0;
@@ -676,7 +677,7 @@ inline static bool handleStreamMessage(
 					receiveBuffer,
 					byteCount);
 				*messageByteCount += byteCount;
-				return true;
+				return SUCCESS_MPNW_RESULT;
 			}
 
 			// Copy remaining message size part
@@ -725,7 +726,7 @@ inline static bool handleStreamMessage(
 
 		// Received message is bigger than buffer
 		if (messageSize > messageBufferSize - messageLengthSize)
-			return false;
+			return OUT_OF_MEMORY_MPNW_RESULT;
 
 		size_t neededPartSize = messageSize -
 			(_messageByteCount - messageLengthSize);
@@ -739,20 +740,20 @@ inline static bool handleStreamMessage(
 				receiveBuffer + pointer,
 				messagePartSize);
 			*messageByteCount = _messageByteCount + messagePartSize;
-			return true;
+			return SUCCESS_MPNW_RESULT;
 		}
 
 		memcpy(messageBuffer + _messageByteCount,
 			receiveBuffer + pointer,
 			neededPartSize);
 
-		bool result = receiveFunction(
+		MpnwResult mpnwResult = receiveFunction(
 			messageBuffer + messageLengthSize,
 			messageSize,
 			functionHandle);
 
-		if (!result)
-			return false;
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+			return mpnwResult;
 
 		*messageByteCount = 0;
 		pointer += neededPartSize;
@@ -770,7 +771,7 @@ inline static bool handleStreamMessage(
 				receiveBuffer + pointer,
 				messageSizePart);
 			*messageByteCount += messageSizePart;
-			return true;
+			return SUCCESS_MPNW_RESULT;
 		}
 
 		// Decode received message size
@@ -811,7 +812,7 @@ inline static bool handleStreamMessage(
 
 		// Received message is bigger than buffer
 		if (messageSize > messageBufferSize - messageLengthSize)
-			return false;
+			return OUT_OF_MEMORY_MPNW_RESULT;
 
 		// Received not full message
 		if (messageSize > (byteCount - pointer) - messageLengthSize)
@@ -822,31 +823,32 @@ inline static bool handleStreamMessage(
 				receiveBuffer + pointer,
 				messagePartSize);
 			*messageByteCount += messagePartSize;
-			return true;
+			return SUCCESS_MPNW_RESULT;
 		}
 
 		// Handle received message data
-		bool result = receiveFunction(
+		MpnwResult mpnwResult = receiveFunction(
 			receiveBuffer + pointer + messageLengthSize,
 			messageSize,
 			functionHandle);
 
-		if (!result)
-			return false;
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+			return mpnwResult;
 
 		pointer += messageLengthSize + messageSize;
 	}
 
-	return true;
+	return SUCCESS_MPNW_RESULT;
 }
 
 // For library symbols
-bool sHandleStreamMessage(
+MpnwResult sHandleStreamMessage(
 	const uint8_t* receiveBuffer,
 	size_t byteCount,
 	uint8_t* messageBuffer,
 	size_t messageBufferSize,
 	size_t* messageByteCount,
 	uint8_t messageLengthSize,
-	bool(*receiveFunction)(const uint8_t*, size_t, void*),
+	MpnwResult(*receiveFunction)(
+		const uint8_t*, size_t, void*),
 	void* functionHandle);

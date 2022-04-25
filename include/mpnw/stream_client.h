@@ -142,7 +142,7 @@ MpnwResult connectStreamClient(
 void disconnectStreamClient(StreamClient streamClient);
 
 /*
- * Receive buffered datagrams.
+ * Receive buffered data.
  * Returns operation MPNW result.
  *
  * streamClient - stream client instance.

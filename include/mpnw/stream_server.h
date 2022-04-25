@@ -35,7 +35,7 @@ typedef StreamSession_T* StreamSession;
 
 /*
  * Stream session create function.
- * Destroys session on false return result.
+ * Destroys socket on false return result.
  *
  * streamServer - stream server instance.
  * socket - a new accepted socket instance.
@@ -44,8 +44,7 @@ typedef StreamSession_T* StreamSession;
  */
 typedef bool(*OnStreamSessionCreate)(
 	StreamServer streamServer,
-	Socket socket,
-	SocketAddress address,
+	StreamSession streamSession,
 	void** handle);
 /*
  * Stream session destroy function.
@@ -60,18 +59,28 @@ typedef void(*OnStreamSessionDestroy)(
 	MpnwResult mpnwResult);
 /*
  * Stream session receive function
- * Destroys session on false return result.
+ * Destroys session on failure return result.
  *
  * streamServer - stream server instance.
  * streamSession - stream session instance.
  * receiveBuffer - receive buffer instance.
  * byteCount - received byte count.
  */
-typedef bool(*OnStreamSessionReceive)(
+typedef MpnwResult(*OnStreamSessionReceive)(
 	StreamServer streamServer,
 	StreamSession streamSession,
 	const uint8_t* receiveBuffer,
 	size_t byteCount);
+/*
+ * Stream session update function.
+ * Destroys session on failure return result.
+ *
+ * streamServer - stream server instance.
+ * streamSession - stream session instance.
+ */
+typedef MpnwResult(*OnStreamSessionUpdate)(
+	StreamServer streamServer,
+	StreamSession streamSession);
 
 /*
  * Create a new stream server instance (TCP).
@@ -83,11 +92,10 @@ typedef bool(*OnStreamSessionReceive)(
  * connectionQueueSize - pending connections queue size.
  * dataBufferSize - data buffer size.
  * timeoutTime - session timeout time. (seconds)
- * allowMultipleSessions - allow multiple session from the one address.
  * onCreate - session create function.
  * onDestroy - session destroy function.
- * onUpdate - session update function.
  * onReceive - data receive function.
+ * onUpdate - session update function.
  * handle - receive function argument.
  * sslContext - SSL context or NULL.
  * streamServer - pointer to the stream server.
@@ -102,6 +110,7 @@ MpnwResult createStreamServer(
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
 	OnStreamSessionReceive onReceive,
+	OnStreamSessionUpdate onUpdate,
 	void* handle,
 	SslContext sslContext,
 	StreamServer* streamServer);
@@ -136,6 +145,11 @@ OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer);
  * streamServer - stream server instance.
  */
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer);
+/*
+ * Returns stream server update function.
+ * streamServer - stream server instance.
+ */
+OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer);
 /*
  * Returns stream server session timeout time. (seconds)
  * streamServer - stream server instance.

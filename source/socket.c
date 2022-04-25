@@ -1843,14 +1843,15 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext)
 #endif
 }
 
-bool sHandleStreamMessage(
+MpnwResult sHandleStreamMessage(
 	const uint8_t* receiveBuffer,
 	size_t byteCount,
 	uint8_t* messageBuffer,
 	size_t messageBufferSize,
 	size_t* messageByteCount,
 	uint8_t messageLengthSize,
-	bool(*receiveFunction)(const uint8_t*, size_t, void*),
+	MpnwResult(*receiveFunction)(
+		const uint8_t*, size_t, void*),
 	void* functionHandle)
 {
 	return handleStreamMessage(

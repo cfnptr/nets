@@ -30,6 +30,7 @@ struct StreamServer_T
 	OnStreamSessionCreate onCreate;
 	OnStreamSessionDestroy onDestroy;
 	OnStreamSessionReceive onReceive;
+	OnStreamSessionUpdate onUpdate;
 	void* handle;
 	uint8_t* dataBuffer;
 	StreamSession* sessionBuffer;
@@ -47,6 +48,7 @@ MpnwResult createStreamServer(
 	OnStreamSessionCreate onCreate,
 	OnStreamSessionDestroy onDestroy,
 	OnStreamSessionReceive onReceive,
+	OnStreamSessionUpdate onUpdate,
 	void* handle,
 	SslContext sslContext,
 	StreamServer* streamServer)
@@ -72,6 +74,7 @@ MpnwResult createStreamServer(
 	streamServerInstance->onCreate = onCreate;
 	streamServerInstance->onDestroy = onDestroy;
 	streamServerInstance->onReceive = onReceive;
+	streamServerInstance->onUpdate = onUpdate;
 	streamServerInstance->handle = handle;
 
 	uint8_t* dataBuffer = malloc(
@@ -205,6 +208,11 @@ OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer)
 	assert(streamServer);
 	return streamServer->onReceive;
 }
+OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->onUpdate;
+}
 double getStreamServerTimeoutTime(StreamServer streamServer)
 {
 	assert(streamServer);
@@ -270,6 +278,7 @@ bool updateStreamServer(StreamServer streamServer)
 	OnStreamSessionCreate onCreate = streamServer->onCreate;
 	OnStreamSessionDestroy onDestroy = streamServer->onDestroy;
 	OnStreamSessionReceive onReceive = streamServer->onReceive;
+	OnStreamSessionUpdate onUpdate = streamServer->onUpdate;
 	Socket serverSocket = streamServer->acceptSocket;
 	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
 	double currentTime = getCurrentClock();
@@ -320,17 +329,33 @@ bool updateStreamServer(StreamServer streamServer)
 			&byteCount);
 
 		if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+		{
+			mpnwResult = onUpdate(
+				streamServer,
+				streamSession);
+
+			if (mpnwResult != SUCCESS_MPNW_RESULT)
+				goto DESTROY_SESSION;
 			continue;
+		}
+
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
 			goto DESTROY_SESSION;
 
-		bool result = onReceive(
+		mpnwResult = onReceive(
 			streamServer,
 			streamSession,
 			dataBuffer,
 			byteCount);
 
-		if (!result)
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+			goto DESTROY_SESSION;
+
+		mpnwResult = onUpdate(
+			streamServer,
+			streamSession);
+
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
 			goto DESTROY_SESSION;
 
 		streamSession->lastUpdateTime = currentTime;
@@ -407,8 +432,7 @@ bool updateStreamServer(StreamServer streamServer)
 
 		result = onCreate(
 			streamServer,
-			acceptedSocket,
-			socketAddress,
+			streamSession,
 			&session);
 
 		if (!result)
