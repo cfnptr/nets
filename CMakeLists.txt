@@ -75,12 +75,14 @@ set(MPMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/mpmt)
 
+add_subdirectory(libraries/zlib)
+
 configure_file(
 	cmake/defines.h.in
 	mpnw/defines.h)
 
 set(MPNW_LINK_LIBRARIES
-	mpmt-static)
+	mpmt-static zlibstatic)
 
 if(MPNW_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND MPNW_LINK_LIBRARIES

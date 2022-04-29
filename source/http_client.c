@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #include "mpnw/http_client.h"
-
-#include "mpmt/common.h"
 #include "mpmt/thread.h"
+#include "zlib.h"
 
 #include <stdio.h>
 #include <ctype.h>
@@ -32,8 +31,11 @@ struct HttpClient_T
 	size_t chunkSize;
 	size_t responseLength;
 	size_t headerCount;
+	z_stream* zlibStream;
 	uint16_t statusCode;
 	bool isChunked;
+	bool isCompressed;
+	bool isClose;
 	bool isBody;
 	MpnwResult result;
 	bool isRunning;
@@ -63,9 +65,33 @@ static int cmpHttpHeaders(const void* a, const void* b)
 
 	return 0;
 }
+inline static MpnwResult zlibErrorToMpnwResult(int result)
+{
+	switch (result)
+	{
+	default:
+		return UNKNOWN_ERROR_MPNW_RESULT;
+	case Z_NEED_DICT:
+	case Z_DATA_ERROR:
+	case Z_STREAM_ERROR:
+		return BAD_DATA_MPNW_RESULT;
+	case Z_MEM_ERROR:
+	case Z_BUF_ERROR:
+		return OUT_OF_MEMORY_MPNW_RESULT;
+	}
+}
 
-// TODO: ignore \r symbol as described in the spec
+inline static void finalizeResponse(HttpClient httpClient)
+{
+	assert(httpClient);
 
+	if (httpClient->isClose)
+		disconnectStreamClient(httpClient->handle);
+
+	httpClient->response[httpClient->responseLength] = '\0';
+	httpClient->result = SUCCESS_MPNW_RESULT;
+	httpClient->isRunning = false;
+}
 inline static MpnwResult processResponseLine(
 	HttpClient httpClient,
 	const char* line,
@@ -83,15 +109,15 @@ inline static MpnwResult processResponseLine(
 				sizeof(HttpPair),
 				cmpHttpHeaders);
 
-			const HttpPair* contentLength = getHttpClientHeader(
+			const HttpPair* header = getHttpClientHeader(
 				httpClient,
 				"Content-Length",
 				14);
 
-			if (contentLength)
+			if (header)
 			{
 				int64_t chunkSize = (int64_t)strtol(
-					contentLength->value,
+					header->value,
 					NULL,
 					10);
 
@@ -99,26 +125,60 @@ inline static MpnwResult processResponseLine(
 					return SUCCESS_MPNW_RESULT;
 				if (chunkSize < 0)
 					return BAD_DATA_MPNW_RESULT;
-				if ((size_t)chunkSize > httpClient->responseBufferSize)
+				if ((size_t)chunkSize + 1 > httpClient->responseBufferSize)
 					return OUT_OF_MEMORY_MPNW_RESULT;
 
 				httpClient->chunkSize = chunkSize;
 			}
 			else
 			{
-				const HttpPair* transferEncoding = getHttpClientHeader(
+				header = getHttpClientHeader(
 					httpClient,
 					"Transfer-Encoding",
 					17);
 
-				if (!transferEncoding || transferEncoding->valueLength != 7 ||
-					memcmp(transferEncoding->value, "chunked", 7) != 0)
+				if (!header || header->valueLength != 7 ||
+					memcmp(header->value, "chunked", 7) != 0)
 				{
-					// TODO: support compression
 					return BAD_DATA_MPNW_RESULT;
 				}
 
 				httpClient->isChunked = true;
+			}
+
+			header = getHttpClientHeader(
+				httpClient,
+				"Content-Encoding",
+				16);
+
+			if (header)
+			{
+				if (!httpClient->zlibStream || header->valueLength != 4 ||
+					memcmp(header->value, "gzip", 4) != 0)
+				{
+					return BAD_DATA_MPNW_RESULT;
+				}
+
+				httpClient->isCompressed = true;
+			}
+
+			header = getHttpClientHeader(
+				httpClient,
+				"Connection",
+				10);
+
+			if (header)
+			{
+				if (header->valueLength == 5 &&
+					memcmp(header->value, "close", 5) == 0)
+				{
+					httpClient->isClose = true;
+				}
+				else if (header->valueLength != 10 &&
+					memcmp(header->value, "keep-alive", 10) != 0)
+				{
+					return BAD_DATA_MPNW_RESULT;
+				}
 			}
 
 			httpClient->isBody = true;
@@ -193,18 +253,13 @@ inline static MpnwResult processResponseLine(
 
 		if (chunkSize == 0)
 		{
-			if (httpClient->responseLength + 1 > httpClient->responseBufferSize)
-				return OUT_OF_MEMORY_MPNW_RESULT;
-
-			httpClient->response[httpClient->responseLength] = '\0';
-			httpClient->result = SUCCESS_MPNW_RESULT;
-			httpClient->isRunning = false;
+			finalizeResponse(httpClient);
 			return SUCCESS_MPNW_RESULT;
 		}
 
 		if (chunkSize < 0)
 			return BAD_DATA_MPNW_RESULT;
-		if (httpClient->responseLength + chunkSize > httpClient->responseBufferSize)
+		if (httpClient->responseLength + chunkSize + 1 > httpClient->responseBufferSize)
 			return OUT_OF_MEMORY_MPNW_RESULT;
 
 		httpClient->chunkSize = chunkSize;
@@ -230,7 +285,6 @@ static void onStreamClientReceive(
 		return;
 	}
 
-	const char* buffer = (const char*)receiveBuffer;
 	size_t lineOffset = 0;
 
 	if (httpClient->isBody && httpClient->chunkSize > 0)
@@ -240,38 +294,79 @@ static void onStreamClientReceive(
 
 		if (chunkSize < byteCount)
 		{
-			memcpy(response + httpClient->responseLength,
-				receiveBuffer, chunkSize);
-			httpClient->responseLength += chunkSize;
+			if (httpClient->isCompressed)
+			{
+				z_stream* zlibStream = httpClient->zlibStream;
+				zlibStream->avail_in = (uInt)chunkSize;
+				zlibStream->next_in = (Bytef*)receiveBuffer;
+				zlibStream->avail_out = (uInt)(
+					httpClient->responseBufferSize - (httpClient->responseLength + 1));
+				zlibStream->next_out = (Bytef*)(response + httpClient->responseLength);
+
+				int result = inflate(zlibStream, Z_NO_FLUSH);
+
+				if (result != Z_OK && result != Z_STREAM_END)
+				{
+					httpClient->result = zlibErrorToMpnwResult(result);
+					httpClient->isRunning = false;
+					return;
+				}
+
+				httpClient->responseLength += zlibStream->total_out;
+			}
+			else
+			{
+				memcpy(response + httpClient->responseLength,
+					receiveBuffer, chunkSize);
+				httpClient->responseLength += chunkSize;
+			}
+
 			httpClient->chunkSize = 0;
 			lineOffset += chunkSize;
 		}
 		else
 		{
-			memcpy(response + httpClient->responseLength,
-				receiveBuffer, byteCount);
-			httpClient->responseLength += byteCount;
-			httpClient->chunkSize -= byteCount;
-
-			if (!httpClient->isChunked && httpClient->chunkSize == 0)
+			if (httpClient->isCompressed)
 			{
-				if (httpClient->responseLength + 1 > httpClient->responseBufferSize)
+				z_stream* zlibStream = httpClient->zlibStream;
+				zlibStream->avail_in = (uInt)byteCount;
+				zlibStream->next_in = (Bytef*)receiveBuffer;
+				zlibStream->avail_out = (uInt)(
+					httpClient->responseBufferSize - (httpClient->responseLength + 1));
+				zlibStream->next_out = (Bytef*)(response + httpClient->responseLength);
+
+				int result = inflate(zlibStream, Z_NO_FLUSH);
+
+				if (result != Z_OK && result != Z_STREAM_END)
 				{
-					httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
+					httpClient->result = zlibErrorToMpnwResult(result);
 					httpClient->isRunning = false;
 					return;
 				}
 
-				httpClient->response[httpClient->responseLength] = '\0';
-				httpClient->result = SUCCESS_MPNW_RESULT;
-				httpClient->isRunning = false;
+				httpClient->responseLength += zlibStream->total_out;
 			}
+			else
+			{
+				memcpy(response + httpClient->responseLength,
+					receiveBuffer, byteCount);
+				httpClient->responseLength += byteCount;
+			}
+
+			httpClient->chunkSize -= byteCount;
+
+			if (!httpClient->isChunked && httpClient->chunkSize == 0)
+				finalizeResponse(httpClient);
+
 			return;
 		}
 	}
 
+	const char* buffer = (const char*)receiveBuffer;
+
 	while (lineOffset < byteCount)
 	{
+		// TODO: ignore \r symbol as described in the spec
 		const char* pointer = memchr(
 			buffer + lineOffset,
 			'\n',
@@ -299,7 +394,7 @@ static void onStreamClientReceive(
 				size = index - (lineOffset + 1);
 			}
 
-			if (chunkSize + size > httpClient->responseBufferSize)
+			if (chunkSize + size + 1 > httpClient->responseBufferSize)
 			{
 				httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
 				httpClient->isRunning = false;
@@ -344,6 +439,9 @@ static void onStreamClientReceive(
 
 		lineOffset = index + 1;
 
+		if (lineOffset == byteCount)
+			return;
+
 		if (httpClient->isBody)
 		{
 			size_t length = byteCount - lineOffset;
@@ -352,32 +450,74 @@ static void onStreamClientReceive(
 
 			if (chunkSize < length)
 			{
-				memcpy(response + httpClient->responseLength,
-					receiveBuffer + lineOffset, chunkSize);
-				httpClient->responseLength += chunkSize;
-				httpClient->chunkSize = 0;
-				lineOffset += chunkSize;
+				if (chunkSize > 0)
+				{
+					if (httpClient->isCompressed)
+					{
+						z_stream* zlibStream = httpClient->zlibStream;
+						zlibStream->avail_in = (uInt)chunkSize;
+						zlibStream->next_in = (Bytef*)(receiveBuffer + lineOffset);
+						zlibStream->avail_out = (uInt)(
+							httpClient->responseBufferSize - (httpClient->responseLength + 1));
+						zlibStream->next_out = (Bytef*)(response + httpClient->responseLength);
+
+						int result = inflate(zlibStream, Z_NO_FLUSH);
+
+						if (result != Z_OK && result != Z_STREAM_END)
+						{
+							httpClient->result = zlibErrorToMpnwResult(result);
+							httpClient->isRunning = false;
+							return;
+						}
+
+						httpClient->responseLength += zlibStream->total_out;
+					}
+					else
+					{
+						memcpy(response + httpClient->responseLength,
+							receiveBuffer + lineOffset, chunkSize);
+						httpClient->responseLength += chunkSize;
+
+					}
+
+					httpClient->chunkSize = 0;
+					lineOffset += chunkSize;
+				}
 			}
 			else
 			{
-				memcpy(response + httpClient->responseLength,
-					receiveBuffer + lineOffset, length);
-				httpClient->responseLength += length;
-				httpClient->chunkSize -= length;
-
-				if (!httpClient->isChunked && httpClient->chunkSize == 0)
+				if (httpClient->isCompressed)
 				{
-					if (httpClient->responseLength + 1 > httpClient->responseBufferSize)
+					z_stream* zlibStream = httpClient->zlibStream;
+					zlibStream->avail_in = (uInt)length;
+					zlibStream->next_in = (Bytef*)(receiveBuffer + lineOffset);
+					zlibStream->avail_out = (uInt)(
+						httpClient->responseBufferSize - (httpClient->responseLength + 1));
+					zlibStream->next_out = (Bytef*)(response + httpClient->responseLength);
+
+					int result = inflate(zlibStream, Z_NO_FLUSH);
+
+					if (result != Z_OK && result != Z_STREAM_END)
 					{
-						httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
+						httpClient->result = zlibErrorToMpnwResult(result);
 						httpClient->isRunning = false;
 						return;
 					}
 
-					httpClient->response[httpClient->responseLength] = '\0';
-					httpClient->result = SUCCESS_MPNW_RESULT;
-					httpClient->isRunning = false;
+					httpClient->responseLength += zlibStream->total_out;
 				}
+				else
+				{
+					memcpy(response + httpClient->responseLength,
+						receiveBuffer + lineOffset, length);
+					httpClient->responseLength += length;
+				}
+
+				httpClient->chunkSize -= length;
+
+				if (!httpClient->isChunked && httpClient->chunkSize == 0)
+					finalizeResponse(httpClient);
+
 				return;
 			}
 		}
@@ -388,7 +528,7 @@ static void onStreamClientReceive(
 		size_t size = byteCount - lineOffset;
 		size_t chunkSize = httpClient->chunkSize;
 
-		if (chunkSize + size > httpClient->responseBufferSize)
+		if (chunkSize + size + 1 > httpClient->responseBufferSize)
 		{
 			httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
 			httpClient->isRunning = false;
@@ -401,11 +541,12 @@ static void onStreamClientReceive(
 	}
 }
 
-MpnwResult creatHttpClient(
+MpnwResult createHttpClient(
 	size_t dataBufferSize,
 	size_t responseBufferSize,
 	size_t headerBufferSize,
 	double timeoutTime,
+	bool useCompression,
 	SslContext sslContext,
 	HttpClient* httpClient)
 {
@@ -425,6 +566,8 @@ MpnwResult creatHttpClient(
 	httpClientInstance->headerCount = 0;
 	httpClientInstance->statusCode = 0;
 	httpClientInstance->isChunked = false;
+	httpClientInstance->isCompressed = false;
+	httpClientInstance->isClose = false;
 	httpClientInstance->isBody = false;
 	httpClientInstance->result = SUCCESS_MPNW_RESULT;
 	httpClientInstance->isRunning = false;
@@ -499,6 +642,37 @@ MpnwResult creatHttpClient(
 	httpClientInstance->headers = headers;
 	httpClientInstance->headerBufferSize = headerBufferSize;
 
+	if (useCompression)
+	{
+		z_stream* zlibStream = calloc(
+			1, sizeof(z_stream));
+
+		if (!zlibStream)
+		{
+			destroyHttpClient(httpClientInstance);
+			return OUT_OF_MEMORY_MPNW_RESULT;
+		}
+
+		httpClientInstance->zlibStream = zlibStream;
+
+		int result = inflateInit2(zlibStream, 31);
+
+		if (result == Z_MEM_ERROR)
+		{
+			destroyHttpClient(httpClientInstance);
+			return OUT_OF_MEMORY_MPNW_RESULT;
+		}
+		else if (result != Z_OK)
+		{
+			destroyHttpClient(httpClientInstance);
+			return UNKNOWN_ERROR_MPNW_RESULT;
+		}
+	}
+	else
+	{
+		httpClientInstance->zlibStream = NULL;
+	}
+
 	*httpClient = httpClientInstance;
 	return SUCCESS_MPNW_RESULT;
 }
@@ -506,6 +680,14 @@ void destroyHttpClient(HttpClient httpClient)
 {
 	if (!httpClient)
 		return;
+
+	z_stream* zlibStream = httpClient->zlibStream;
+
+	if (zlibStream)
+	{
+		inflateEnd(zlibStream);
+		free(zlibStream);
+	}
 
 	HttpPair* headers = httpClient->headers;
 
@@ -544,6 +726,11 @@ StreamClient getHttpClientStream(HttpClient httpClient)
 {
 	assert(httpClient);
 	return httpClient->handle;
+}
+bool isHttpClientUseCompression(HttpClient httpClient)
+{
+	assert(httpClient);
+	return httpClient->zlibStream;
 }
 int getHttpClientStatusCode(HttpClient httpClient)
 {
@@ -585,11 +772,16 @@ inline static void clearHttpClient(HttpClient httpClient)
 		free((char*)header->key);
 	}
 
+	if (httpClient->zlibStream)
+		inflateReset(httpClient->zlibStream);
+
 	httpClient->chunkSize = 0;
 	httpClient->responseLength = 0;
 	httpClient->headerCount = 0;
 	httpClient->statusCode = 0;
 	httpClient->isChunked = false;
+	httpClient->isCompressed = false;
+	httpClient->isClose = false;
 	httpClient->isBody = false;
 	httpClient->result = TIMED_OUT_MPNW_RESULT;
 	httpClient->isRunning = true;
@@ -661,7 +853,11 @@ MpnwResult httpClientSendGET(
 	}
 
 	size_t pathLength = urlLength - pathOffset;
-	size_t requestLength = pathLength + hostLength + 26;
+	size_t requestLength = pathLength + hostLength + 38;
+	requestLength += keepAlive ? 12 : 7;
+
+	if (httpClient->zlibStream)
+		requestLength += 23;
 
 	for (size_t i = 0; i < headerCount; i++)
 	{
@@ -696,7 +892,49 @@ MpnwResult httpClientSendGET(
 	index += hostLength;
 
 	request[index + 0] = '\r'; request[index + 1] = '\n';
-	index += 2;
+	request[index + 2] = 'C'; request[index + 3] = 'o';
+	request[index + 4] = 'n'; request[index + 5] = 'n';
+	request[index + 6] = 'e'; request[index + 7] = 'c';
+	request[index + 8] = 't'; request[index + 9] = 'i';
+	request[index + 10] = 'o'; request[index + 11] = 'n';
+	request[index + 12] = ':'; request[index + 13] = ' ';
+	index += 14;
+
+	if (keepAlive)
+	{
+		request[index + 0] = 'k'; request[index + 1] = 'e';
+		request[index + 2] = 'e'; request[index + 3] = 'p';
+		request[index + 4] = '-'; request[index + 5] = 'a';
+		request[index + 6] = 'l'; request[index + 7] = 'i';
+		request[index + 8] = 'v'; request[index + 9] = 'e';
+		request[index + 10] = '\r'; request[index + 11] = '\n';
+		index += 12;
+	}
+	else
+	{
+		request[index + 0] = 'c'; request[index + 1] = 'l';
+		request[index + 2] = 'o'; request[index + 3] = 's';
+		request[index + 4] = 'e'; request[index + 5] = '\r';
+		request[index + 6] = '\n';
+		index += 7;
+	}
+
+	if (httpClient->zlibStream)
+	{
+		request[index + 0] = 'A'; request[index + 1] = 'c';
+		request[index + 2] = 'c'; request[index + 3] = 'e';
+		request[index + 4] = 'p'; request[index + 5] = 't';
+		request[index + 6] = '-'; request[index + 7] = 'E';
+		request[index + 8] = 'n'; request[index + 9] = 'c';
+		request[index + 10] = 'o'; request[index + 11] = 'd';
+		request[index + 12] = 'i'; request[index + 13] = 'n';
+		request[index + 14] = 'g'; request[index + 15] = ':';
+		request[index + 16] = ' '; request[index + 17] = 'g';
+		request[index + 18] = 'z'; request[index + 19] = 'i';
+		request[index + 20] = 'p'; request[index + 21] = '\r';
+		request[index + 22] = '\n';
+		index += 23;
+	}
 
 	for (size_t i = 0; i < headerCount; i++)
 	{
@@ -924,16 +1162,19 @@ MpnwResult httpClientSendPOST(
 	}
 
 	size_t pathLength = urlLength - pathOffset;
-	size_t requestLength = pathLength + hostLength + 61;
+	size_t requestLength = pathLength + hostLength + 71;
+	requestLength += keepAlive ? 12 : 7;
+
+	if (httpClient->zlibStream)
+		requestLength += 23;
+	if (!isMultipart)
+		requestLength += 35;
 
 	for (size_t i = 0; i < headerCount; i++)
 	{
 		const HttpPair* header = &headers[i];
 		requestLength += header->keyLength + header->valueLength + 4;
 	}
-
-	if (!isMultipart)
-		requestLength += 33;
 
 	size_t minPairCount = pairCount - 1;
 	size_t contentLength = 0;
@@ -953,7 +1194,7 @@ MpnwResult httpClientSendPOST(
 	requestLength += contentLength;
 
 	char clString[16];
-	int clStringLength = sprintf(clString, "%u", (uint32_t)contentLength);
+	int clStringLength = snprintf(clString, 16, "%u", (uint32_t)contentLength);
 
 	if (clStringLength <= 0)
 		return UNKNOWN_ERROR_MPNW_RESULT;
@@ -988,15 +1229,63 @@ MpnwResult httpClientSendPOST(
 
 	request[index + 0] = '\r'; request[index + 1] = '\n';
 	request[index + 2] = 'C'; request[index + 3] = 'o';
-	request[index + 4] = 'n'; request[index + 5] = 't';
-	request[index + 6] = 'e'; request[index + 7] = 'n';
-	request[index + 8] = 't'; request[index + 9] = '-';
-	request[index + 10] = 'T'; request[index + 11] = 'y';
-	request[index + 12] = 'p'; request[index + 13] = 'e';
-	request[index + 14] = ':'; request[index + 15] = ' ';
-	index += 16;
+	request[index + 4] = 'n'; request[index + 5] = 'n';
+	request[index + 6] = 'e'; request[index + 7] = 'c';
+	request[index + 8] = 't'; request[index + 9] = 'i';
+	request[index + 10] = 'o'; request[index + 11] = 'n';
+	request[index + 12] = ':'; request[index + 13] = ' ';
+	index += 14;
 
-	if (!isMultipart)
+	if (keepAlive)
+	{
+		request[index + 0] = 'k'; request[index + 1] = 'e';
+		request[index + 2] = 'e'; request[index + 3] = 'p';
+		request[index + 4] = '-'; request[index + 5] = 'a';
+		request[index + 6] = 'l'; request[index + 7] = 'i';
+		request[index + 8] = 'v'; request[index + 9] = 'e';
+		request[index + 10] = '\r'; request[index + 11] = '\n';
+		index += 12;
+	}
+	else
+	{
+		request[index + 0] = 'c'; request[index + 1] = 'l';
+		request[index + 2] = 'o'; request[index + 3] = 's';
+		request[index + 4] = 'e'; request[index + 5] = '\r';
+		request[index + 6] = '\n';
+		index += 7;
+	}
+
+	if (httpClient->zlibStream)
+	{
+		request[index + 0] = 'A'; request[index + 1] = 'c';
+		request[index + 2] = 'c'; request[index + 3] = 'e';
+		request[index + 4] = 'p'; request[index + 5] = 't';
+		request[index + 6] = '-'; request[index + 7] = 'E';
+		request[index + 8] = 'n'; request[index + 9] = 'c';
+		request[index + 10] = 'o'; request[index + 11] = 'd';
+		request[index + 12] = 'i'; request[index + 13] = 'n';
+		request[index + 14] = 'g'; request[index + 15] = ':';
+		request[index + 16] = ' '; request[index + 17] = 'g';
+		request[index + 18] = 'z'; request[index + 19] = 'i';
+		request[index + 20] = 'p'; request[index + 21] = '\r';
+		request[index + 22] = '\n';
+		index += 23;
+	}
+
+	request[index + 0] = 'C'; request[index + 1] = 'o';
+	request[index + 2] = 'n'; request[index + 3] = 't';
+	request[index + 4] = 'e'; request[index + 5] = 'n';
+	request[index + 6] = 't'; request[index + 7] = '-';
+	request[index + 8] = 'T'; request[index + 9] = 'y';
+	request[index + 10] = 'p'; request[index + 11] = 'e';
+	request[index + 12] = ':'; request[index + 13] = ' ';
+	index += 14;
+
+	if (isMultipart)
+	{
+		abort();
+	}
+	else
 	{
 		request[index + 0] = 'a'; request[index + 1] = 'p';
 		request[index + 2] = 'p'; request[index + 3] = 'l';
@@ -1014,20 +1303,20 @@ MpnwResult httpClientSendPOST(
 		request[index + 26] = 'e'; request[index + 27] = 'n';
 		request[index + 28] = 'c'; request[index + 29] = 'o';
 		request[index + 30] = 'd'; request[index + 31] = 'e';
-		request[index + 32] = 'd';
-		index += 33;
+		request[index + 32] = 'd'; 	request[index + 33] = '\r';
+		request[index + 34] = '\n';
+		index += 35;
 	}
 
-	request[index + 0] = '\r'; request[index + 1] = '\n';
-	request[index + 2] = 'C'; request[index + 3] = 'o';
-	request[index + 4] = 'n'; request[index + 5] = 't';
-	request[index + 6] = 'e'; request[index + 7] = 'n';
-	request[index + 8] = 't'; request[index + 9] = '-';
-	request[index + 10] = 'L'; request[index + 11] = 'e';
-	request[index + 12] = 'n'; request[index + 13] = 'g';
-	request[index + 14] = 't'; request[index + 15] = 'h';
-	request[index + 16] = ':'; request[index + 17] = ' ';
-	index += 18;
+	request[index + 0] = 'C'; request[index + 1] = 'o';
+	request[index + 2] = 'n'; request[index + 3] = 't';
+	request[index + 4] = 'e'; request[index + 5] = 'n';
+	request[index + 6] = 't'; request[index + 7] = '-';
+	request[index + 8] = 'L'; request[index + 9] = 'e';
+	request[index + 10] = 'n'; request[index + 11] = 'g';
+	request[index + 12] = 't'; request[index + 13] = 'h';
+	request[index + 14] = ':'; request[index + 15] = ' ';
+	index += 16;
 
 	memcpy(request + index, clString, clStringLength);
 	index += clStringLength;

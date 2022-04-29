@@ -19,6 +19,8 @@
 // Note: this is simple HTTP client implementation.
 // ================================================
 
+// TODO: add Brotli compression support
+
 /*
  * HTTP client structure.
 */
@@ -47,14 +49,16 @@ typedef struct HttpPair
  * responseBufferSize - HTTP response buffer size.
  * headerBufferSize - HTTP header buffer size.
  * timeoutTime - time out time. (seconds)
+ * useCompression - accept compressed response.
  * sslContext - SSL context instance or NULL.
  * httpClient - pointer to the HTTP client.
  */
-MpnwResult creatHttpClient(
+MpnwResult createHttpClient(
 	size_t dataBufferSize,
 	size_t responseBufferSize,
 	size_t headerBufferSize,
 	double timeoutTime,
+	bool useCompression,
 	SslContext sslContext,
 	HttpClient* httpClient);
 void destroyHttpClient(HttpClient httpClient);
@@ -74,6 +78,11 @@ size_t getHttpHeaderBufferSize(HttpClient httpClient);
  * httpClient - HTTP client instance.
  */
 StreamClient getHttpClientStream(HttpClient httpClient);
+/*
+ * Returns true if HTTP client uses compression.
+ * httpClient - HTTP client instance.
+ */
+bool isHttpClientUseCompression(HttpClient httpClient);
 /*
  * Returns HTTP client status code.
  * httpClient - HTTP client instance.
