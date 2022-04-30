@@ -81,8 +81,7 @@ configure_file(
 	cmake/defines.h.in
 	mpnw/defines.h)
 
-set(MPNW_LINK_LIBRARIES
-	mpmt-static zlibstatic)
+set(MPNW_LINK_LIBRARIES mpmt-static)
 
 if(MPNW_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND MPNW_LINK_LIBRARIES
@@ -103,7 +102,7 @@ add_library(mpnw-static STATIC
 set_target_properties(mpnw-static PROPERTIES
 	OUTPUT_NAME "mpnw")
 target_link_libraries(mpnw-static PUBLIC
-	${MPNW_LINK_LIBRARIES})
+	${MPNW_LINK_LIBRARIES} zlibstatic)
 target_include_directories(mpnw-static PUBLIC
 	${PROJECT_BINARY_DIR}
 	${PROJECT_SOURCE_DIR}/include)
@@ -115,7 +114,7 @@ if (MPNW_BUILD_SHARED)
 		OUTPUT_NAME "mpnw"
 		WINDOWS_EXPORT_ALL_SYMBOLS ON)
 	target_link_libraries(mpnw-shared PUBLIC
-		${MPNW_LINK_LIBRARIES})
+		${MPNW_LINK_LIBRARIES} zlib)
 	target_include_directories(mpnw-shared PUBLIC
 		${PROJECT_BINARY_DIR}
 		${PROJECT_SOURCE_DIR}/include)
