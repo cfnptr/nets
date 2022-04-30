@@ -116,7 +116,6 @@ size_t getHttpClientHeaderCount(HttpClient httpClient);
  * httpClient - HTTP client instance.
  * url - URL string.
  * urlLength - URL string length
- * addressFamily - address family type.
  * headers - HTTP headers or NULL.
  * headerCount - HTTP header count or 0.
  * keepAlive - keep connection alice. (speedup)
@@ -125,7 +124,6 @@ MpnwResult httpClientSendGET(
 	HttpClient httpClient,
 	const char* url,
 	size_t urlLength,
-	AddressFamily addressFamily,
 	const HttpPair* headers,
 	size_t headerCount,
 	bool keepAlive);
@@ -138,7 +136,6 @@ MpnwResult httpClientSendGET(
  * urlLength - URL string length
  * pairs - key/value pairs.
  * pairCount -key/value pair count.
- * addressFamily - address family type.
  * headers - HTTP headers or NULL.
  * headerCount - HTTP header count or 0.
  * isMultipart - use for binary values.
@@ -150,7 +147,6 @@ MpnwResult httpClientSendPOST(
 	size_t urlLength,
 	const HttpPair* pairs,
 	size_t pairCount,
-	AddressFamily addressFamily,
 	const HttpPair* headers,
 	size_t headerCount,
 	bool isMultipart,

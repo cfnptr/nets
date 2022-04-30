@@ -749,7 +749,6 @@ MpnwResult httpClientSendGET(
 	HttpClient httpClient,
 	const char* url,
 	size_t urlLength,
-	AddressFamily addressFamily,
 	const HttpPair* headers,
 	size_t headerCount,
 	bool keepAlive)
@@ -757,7 +756,6 @@ MpnwResult httpClientSendGET(
 	assert(httpClient);
 	assert(url);
 	assert(urlLength > 0);
-	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 
 	assert((headers && headerCount > 0) ||
 		(!headers && headerCount == 0));
@@ -1071,7 +1069,6 @@ MpnwResult httpClientSendPOST(
 	size_t urlLength,
 	const HttpPair* pairs,
 	size_t pairCount,
-	AddressFamily addressFamily,
 	const HttpPair* headers,
 	size_t headerCount,
 	bool isMultipart,
@@ -1080,7 +1077,6 @@ MpnwResult httpClientSendPOST(
 	assert(httpClient);
 	assert(url);
 	assert(urlLength > 0);
-	assert(addressFamily < ADDRESS_FAMILY_COUNT);
 	assert(pairs);
 	assert(pairCount > 0);
 	assert(!isMultipart); // TODO:
