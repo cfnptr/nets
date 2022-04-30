@@ -100,6 +100,9 @@ inline static MpnwResult processResponseLine(
 	assert(httpClient);
 	assert(line);
 
+	if (length > 0 && line[length - 1] == '\r')
+		length--;
+
 	if (length == 0)
 	{
 		if (!httpClient->isBody)
@@ -366,7 +369,6 @@ static void onStreamClientReceive(
 
 	while (lineOffset < byteCount)
 	{
-		// TODO: ignore \r symbol as described in the spec
 		const char* pointer = memchr(
 			buffer + lineOffset,
 			'\n',
@@ -382,19 +384,9 @@ static void onStreamClientReceive(
 		if (httpClient->chunkSize > 0)
 		{
 			size_t chunkSize = httpClient->chunkSize;
-			size_t size;
+			size_t size = index - lineOffset;
 
-			if (lineOffset == index)
-			{
-				size = 0;
-				chunkSize--;
-			}
-			else
-			{
-				size = index - (lineOffset + 1);
-			}
-
-			if (chunkSize + size + 1 > httpClient->responseBufferSize)
+			if (chunkSize + size > httpClient->responseBufferSize)
 			{
 				httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
 				httpClient->isRunning = false;
@@ -415,19 +407,10 @@ static void onStreamClientReceive(
 		}
 		else
 		{
-			if (lineOffset + 1 > index)
-			{
-				httpClient->result = BAD_DATA_MPNW_RESULT;
-				httpClient->isRunning = false;
-				return;
-			}
-
-			size_t length = index - (lineOffset + 1);
-
 			mpnwResult = processResponseLine(
 				httpClient,
 				buffer + lineOffset,
-				length);
+				index - lineOffset);
 		}
 
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -528,7 +511,7 @@ static void onStreamClientReceive(
 		size_t size = byteCount - lineOffset;
 		size_t chunkSize = httpClient->chunkSize;
 
-		if (chunkSize + size + 1 > httpClient->responseBufferSize)
+		if (chunkSize + size > httpClient->responseBufferSize)
 		{
 			httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
 			httpClient->isRunning = false;
