@@ -83,6 +83,11 @@ configure_file(
 
 set(MPNW_LINK_LIBRARIES mpmt-static)
 
+set(MPNW_INCLUDE_DIRECTORIES
+	${PROJECT_BINARY_DIR}
+	${PROJECT_SOURCE_DIR}/include
+	${PROJECT_SOURCE_DIR}/libraries/zlib)
+
 if(MPNW_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND MPNW_LINK_LIBRARIES
 		OpenSSL::SSL
@@ -104,8 +109,7 @@ set_target_properties(mpnw-static PROPERTIES
 target_link_libraries(mpnw-static PUBLIC
 	${MPNW_LINK_LIBRARIES} zlibstatic)
 target_include_directories(mpnw-static PUBLIC
-	${PROJECT_BINARY_DIR}
-	${PROJECT_SOURCE_DIR}/include)
+	${MPNW_INCLUDE_DIRECTORIES})
 
 if (MPNW_BUILD_SHARED)
 	add_library(mpnw-shared SHARED
@@ -116,8 +120,7 @@ if (MPNW_BUILD_SHARED)
 	target_link_libraries(mpnw-shared PUBLIC
 		${MPNW_LINK_LIBRARIES} zlib)
 	target_include_directories(mpnw-shared PUBLIC
-		${PROJECT_BINARY_DIR}
-		${PROJECT_SOURCE_DIR}/include)
+		${MPNW_INCLUDE_DIRECTORIES})
 endif ()
 
 if (MPNW_BUILD_EXAMPLES)
