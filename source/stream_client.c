@@ -148,7 +148,7 @@ bool isStreamClientConnected(StreamClient streamClient)
 	assert(streamClient);
 	return streamClient->socket;
 }
-MpnwResult connectStreamClient(
+MpnwResult connectAddressStreamClient(
 	StreamClient streamClient,
 	SocketAddress remoteAddress,
 	const char* hostname)
@@ -184,10 +184,7 @@ MpnwResult connectStreamClient(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 		return mpnwResult;
 
-	streamClient->socket = socket;
-
-	double timeout = getCurrentClock() +
-		streamClient->timeoutTime;
+	double timeout = getCurrentClock() + streamClient->timeoutTime;
 
 	while (getCurrentClock() < timeout)
 	{
@@ -198,16 +195,17 @@ MpnwResult connectStreamClient(
 			sleepThread(0.001);
 			continue;
 		}
-
 		if (mpnwResult != SUCCESS_MPNW_RESULT &&
 			mpnwResult != ALREADY_CONNECTED_MPNW_RESULT)
 		{
+			destroySocket(socket);
 			return mpnwResult;
 		}
 
 		goto CONNECT_SSL;
 	}
 
+	destroySocket(socket);
 	return TIMED_OUT_MPNW_RESULT;
 
 CONNECT_SSL:
@@ -215,6 +213,7 @@ CONNECT_SSL:
 	if (!getSocketSslContext(socket))
 	{
 		assert(hostname == NULL);
+		streamClient->socket = socket;
 		streamClient->timeout = timeout;
 		return SUCCESS_MPNW_RESULT;
 	}
@@ -228,15 +227,193 @@ CONNECT_SSL:
 			sleepThread(0.001);
 			continue;
 		}
-
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		{
+			destroySocket(socket);
 			return mpnwResult;
+		}
 
+		streamClient->socket = socket;
 		streamClient->timeout = timeout;
 		return SUCCESS_MPNW_RESULT;
 	}
 
+	destroySocket(socket);
 	return TIMED_OUT_MPNW_RESULT;
+}
+inline static MpnwResult connectByHostname(
+	StreamClient streamClient,
+	const char* hostname,
+	const char* service,
+	bool setSNI,
+	AddressFamily addressFamily)
+{
+	assert(streamClient);
+	assert(hostname);
+	assert(service);
+	assert(!streamClient->socket);
+	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+
+	SocketAddress* resolvedAddresses;
+	size_t resolvedAddressCount;
+
+	MpnwResult mpnwResult = resolveSocketAddresses(
+		hostname,
+		service,
+		IP_V4_ADDRESS_FAMILY,
+		STREAM_SOCKET_TYPE,
+		&resolvedAddresses,
+		&resolvedAddressCount);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
+
+	SocketAddress socketAddress;
+
+	mpnwResult = createAnySocketAddress(
+		addressFamily, &socketAddress);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	{
+		destroyResolvedSocketAddresses(
+			resolvedAddresses,
+			resolvedAddressCount);
+		return mpnwResult;
+	}
+
+	double timeout = getCurrentClock() + streamClient->timeoutTime;
+
+	for (size_t i = 0; i < resolvedAddressCount; i++)
+	{
+		Socket socket;
+
+		mpnwResult = createSocket(
+			STREAM_SOCKET_TYPE,
+			addressFamily,
+			socketAddress,
+			false,
+			false,
+			streamClient->sslContext,
+			&socket);
+
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		{
+			destroySocketAddress(socketAddress);
+			destroyResolvedSocketAddresses(
+				resolvedAddresses,
+				resolvedAddressCount);
+			return mpnwResult;
+		}
+
+		SocketAddress remoteAddress = resolvedAddresses[i];
+
+		while (getCurrentClock() < timeout)
+		{
+			mpnwResult = connectSocket(socket, remoteAddress);
+
+			if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+			{
+				sleepThread(0.001);
+				continue;
+			}
+			if (mpnwResult != SUCCESS_MPNW_RESULT &&
+				mpnwResult != ALREADY_CONNECTED_MPNW_RESULT)
+			{
+				destroySocket(socket);
+				goto CONTINUE;
+			}
+
+			goto CONNECT_SSL;
+		}
+
+		destroySocket(socket);
+		destroySocketAddress(socketAddress);
+		destroyResolvedSocketAddresses(
+			resolvedAddresses,
+			resolvedAddressCount);
+		return TIMED_OUT_MPNW_RESULT;
+
+CONNECT_SSL:
+
+		if (!getSocketSslContext(socket))
+		{
+			assert(setSNI == false);
+			destroySocketAddress(socketAddress);
+			destroyResolvedSocketAddresses(
+				resolvedAddresses,
+				resolvedAddressCount);
+			streamClient->socket = socket;
+			streamClient->timeout = timeout;
+			return SUCCESS_MPNW_RESULT;
+		}
+
+		while (getCurrentClock() < timeout)
+		{
+			mpnwResult = connectSslSocket(socket,
+				setSNI ? hostname : NULL);
+
+			if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+			{
+				sleepThread(0.001);
+				continue;
+			}
+			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			{
+				destroySocket(socket);
+				goto CONTINUE;
+			}
+
+			destroySocketAddress(socketAddress);
+			destroyResolvedSocketAddresses(
+				resolvedAddresses,
+				resolvedAddressCount);
+			streamClient->socket = socket;
+			streamClient->timeout = timeout;
+			return SUCCESS_MPNW_RESULT;
+		}
+
+		destroySocket(socket);
+		destroySocketAddress(socketAddress);
+		destroyResolvedSocketAddresses(
+			resolvedAddresses,
+			resolvedAddressCount);
+		return TIMED_OUT_MPNW_RESULT;
+CONTINUE:
+		continue;
+	}
+
+	destroySocketAddress(socketAddress);
+	return mpnwResult;
+}
+MpnwResult connectHostnameStreamClient(
+	StreamClient streamClient,
+	const char* hostname,
+	const char* service,
+	bool setSNI)
+{
+	assert(streamClient);
+	assert(hostname);
+	assert(service);
+	assert(!streamClient->socket);
+
+	MpnwResult mpnwResult = connectByHostname(
+		streamClient,
+		hostname,
+		service,
+		setSNI,
+		IP_V4_ADDRESS_FAMILY);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	{
+		return connectByHostname(
+			streamClient,
+			hostname,
+			service,
+			setSNI,
+			IP_V6_ADDRESS_FAMILY);
+	}
+
+	return SUCCESS_MPNW_RESULT;
 }
 void disconnectStreamClient(StreamClient streamClient)
 {

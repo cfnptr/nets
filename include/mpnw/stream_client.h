@@ -124,17 +124,31 @@ void setStreamClientSslContext(
  */
 bool isStreamClientConnected(StreamClient streamClient);
 /*
- * Connect stream client to the server.
+ * Connect stream client to the server by address.
  * Returns operation MPNW result.
  *
  * streamClient - stream client instance.
  * remoteAddress - remote socket address.
  * hostname - SNI hostname or NULL.
  */
-MpnwResult connectStreamClient(
+MpnwResult connectAddressStreamClient(
 	StreamClient streamClient,
 	SocketAddress remoteAddress,
 	const char* hostname);
+/*
+ * Connect stream client to the server by hostname.
+ * Returns operation MPNW result.
+ *
+ * streamClient - stream client instance.
+ * hostname - server hostname string.
+ * service - server service string.
+ * setSNI - set SNI hostname.
+ */
+MpnwResult connectHostnameStreamClient(
+	StreamClient streamClient,
+	const char* hostname,
+	const char* service,
+	bool setSNI);
 /*
  * Disconnect stream client from the server.
  * streamClient - stream client instance.

@@ -1094,9 +1094,7 @@ MpnwResult createSocketAddress(
 	memset(&hints, 0,
 		sizeof(struct addrinfo));
 
-	hints.ai_flags =
-		AI_NUMERICHOST |
-		AI_NUMERICSERV;
+	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
 
 	struct addrinfo* addressInfos;
 
@@ -1147,8 +1145,7 @@ MpnwResult createAnySocketAddress(
 		abort();
 	}
 }
-SocketAddress createSocketAddressCopy(
-	SocketAddress socketAddress)
+SocketAddress createSocketAddressCopy(SocketAddress socketAddress)
 {
 	assert(socketAddress);
 
@@ -1164,19 +1161,29 @@ SocketAddress createSocketAddressCopy(
 
 	return socketAddressInstance;
 }
+void destroySocketAddress(SocketAddress socketAddress)
+{
+	if (!socketAddress)
+		return;
 
-MpnwResult resolveSocketAddress(
+	assert(networkInitialized);
+	free(socketAddress);
+}
+
+MpnwResult resolveSocketAddresses(
 	const char* host,
 	const char* service,
 	AddressFamily family,
 	SocketType type,
-	SocketAddress socketAddress)
+	SocketAddress** socketAddresses,
+	size_t* addressCount)
 {
 	assert(host);
 	assert(service);
 	assert(family < ADDRESS_FAMILY_COUNT);
 	assert(type < SOCKET_TYPE_COUNT);
-	assert(socketAddress);
+	assert(socketAddresses);
+	assert(addressCount);
 
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
@@ -1186,22 +1193,14 @@ MpnwResult resolveSocketAddress(
 	memset(&hints, 0,
 		sizeof(struct addrinfo));
 
-	hints.ai_flags =
-		AI_ADDRCONFIG |
-		AI_V4MAPPED;
+	hints.ai_flags = AI_ADDRCONFIG;
 
 	if (family == IP_V4_ADDRESS_FAMILY)
-	{
 		hints.ai_family = AF_INET;
-	}
 	else if (family == IP_V6_ADDRESS_FAMILY)
-	{
 		hints.ai_family = AF_INET6;
-	}
 	else
-	{
 		abort();
-	}
 
 	if (type == STREAM_SOCKET_TYPE)
 	{
@@ -1229,20 +1228,85 @@ MpnwResult resolveSocketAddress(
 	if (result != 0)
 		return FAILED_TO_RESOLVE_ADDRESS_MPNW_RESULT;
 
+	SocketAddress* addresses = malloc(
+		sizeof(SocketAddress));
+
+	if (!addresses)
+	{
+		freeaddrinfo(addressInfos);
+		return OUT_OF_MEMORY_MPNW_RESULT;
+	}
+
+	SocketAddress socketAddress = malloc(
+		sizeof(SocketAddress_T));
+
+	if (!socketAddresses)
+	{
+		destroyResolvedSocketAddresses(
+			addresses, 0);
+		freeaddrinfo(addressInfos);
+		return OUT_OF_MEMORY_MPNW_RESULT;
+	}
+
+	addresses[0] = socketAddress;
+
 	memcpy(&socketAddress->handle,
 		addressInfos->ai_addr,
 		addressInfos->ai_addrlen);
 
+	size_t count = 1;
+	struct addrinfo* nextAddressInfos = addressInfos->ai_next;
+
+	while (nextAddressInfos)
+	{
+		SocketAddress* newAddresses = realloc(addresses,
+			(count + 1) * sizeof(SocketAddress));
+
+		if (!newAddresses)
+		{
+			destroyResolvedSocketAddresses(
+				addresses, count);
+			freeaddrinfo(addressInfos);
+			return OUT_OF_MEMORY_MPNW_RESULT;
+		}
+
+		addresses = newAddresses;
+
+		socketAddress = malloc(sizeof(SocketAddress_T));
+
+		if (!socketAddress)
+		{
+			destroyResolvedSocketAddresses(
+				addresses, count);
+			freeaddrinfo(addressInfos);
+			return OUT_OF_MEMORY_MPNW_RESULT;
+		}
+
+		addresses[count++] = socketAddress;
+
+		memcpy(&socketAddress->handle,
+			nextAddressInfos->ai_addr,
+			nextAddressInfos->ai_addrlen);
+		nextAddressInfos = nextAddressInfos->ai_next;
+	}
+
 	freeaddrinfo(addressInfos);
+
+	*socketAddresses = addresses;
+	*addressCount = count;
 	return SUCCESS_MPNW_RESULT;
 }
-void destroySocketAddress(SocketAddress socketAddress)
+void destroyResolvedSocketAddresses(
+	SocketAddress* socketAddresses,
+	size_t addressCount)
 {
-	if (!socketAddress)
+	if (!socketAddresses)
 		return;
 
-	assert(networkInitialized);
-	free(socketAddress);
+	for (size_t i = 0; i < addressCount; i++)
+		destroySocketAddress(socketAddresses[i]);
+
+	free(socketAddresses);
 }
 
 void getUrlParts(

@@ -54,5 +54,6 @@ HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cf
 
 * [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache-2.0 License)
+* [zlib](https://www.zlib.net/) (zlib License)
 
 ### Special thanks to Gigaflops.

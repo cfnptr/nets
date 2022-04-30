@@ -23,8 +23,8 @@ struct HttpClient_T
 {
 	size_t responseBufferSize;
 	size_t headerBufferSize;
-	SocketAddress tmpAddress;
-	SocketAddress lastAddress;
+	char* lastHostname;
+	size_t lastHostnameLength;
 	StreamClient handle;
 	char* response;
 	HttpPair* headers;
@@ -226,7 +226,8 @@ inline static MpnwResult processResponseLine(
 		if (!key)
 			return OUT_OF_MEMORY_MPNW_RESULT;
 
-		memcpy(key, line, keyLength);
+		memcpy(key, line,
+			keyLength * sizeof(char));
 		key[keyLength] = '\0';
 
 		char* value = malloc((valueLength + 1) * sizeof(char));
@@ -237,7 +238,8 @@ inline static MpnwResult processResponseLine(
 			return OUT_OF_MEMORY_MPNW_RESULT;
 		}
 
-		memcpy(value, line + (length - valueLength), valueLength);
+		memcpy(value, line + (length - valueLength),
+			valueLength * sizeof(char));
 		value[valueLength] = '\0';
 
 		HttpPair header = {
@@ -320,7 +322,7 @@ static void onStreamClientReceive(
 			else
 			{
 				memcpy(response + httpClient->responseLength,
-					receiveBuffer, chunkSize);
+					receiveBuffer, chunkSize * sizeof(char));
 				httpClient->responseLength += chunkSize;
 			}
 
@@ -352,7 +354,7 @@ static void onStreamClientReceive(
 			else
 			{
 				memcpy(response + httpClient->responseLength,
-					receiveBuffer, byteCount);
+					receiveBuffer, byteCount * sizeof(char));
 				httpClient->responseLength += byteCount;
 			}
 
@@ -396,7 +398,7 @@ static void onStreamClientReceive(
 			char* response = httpClient->response;
 
 			memcpy(response + chunkSize,
-				receiveBuffer, size);
+				receiveBuffer, size * sizeof(char));
 
 			mpnwResult = processResponseLine(
 				httpClient,
@@ -458,7 +460,7 @@ static void onStreamClientReceive(
 					else
 					{
 						memcpy(response + httpClient->responseLength,
-							receiveBuffer + lineOffset, chunkSize);
+							receiveBuffer + lineOffset, chunkSize * sizeof(char));
 						httpClient->responseLength += chunkSize;
 
 					}
@@ -492,7 +494,7 @@ static void onStreamClientReceive(
 				else
 				{
 					memcpy(response + httpClient->responseLength,
-						receiveBuffer + lineOffset, length);
+						receiveBuffer + lineOffset, length * sizeof(char));
 					httpClient->responseLength += length;
 				}
 
@@ -519,7 +521,7 @@ static void onStreamClientReceive(
 		}
 
 		memcpy(httpClient->response + chunkSize,
-			receiveBuffer + lineOffset, size);
+			receiveBuffer + lineOffset, size * sizeof(char));
 		httpClient->chunkSize += size;
 	}
 }
@@ -546,6 +548,8 @@ MpnwResult createHttpClient(
 
 	httpClientInstance->chunkSize = 0;
 	httpClientInstance->responseLength = 0;
+	httpClientInstance->lastHostname = NULL;
+	httpClientInstance->lastHostnameLength = 0;
 	httpClientInstance->headerCount = 0;
 	httpClientInstance->statusCode = 0;
 	httpClientInstance->isChunked = false;
@@ -555,37 +559,9 @@ MpnwResult createHttpClient(
 	httpClientInstance->result = SUCCESS_MPNW_RESULT;
 	httpClientInstance->isRunning = false;
 
-	SocketAddress tmpAddress;
-
-	MpnwResult mpnwResult = createAnySocketAddress(
-		IP_V6_ADDRESS_FAMILY,
-		&tmpAddress);
-
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-	{
-		destroyHttpClient(httpClientInstance);
-		return mpnwResult;
-	}
-
-	httpClientInstance->tmpAddress = tmpAddress;
-
-	SocketAddress lastAddress;
-
-	mpnwResult = createAnySocketAddress(
-		IP_V6_ADDRESS_FAMILY,
-		&lastAddress);
-
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-	{
-		destroyHttpClient(httpClientInstance);
-		return mpnwResult;
-	}
-
-	httpClientInstance->lastAddress = lastAddress;
-
 	StreamClient handle;
 
-	mpnwResult = createStreamClient(
+	MpnwResult mpnwResult = createStreamClient(
 		dataBufferSize,
 		timeoutTime,
 		onStreamClientReceive,
@@ -664,6 +640,8 @@ void destroyHttpClient(HttpClient httpClient)
 	if (!httpClient)
 		return;
 
+	destroyStreamClient(httpClient->handle);
+
 	z_stream* zlibStream = httpClient->zlibStream;
 
 	if (zlibStream)
@@ -689,9 +667,7 @@ void destroyHttpClient(HttpClient httpClient)
 	}
 
 	free(httpClient->response);
-	destroyStreamClient(httpClient->handle);
-	destroySocketAddress(httpClient->lastAddress);
-	destroySocketAddress(httpClient->tmpAddress);
+	free(httpClient->lastHostname);
 	free(httpClient);
 }
 
@@ -815,7 +791,8 @@ MpnwResult httpClientSendGET(
 
 	char host[256];
 
-	memcpy(host, url + hostOffset, hostLength);
+	memcpy(host, url + hostOffset,
+		hostLength * sizeof(char));
 	host[hostLength] = '\0';
 
 	char serviceBuffer[32];
@@ -826,7 +803,8 @@ MpnwResult httpClientSendGET(
 		if (serviceLength > 31)
 			return OUT_OF_MEMORY_MPNW_RESULT;
 
-		memcpy(serviceBuffer, url + serviceOffset, serviceLength);
+		memcpy(serviceBuffer, url + serviceOffset,
+			serviceLength * sizeof(char));
 		serviceBuffer[serviceLength] = '\0';
 		service = serviceBuffer;
 	}
@@ -857,7 +835,8 @@ MpnwResult httpClientSendGET(
 	request[3] = ' '; request[4] = '/';
 	size_t index = 5;
 
-	memcpy(request + index, url + pathOffset, pathLength);
+	memcpy(request + index, url + pathOffset,
+		pathLength * sizeof(char));
 	index += pathLength;
 
 	request[index + 0] = ' '; request[index + 1] = 'H';
@@ -871,7 +850,8 @@ MpnwResult httpClientSendGET(
 	request[index + 16] = ' ';
 	index += 17;
 
-	memcpy(request + index, host, hostLength);
+	memcpy(request + index, host,
+		hostLength * sizeof(char));
 	index += hostLength;
 
 	request[index + 0] = '\r'; request[index + 1] = '\n';
@@ -922,13 +902,15 @@ MpnwResult httpClientSendGET(
 	for (size_t i = 0; i < headerCount; i++)
 	{
 		HttpPair header = headers[i];
-		memcpy(request + index, header.key, header.keyLength);
+		memcpy(request + index, header.key,
+			header.keyLength * sizeof(char));
 		index += header.keyLength;
 
 		request[index + 0] = ':'; request[index + 1] = ' ';
 		index += 2;
 
-		memcpy(request + index, header.value, header.valueLength);
+		memcpy(request + index, header.value,
+			header.valueLength * sizeof(char));
 		index += header.valueLength;
 
 		request[index + 0] = '\r'; request[index + 1] = '\n';
@@ -941,31 +923,20 @@ MpnwResult httpClientSendGET(
 	assert(index == requestLength);
 	clearHttpClient(httpClient);
 
-	SocketAddress tmpAddress = httpClient->tmpAddress;
-	SocketAddress lastAddress = httpClient->lastAddress;
-	SslContext sslContext = getStreamClientSslContext(streamClient);
-
-	MpnwResult mpnwResult = resolveSocketAddress(host,
-		service ? service : (sslContext ? "https" : "http"),
-		addressFamily,
-		STREAM_SOCKET_TYPE,
-		tmpAddress);
-
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
-
 	bool isAlreadyConnected = false;
 
 	if (isStreamClientConnected(streamClient))
 	{
-		if (compareSocketAddress(tmpAddress, lastAddress) != 0)
+		if (httpClient->lastHostnameLength != hostLength ||
+			memcmp(httpClient->lastHostname, host, hostLength) != 0)
 		{
 			disconnectStreamClient(streamClient);
 
-			mpnwResult = connectStreamClient(
+			MpnwResult mpnwResult = connectHostnameStreamClient(
 				streamClient,
-				tmpAddress,
-				host);
+				host,
+				service ? service : "https",
+				true);
 
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
 				return mpnwResult;
@@ -973,6 +944,24 @@ MpnwResult httpClientSendGET(
 			setSocketNoDelay(
 				getStreamClientSocket(streamClient),
 				true);
+
+			if (keepAlive)
+			{
+				char* hostname = malloc(
+					(hostLength + 1) * sizeof(char));
+
+				if (!hostname)
+				{
+					disconnectStreamClient(streamClient);
+					return OUT_OF_MEMORY_MPNW_RESULT;
+				}
+
+				free(httpClient->lastHostname);
+				httpClient->lastHostname = hostname;
+				httpClient->lastHostnameLength = hostLength;
+				memcpy(hostname, host, hostLength * sizeof(char));
+				hostname[hostLength] = '\0';
+			}
 		}
 		else
 		{
@@ -981,10 +970,11 @@ MpnwResult httpClientSendGET(
 	}
 	else
 	{
-		mpnwResult = connectStreamClient(
+		MpnwResult mpnwResult = connectHostnameStreamClient(
 			streamClient,
-			tmpAddress,
-			host);
+			host,
+			service ? service : "https",
+			true);
 
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
 			return mpnwResult;
@@ -992,9 +982,27 @@ MpnwResult httpClientSendGET(
 		setSocketNoDelay(
 			getStreamClientSocket(streamClient),
 			true);
+
+		if (keepAlive)
+		{
+			char* hostname = malloc(
+				(hostLength + 1) * sizeof(char));
+
+			if (!hostname)
+			{
+				disconnectStreamClient(streamClient);
+				return OUT_OF_MEMORY_MPNW_RESULT;
+			}
+
+			free(httpClient->lastHostname);
+			httpClient->lastHostname = hostname;
+			httpClient->lastHostnameLength = hostLength;
+			memcpy(hostname, host, hostLength * sizeof(char));
+			hostname[hostLength] = '\0';
+		}
 	}
 
-	mpnwResult = streamClientSend(
+	MpnwResult mpnwResult = streamClientSend(
 		streamClient,
 		request,
 		requestLength);
@@ -1005,10 +1013,11 @@ MpnwResult httpClientSendGET(
 		{
 			disconnectStreamClient(streamClient);
 
-			mpnwResult = connectStreamClient(
+			mpnwResult = connectHostnameStreamClient(
 				streamClient,
-				tmpAddress,
-				host);
+				host,
+				service ? service : "https",
+				true);
 
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
 				return mpnwResult;
@@ -1051,16 +1060,8 @@ MpnwResult httpClientSendGET(
 		sleepThread(0.001);
 	}
 
-	if (keepAlive)
-	{
-		copySocketAddress(
-			tmpAddress,
-			lastAddress);
-	}
-	else
-	{
+	if (!keepAlive)
 		disconnectStreamClient(streamClient);
-	}
 
 	return httpClient->result;
 }
@@ -1124,7 +1125,8 @@ MpnwResult httpClientSendPOST(
 
 	char host[256];
 
-	memcpy(host, url + hostOffset, hostLength);
+	memcpy(host, url + hostOffset,
+		hostLength * sizeof(char));
 	host[hostLength] = '\0';
 
 	char serviceBuffer[32];
@@ -1135,7 +1137,8 @@ MpnwResult httpClientSendPOST(
 		if (serviceLength > 31)
 			return OUT_OF_MEMORY_MPNW_RESULT;
 
-		memcpy(serviceBuffer, url + serviceOffset, serviceLength);
+		memcpy(serviceBuffer, url + serviceOffset,
+			serviceLength * sizeof(char));
 		serviceBuffer[serviceLength] = '\0';
 		service = serviceBuffer;
 	}
@@ -1193,7 +1196,8 @@ MpnwResult httpClientSendPOST(
 	request[3] = 'T'; request[4] = ' '; request[5] = '/';
 	size_t index = 6;
 
-	memcpy(request + index, url + pathOffset, pathLength);
+	memcpy(request + index, url + pathOffset,
+		pathLength * sizeof(char));
 	index += pathLength;
 
 	request[index + 0] = ' '; request[index + 1] = 'H';
@@ -1207,7 +1211,8 @@ MpnwResult httpClientSendPOST(
 	request[index + 16] = ' ';
 	index += 17;
 
-	memcpy(request + index, host, hostLength);
+	memcpy(request + index, host,
+		hostLength * sizeof(char));
 	index += hostLength;
 
 	request[index + 0] = '\r'; request[index + 1] = '\n';
@@ -1301,7 +1306,8 @@ MpnwResult httpClientSendPOST(
 	request[index + 14] = ':'; request[index + 15] = ' ';
 	index += 16;
 
-	memcpy(request + index, clString, clStringLength);
+	memcpy(request + index, clString,
+		clStringLength * sizeof(char));
 	index += clStringLength;
 
 	request[index + 0] = '\r'; request[index + 1] = '\n';
@@ -1310,13 +1316,15 @@ MpnwResult httpClientSendPOST(
 	for (size_t i = 0; i < headerCount; i++)
 	{
 		HttpPair header = headers[i];
-		memcpy(request + index, header.key, header.keyLength);
+		memcpy(request + index, header.key,
+			header.keyLength * sizeof(char));
 		index += header.keyLength;
 
 		request[index + 0] = ':'; request[index + 1] = ' ';
 		index += 2;
 
-		memcpy(request + index, header.value, header.valueLength);
+		memcpy(request + index, header.value,
+			header.valueLength * sizeof(char));
 		index += header.valueLength;
 
 		request[index + 0] = '\r'; request[index + 1] = '\n';
@@ -1329,12 +1337,14 @@ MpnwResult httpClientSendPOST(
 	for (size_t i = 0; i < pairCount; i++)
 	{
 		HttpPair pair = pairs[i];
-		memcpy(request + index, pair.key, pair.keyLength);
+		memcpy(request + index, pair.key,
+			pair.keyLength * sizeof(char));
 		index += pair.keyLength;
 
 		request[index++] = '=';
 
-		memcpy(request + index, pair.value, pair.valueLength);
+		memcpy(request + index, pair.value,
+			pair.valueLength * sizeof(char));
 		index += pair.valueLength;
 
 		if (i < minPairCount)
@@ -1344,31 +1354,20 @@ MpnwResult httpClientSendPOST(
 	assert(index == requestLength);
 	clearHttpClient(httpClient);
 
-	SocketAddress tmpAddress = httpClient->tmpAddress;
-	SocketAddress lastAddress = httpClient->lastAddress;
-	SslContext sslContext = getStreamClientSslContext(streamClient);
-
-	MpnwResult mpnwResult = resolveSocketAddress(host,
-		service ? service : (sslContext ? "https" : "http"),
-		addressFamily,
-		STREAM_SOCKET_TYPE,
-		tmpAddress);
-
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
-
 	bool isAlreadyConnected = false;
 
 	if (isStreamClientConnected(streamClient))
 	{
-		if (compareSocketAddress(tmpAddress, lastAddress) != 0)
+		if (httpClient->lastHostnameLength != hostLength ||
+			memcmp(httpClient->lastHostname, host, hostLength) != 0)
 		{
 			disconnectStreamClient(streamClient);
 
-			mpnwResult = connectStreamClient(
+			MpnwResult mpnwResult = connectHostnameStreamClient(
 				streamClient,
-				tmpAddress,
-				host);
+				host,
+				service ? service : "https",
+				true);
 
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
 				return mpnwResult;
@@ -1376,6 +1375,24 @@ MpnwResult httpClientSendPOST(
 			setSocketNoDelay(
 				getStreamClientSocket(streamClient),
 				true);
+
+			if (keepAlive)
+			{
+				char* hostname = malloc(
+					(hostLength + 1) * sizeof(char));
+
+				if (!hostname)
+				{
+					disconnectStreamClient(streamClient);
+					return OUT_OF_MEMORY_MPNW_RESULT;
+				}
+
+				free(httpClient->lastHostname);
+				httpClient->lastHostname = hostname;
+				httpClient->lastHostnameLength = hostLength;
+				memcpy(hostname, host, hostLength * sizeof(char));
+				hostname[hostLength] = '\0';
+			}
 		}
 		else
 		{
@@ -1384,10 +1401,11 @@ MpnwResult httpClientSendPOST(
 	}
 	else
 	{
-		mpnwResult = connectStreamClient(
+		MpnwResult mpnwResult = connectHostnameStreamClient(
 			streamClient,
-			tmpAddress,
-			host);
+			host,
+			service ? service : "https",
+			true);
 
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
 			return mpnwResult;
@@ -1395,9 +1413,27 @@ MpnwResult httpClientSendPOST(
 		setSocketNoDelay(
 			getStreamClientSocket(streamClient),
 			true);
+
+		if (keepAlive)
+		{
+			char* hostname = malloc(
+				(hostLength + 1) * sizeof(char));
+
+			if (!hostname)
+			{
+				disconnectStreamClient(streamClient);
+				return OUT_OF_MEMORY_MPNW_RESULT;
+			}
+
+			free(httpClient->lastHostname);
+			httpClient->lastHostname = hostname;
+			httpClient->lastHostnameLength = hostLength;
+			memcpy(hostname, host, hostLength * sizeof(char));
+			hostname[hostLength] = '\0';
+		}
 	}
 
-	mpnwResult = streamClientSend(
+	MpnwResult mpnwResult = streamClientSend(
 		streamClient,
 		request,
 		requestLength);
@@ -1408,10 +1444,11 @@ MpnwResult httpClientSendPOST(
 		{
 			disconnectStreamClient(streamClient);
 
-			mpnwResult = connectStreamClient(
+			mpnwResult = connectHostnameStreamClient(
 				streamClient,
-				tmpAddress,
-				host);
+				host,
+				service ? service : "https",
+				true);
 
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
 				return mpnwResult;
@@ -1454,16 +1491,8 @@ MpnwResult httpClientSendPOST(
 		sleepThread(0.001);
 	}
 
-	if (keepAlive)
-	{
-		copySocketAddress(
-			tmpAddress,
-			lastAddress);
-	}
-	else
-	{
+	if (!keepAlive)
 		disconnectStreamClient(streamClient);
-	}
 
 	return httpClient->result;
 }

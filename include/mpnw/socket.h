@@ -417,30 +417,40 @@ MpnwResult createAnySocketAddress(
  *
  * socketAddress - socket address instance.
  */
-SocketAddress createSocketAddressCopy(
-	SocketAddress socketAddress);
+SocketAddress createSocketAddressCopy(SocketAddress socketAddress);
+/*
+ * Destroys socket address instance.
+ * socketAddress - socket address or NULL.
+ */
+void destroySocketAddress(SocketAddress socketAddress);
 
 /*
- * Resolve a new socket addresses.
+ * Resolve a new resolved socket address array.
  * Returns operation MPNW result.
  *
  * host - address host name string.
  * service - address service name string.
  * family - socket address family.
  * type - socket connection type.
- * socketAddress - pointer to the address.
+ * socketAddresses - pointer to the socket address array.
+ * addressCount - pointer to the socket address count.
  */
-MpnwResult resolveSocketAddress(
+MpnwResult resolveSocketAddresses(
 	const char* host,
 	const char* service,
 	AddressFamily family,
 	SocketType type,
-	SocketAddress socketAddress);
+	SocketAddress** socketAddresses,
+	size_t* addressCount);
 /*
- * Destroys socket address instance.
- * socketAddress - socket address or NULL.
+ * Destroys resolved socket address array.
+ *
+ * socketAddresses - socket address array instance.
+ * addressCount - socket address count.
  */
-void destroySocketAddress(SocketAddress socketAddress);
+void destroyResolvedSocketAddresses(
+	SocketAddress* socketAddresses,
+	size_t addressCount);
 
 /*
  * Returns URL part locations.
