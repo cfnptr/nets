@@ -9,6 +9,7 @@ A library providing generic interface for transferring data over a **network** a
 * Datagram client / server (UDP)
 * Secure socket layer (OpenSSL)
 * Datagrams over TCP stream
+* HTTP client (TLS, Compression)
 
 ## Supported operating systems
 
