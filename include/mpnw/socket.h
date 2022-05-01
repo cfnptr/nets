@@ -684,16 +684,14 @@ inline static MpnwResult handleStreamMessage(
 			{
 				// Store part of the received message size
 				memcpy(messageBuffer + _messageByteCount,
-					receiveBuffer,
-					byteCount);
+					receiveBuffer, byteCount * sizeof(uint8_t));
 				*messageByteCount += byteCount;
 				return SUCCESS_MPNW_RESULT;
 			}
 
 			// Copy remaining message size part
 			memcpy(messageBuffer + _messageByteCount,
-				receiveBuffer,
-				messageSizePart);
+				receiveBuffer, messageSizePart * sizeof(uint8_t));
 			pointer += messageSizePart;
 			_messageByteCount += messageSizePart;
 		}
@@ -747,15 +745,13 @@ inline static MpnwResult handleStreamMessage(
 			size_t messagePartSize = byteCount - pointer;
 
 			memcpy(messageBuffer + _messageByteCount,
-				receiveBuffer + pointer,
-				messagePartSize);
+				receiveBuffer + pointer, messagePartSize * sizeof(uint8_t));
 			*messageByteCount = _messageByteCount + messagePartSize;
 			return SUCCESS_MPNW_RESULT;
 		}
 
 		memcpy(messageBuffer + _messageByteCount,
-			receiveBuffer + pointer,
-			neededPartSize);
+			receiveBuffer + pointer, neededPartSize * sizeof(uint8_t));
 
 		MpnwResult mpnwResult = receiveFunction(
 			messageBuffer + messageLengthSize,
@@ -777,9 +773,8 @@ inline static MpnwResult handleStreamMessage(
 		{
 			size_t messageSizePart = byteCount - pointer;
 
-			memcpy(messageBuffer,
-				receiveBuffer + pointer,
-				messageSizePart);
+			memcpy(messageBuffer, receiveBuffer + pointer,
+				messageSizePart * sizeof(uint8_t));
 			*messageByteCount += messageSizePart;
 			return SUCCESS_MPNW_RESULT;
 		}
@@ -829,9 +824,8 @@ inline static MpnwResult handleStreamMessage(
 		{
 			size_t messagePartSize = byteCount - pointer;
 
-			memcpy(messageBuffer,
-				receiveBuffer + pointer,
-				messagePartSize);
+			memcpy(messageBuffer, receiveBuffer + pointer,
+				messagePartSize * sizeof(uint8_t));
 			*messageByteCount += messagePartSize;
 			return SUCCESS_MPNW_RESULT;
 		}

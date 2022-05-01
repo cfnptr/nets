@@ -260,7 +260,8 @@ inline static size_t decodeUrl(
 			return 0;
 
 		size_t copySize = newIndex - index;
-		memcpy(buffer + size, string + index, copySize);
+		memcpy(buffer + size, string + index,
+			copySize * sizeof(char));
 		index = newIndex;
 		size += copySize;
 

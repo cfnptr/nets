@@ -141,7 +141,7 @@ inline static MpnwResult processResponseLine(
 					17);
 
 				if (!header || header->valueLength != 7 ||
-					memcmp(header->value, "chunked", 7) != 0)
+					memcmp(header->value, "chunked", 7 * sizeof(char)) != 0)
 				{
 					return BAD_DATA_MPNW_RESULT;
 				}
@@ -157,7 +157,7 @@ inline static MpnwResult processResponseLine(
 			if (header)
 			{
 				if (!httpClient->zlibStream || header->valueLength != 4 ||
-					memcmp(header->value, "gzip", 4) != 0)
+					memcmp(header->value, "gzip", 4 * sizeof(char)) != 0)
 				{
 					return BAD_DATA_MPNW_RESULT;
 				}
@@ -173,12 +173,12 @@ inline static MpnwResult processResponseLine(
 			if (header)
 			{
 				if (header->valueLength == 5 &&
-					memcmp(header->value, "close", 5) == 0)
+					memcmp(header->value, "close", 5 * sizeof(char)) == 0)
 				{
 					httpClient->isClose = true;
 				}
 				else if (header->valueLength != 10 &&
-					memcmp(header->value, "keep-alive", 10) != 0)
+					memcmp(header->value, "keep-alive", 10 * sizeof(char)) != 0)
 				{
 					return BAD_DATA_MPNW_RESULT;
 				}
@@ -192,7 +192,7 @@ inline static MpnwResult processResponseLine(
 
 	if (httpClient->statusCode == 0)
 	{
-		if (length < 10 || memcmp(line, "HTTP/1.1 ", 9) != 0)
+		if (length < 10 || memcmp(line, "HTTP/1.1 ", 9 * sizeof(char)) != 0)
 			return BAD_DATA_MPNW_RESULT;
 
 		uint16_t statusCode = (uint16_t)strtol(
@@ -925,8 +925,8 @@ MpnwResult httpClientSendGET(
 
 	if (isStreamClientConnected(streamClient))
 	{
-		if (httpClient->lastHostnameLength != hostLength ||
-			memcmp(httpClient->lastHostname, host, hostLength) != 0)
+		if (httpClient->lastHostnameLength != hostLength || memcmp(
+			httpClient->lastHostname, host, hostLength * sizeof(char)) != 0)
 		{
 			disconnectStreamClient(streamClient);
 
@@ -1354,8 +1354,8 @@ MpnwResult httpClientSendPOST(
 
 	if (isStreamClientConnected(streamClient))
 	{
-		if (httpClient->lastHostnameLength != hostLength ||
-			memcmp(httpClient->lastHostname, host, hostLength) != 0)
+		if (httpClient->lastHostnameLength != hostLength || memcmp(
+			httpClient->lastHostname, host, hostLength * sizeof(char)) != 0)
 		{
 			disconnectStreamClient(streamClient);
 
