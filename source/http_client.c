@@ -317,7 +317,7 @@ static void onStreamClientReceive(
 					return;
 				}
 
-				httpClient->responseLength += zlibStream->total_out;
+				httpClient->responseLength = zlibStream->total_out;
 			}
 			else
 			{
@@ -349,7 +349,7 @@ static void onStreamClientReceive(
 					return;
 				}
 
-				httpClient->responseLength += zlibStream->total_out;
+				httpClient->responseLength = zlibStream->total_out;
 			}
 			else
 			{
@@ -455,7 +455,7 @@ static void onStreamClientReceive(
 							return;
 						}
 
-						httpClient->responseLength += zlibStream->total_out;
+						httpClient->responseLength = zlibStream->total_out;
 					}
 					else
 					{
@@ -489,7 +489,7 @@ static void onStreamClientReceive(
 						return;
 					}
 
-					httpClient->responseLength += zlibStream->total_out;
+					httpClient->responseLength = zlibStream->total_out;
 				}
 				else
 				{
