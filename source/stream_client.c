@@ -260,7 +260,7 @@ inline static MpnwResult connectByHostname(
 	MpnwResult mpnwResult = resolveSocketAddresses(
 		hostname,
 		service,
-		IP_V4_ADDRESS_FAMILY,
+		addressFamily,
 		STREAM_SOCKET_TYPE,
 		&resolvedAddresses,
 		&resolvedAddressCount);
@@ -405,12 +405,15 @@ MpnwResult connectHostnameStreamClient(
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		return connectByHostname(
+		MpnwResult mpnwResult6 = connectByHostname(
 			streamClient,
 			hostname,
 			service,
 			setSNI,
 			IP_V6_ADDRESS_FAMILY);
+
+		if (mpnwResult6 != SUCCESS_MPNW_RESULT)
+			return mpnwResult;
 	}
 
 	return SUCCESS_MPNW_RESULT;

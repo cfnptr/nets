@@ -846,15 +846,26 @@ MpnwResult connectSslSocket(
 	assert(socket->sslContext);
 
 	if (hostname)
-		SSL_set_tlsext_host_name(socket->ssl, hostname);
+	{
+		int result = SSL_set_tlsext_host_name(
+			socket->ssl, hostname);
+
+		if (result != 1)
+		{
+			return sslErrorToMpnwResult(SSL_get_error(
+				socket->ssl, result));
+		}
+	}
 
 	int result = SSL_connect(socket->ssl);
 
-	if (result == 1)
-		return SUCCESS_MPNW_RESULT;
+	if (result != 1)
+	{
+		return sslErrorToMpnwResult(SSL_get_error(
+			socket->ssl, result));
+	}
 
-	return sslErrorToMpnwResult(SSL_get_error(
-		socket->ssl, result));
+	return SUCCESS_MPNW_RESULT;
 #else
 	abort();
 #endif
