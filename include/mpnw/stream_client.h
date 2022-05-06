@@ -162,6 +162,11 @@ void disconnectStreamClient(StreamClient streamClient);
  * streamClient - stream client instance.
  */
 MpnwResult updateStreamClient(StreamClient streamClient);
+/*
+ * Resets stream client response timeout counter.
+ * streamClient - stream client instance.
+ */
+void resetStreamClientTimeout(StreamClient streamClient);
 
 /*
  * Send data to the server.

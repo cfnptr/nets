@@ -1000,6 +1000,8 @@ MpnwResult httpClientSendGET(
 		}
 	}
 
+	resetStreamClientTimeout(streamClient);
+
 	MpnwResult mpnwResult = streamClientSend(
 		streamClient,
 		request,
@@ -1428,6 +1430,8 @@ MpnwResult httpClientSendPOST(
 			hostname[hostLength] = '\0';
 		}
 	}
+
+	resetStreamClientTimeout(streamClient);
 
 	MpnwResult mpnwResult = streamClientSend(
 		streamClient,

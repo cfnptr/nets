@@ -456,14 +456,21 @@ MpnwResult updateStreamClient(StreamClient streamClient)
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 		return mpnwResult;
 
+	streamClient->timeout = currentTime +
+		streamClient->timeoutTime;
 	streamClient->onReceive(
 		streamClient,
 		receiveBuffer,
 		byteCount);
 
-	streamClient->timeout = currentTime +
-		streamClient->timeoutTime;
 	return SUCCESS_MPNW_RESULT;
+}
+void resetStreamClientTimeout(StreamClient streamClient)
+{
+	assert(streamClient);
+
+	streamClient->timeout = getCurrentClock() +
+		streamClient->timeoutTime;
 }
 
 MpnwResult streamClientSend(
@@ -484,8 +491,6 @@ MpnwResult streamClientSend(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 		return mpnwResult;
 
-	streamClient->timeout = getCurrentClock() +
-		streamClient->timeoutTime;
 	return SUCCESS_MPNW_RESULT;
 }
 
@@ -507,7 +512,5 @@ MpnwResult streamClientSendMessage(
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 		return mpnwResult;
 
-	streamClient->timeout = getCurrentClock() +
-		streamClient->timeoutTime;
 	return SUCCESS_MPNW_RESULT;
 }
