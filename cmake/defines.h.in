@@ -165,7 +165,6 @@ inline static StreamMessage createStreamMessage(
 	uint8_t lengthSize)
 {
 	assert(buffer != NULL);
-	assert(messageSize != 0);
 
 	assert(
 		(lengthSize == sizeof(uint8_t) && messageSize <= UINT8_MAX) ||
@@ -178,14 +177,12 @@ inline static StreamMessage createStreamMessage(
 
 	if (lengthSize == sizeof(uint8_t))
 	{
-		assert(messageSize <= UINT8_MAX);
 		buffer[0] = (uint8_t)messageSize;
 		streamMessage.size = messageSize + sizeof(uint8_t);
 		streamMessage.offset = sizeof(uint8_t);
 	}
 	else if (lengthSize == sizeof(uint16_t))
 	{
-		assert(messageSize <= UINT16_MAX);
 #if MPNW_LITTLE_ENDIAN
 		*((uint16_t*)buffer) = (uint16_t)messageSize;
 #else
@@ -196,7 +193,6 @@ inline static StreamMessage createStreamMessage(
 	}
 	else if (lengthSize == sizeof(uint32_t))
 	{
-		assert(messageSize <= UINT32_MAX);
 #if MPNW_LITTLE_ENDIAN
 		*((uint32_t*)buffer) = (uint32_t)messageSize;
 #else
@@ -207,7 +203,6 @@ inline static StreamMessage createStreamMessage(
 	}
 	else if (lengthSize == sizeof(uint64_t))
 	{
-		assert(messageSize <= UINT64_MAX);
 #if MPNW_LITTLE_ENDIAN
 		*((uint64_t*)buffer) = (uint64_t)messageSize;
 #else
@@ -216,7 +211,7 @@ inline static StreamMessage createStreamMessage(
 		streamMessage.size = messageSize + sizeof(uint64_t);
 		streamMessage.offset = sizeof(uint64_t);
 	}
-    else
+	else
 	{
 		abort();
 	}
