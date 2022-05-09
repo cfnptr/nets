@@ -52,7 +52,7 @@ static int cmpHttpHeaders(const void* a, const void* b)
 		return difference;
 
 	const char* ak = ah->key;
-	const char* bk = ah->key;
+	const char* bk = bh->key;
 	int length = ah->keyLength;
 
 	for (int i = 0; i < length; i++)

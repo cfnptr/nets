@@ -53,7 +53,7 @@ MpnwResult createDatagramClient(
 		return OUT_OF_MEMORY_MPNW_RESULT;
 	}
 
-	datagramClientInstance->bufferSize = bufferSize;
+	datagramClientInstance->buffer = buffer;
 	datagramClientInstance->bufferSize = bufferSize;
 
 	uint8_t addressFamily =

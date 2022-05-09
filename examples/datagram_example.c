@@ -43,38 +43,43 @@ static void onServerReceive(
 {
 	if (byteCount != 1)
 	{
-		printf("Server: incorrect datagram size (%zu)\n",
-			byteCount);
+		printf("[SERVER]: Incorrect datagram size. "
+			"(%zu)\n", byteCount);
 		fflush(stdout);
 		return;
 	}
 
-	printf("Server: received request (%hhu)\n",
-		buffer[0]);
+	printf("[SERVER]: Received request. "
+		"(value: %hhu)\n", buffer[0]);
 	fflush(stdout);
 
-	bool result = datagramServerSend(
+	MpnwResult mpnwResult = datagramServerSend(
 		server,
 		buffer,
 		1,
 		address);
 
-	if (result == false)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
-		printf("Server: failed to send response\n");
+		printf("[SERVER]: Failed to send response. (error: %s)\n",
+			mpnwResultToString(mpnwResult));
 		fflush(stdout);
 	}
 }
 static void serverHandler(void* argument)
 {
+#if __linux__ || __APPLE__
+	disableSigpipe();
+#endif
+
 	Server* server = (Server*)argument;
 
-	while (server->isRunning == true)
+	while (server->isRunning)
 	{
-		bool result = updateDatagramServer(
+		MpnwResult mpnwResult = updateDatagramServer(
 			server->server);
 
-		if (result == false)
+		if (mpnwResult != SUCCESS_MPNW_RESULT)
 			sleepThread(0.001);
 	}
 }
@@ -98,6 +103,8 @@ inline static Server* createServer()
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
+		printf("Failed to create datagram server. (error: %s)\n",
+			mpnwResultToString(mpnwResult));
 		free(server);
 		return NULL;
 	}
@@ -111,6 +118,7 @@ inline static Server* createServer()
 
 	if (thread == NULL)
 	{
+		printf("Failed to create server thread.\n");
 		destroyDatagramServer(datagramServer);
 		free(server);
 		return NULL;
@@ -138,27 +146,44 @@ static void onClientReceive(
 {
 	if (byteCount != 1)
 	{
-		printf("Client: incorrect datagram size (%zu).\n",
-			byteCount);
+		printf("[CLIENT]: Incorrect datagram size. "
+			"(%zu).\n", byteCount);
 		fflush(stdout);
 		return;
 	}
 
-	printf("Client: received response (%hhu).\n",
-		buffer[0]);
+	printf("[CLIENT]: Received response. "
+		"(value: %hhu).\n", buffer[0]);
 	fflush(stdout);
 }
 static void clientHandler(void* argument)
 {
+#if __linux__ || __APPLE__
+	disableSigpipe();
+#endif
+
 	Client* client = (Client*)argument;
 
-	while (client->isRunning == true)
+	while (client->isRunning)
 	{
-		bool result = updateDatagramClient(
+		MpnwResult mpnwResult = updateDatagramClient(
 			client->client);
 
-		if (result == false)
+		if (mpnwResult == SUCCESS_MPNW_RESULT)
+		{
+			continue;
+		}
+		else if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+		{
 			sleepThread(0.001);
+			continue;
+		}
+
+		printf("[CLIENT]: Failed to update client. (error: %s)\n",
+			mpnwResultToString(mpnwResult));
+		fflush(stdout);
+		client->isRunning = false;
+		return;
 	}
 }
 
@@ -178,6 +203,8 @@ inline static Client* createClient()
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
+		printf("Failed to create client socket address. (error: %s)\n",
+			mpnwResultToString(mpnwResult));
 		free(client);
 		return NULL;
 	}
@@ -195,6 +222,8 @@ inline static Client* createClient()
 
 	if (mpnwResult != SUCCESS_MPNW_RESULT)
 	{
+		printf("Failed to create datagram client. (error: %s)\n",
+			mpnwResultToString(mpnwResult));
 		free(client);
 		return NULL;
 	}
@@ -208,6 +237,7 @@ inline static Client* createClient()
 
 	if (thread == NULL)
 	{
+		printf("Failed to create client thread.\n");
 		destroyDatagramClient(datagramClient);
 		free(client);
 		return NULL;
@@ -231,27 +261,44 @@ inline static void destroyClient(Client* client)
 int main()
 {
 	if (initializeNetwork() == false)
+	{
+		printf("Failed to initialize network.\n");
 		return EXIT_FAILURE;
+	}
 
 	Server* server = createServer();
 
 	if (server == NULL)
+	{
+		terminateNetwork();
 		return EXIT_FAILURE;
+	}
 
 	Client* client = createClient();
 
 	if (client == NULL)
+	{
+		destroyServer(server);
+		terminateNetwork();
 		return EXIT_FAILURE;
+	}
 
 	uint8_t message = 1;
 
-	bool result = datagramClientSend(
+	MpnwResult mpnwResult = datagramClientSend(
 		client->client,
 		&message,
 		sizeof(uint8_t));
 
-	if (result == false)
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	{
+		printf("Failed to send client datagram. (error: %s)\n",
+			mpnwResultToString(mpnwResult));
+		destroyClient(client);
+		destroyServer(server);
+		terminateNetwork();
 		return EXIT_FAILURE;
+	}
 
 	sleepThread(0.1);
 
