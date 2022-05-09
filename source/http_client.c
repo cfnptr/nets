@@ -87,6 +87,8 @@ inline static void finalizeResponse(HttpClient httpClient)
 
 	if (httpClient->isClose)
 		disconnectStreamClient(httpClient->handle);
+	if (httpClient->zlibStream)
+		httpClient->responseLength = httpClient->zlibStream->total_out;
 
 	httpClient->response[httpClient->responseLength] = '\0';
 	httpClient->result = SUCCESS_MPNW_RESULT;
@@ -304,9 +306,6 @@ static void onStreamClientReceive(
 				z_stream* zlibStream = httpClient->zlibStream;
 				zlibStream->avail_in = (uInt)chunkSize;
 				zlibStream->next_in = (Bytef*)receiveBuffer;
-				zlibStream->avail_out = (uInt)(
-					httpClient->responseBufferSize - (httpClient->responseLength + 1));
-				zlibStream->next_out = (Bytef*)(response + httpClient->responseLength);
 
 				int result = inflate(zlibStream, Z_NO_FLUSH);
 
@@ -316,8 +315,6 @@ static void onStreamClientReceive(
 					httpClient->isRunning = false;
 					return;
 				}
-
-				httpClient->responseLength = zlibStream->total_out;
 			}
 			else
 			{
@@ -336,9 +333,6 @@ static void onStreamClientReceive(
 				z_stream* zlibStream = httpClient->zlibStream;
 				zlibStream->avail_in = (uInt)byteCount;
 				zlibStream->next_in = (Bytef*)receiveBuffer;
-				zlibStream->avail_out = (uInt)(
-					httpClient->responseBufferSize - (httpClient->responseLength + 1));
-				zlibStream->next_out = (Bytef*)(response + httpClient->responseLength);
 
 				int result = inflate(zlibStream, Z_NO_FLUSH);
 
@@ -348,8 +342,6 @@ static void onStreamClientReceive(
 					httpClient->isRunning = false;
 					return;
 				}
-
-				httpClient->responseLength = zlibStream->total_out;
 			}
 			else
 			{
@@ -442,9 +434,6 @@ static void onStreamClientReceive(
 						z_stream* zlibStream = httpClient->zlibStream;
 						zlibStream->avail_in = (uInt)chunkSize;
 						zlibStream->next_in = (Bytef*)(receiveBuffer + lineOffset);
-						zlibStream->avail_out = (uInt)(
-							httpClient->responseBufferSize - (httpClient->responseLength + 1));
-						zlibStream->next_out = (Bytef*)(response + httpClient->responseLength);
 
 						int result = inflate(zlibStream, Z_NO_FLUSH);
 
@@ -454,8 +443,6 @@ static void onStreamClientReceive(
 							httpClient->isRunning = false;
 							return;
 						}
-
-						httpClient->responseLength = zlibStream->total_out;
 					}
 					else
 					{
@@ -476,9 +463,6 @@ static void onStreamClientReceive(
 					z_stream* zlibStream = httpClient->zlibStream;
 					zlibStream->avail_in = (uInt)length;
 					zlibStream->next_in = (Bytef*)(receiveBuffer + lineOffset);
-					zlibStream->avail_out = (uInt)(
-						httpClient->responseBufferSize - (httpClient->responseLength + 1));
-					zlibStream->next_out = (Bytef*)(response + httpClient->responseLength);
 
 					int result = inflate(zlibStream, Z_NO_FLUSH);
 
@@ -488,8 +472,6 @@ static void onStreamClientReceive(
 						httpClient->isRunning = false;
 						return;
 					}
-
-					httpClient->responseLength = zlibStream->total_out;
 				}
 				else
 				{
@@ -616,15 +598,10 @@ MpnwResult createHttpClient(
 
 		int result = inflateInit2(zlibStream, 31);
 
-		if (result == Z_MEM_ERROR)
+		if (result != Z_OK)
 		{
 			destroyHttpClient(httpClientInstance);
-			return OUT_OF_MEMORY_MPNW_RESULT;
-		}
-		else if (result != Z_OK)
-		{
-			destroyHttpClient(httpClientInstance);
-			return UNKNOWN_ERROR_MPNW_RESULT;
+			return zlibErrorToMpnwResult(result);
 		}
 	}
 	else
@@ -732,7 +709,12 @@ inline static void clearHttpClient(HttpClient httpClient)
 	}
 
 	if (httpClient->zlibStream)
-		inflateReset(httpClient->zlibStream);
+	{
+		z_stream* zlibStream = httpClient->zlibStream;
+		inflateReset(zlibStream);
+		zlibStream->avail_out = (uInt)(httpClient->responseBufferSize - 1);
+		zlibStream->next_out = (Bytef*)httpClient->response;
+	}
 
 	httpClient->chunkSize = 0;
 	httpClient->responseLength = 0;
