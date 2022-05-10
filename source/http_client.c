@@ -694,7 +694,7 @@ size_t getHttpClientHeaderCount(HttpClient httpClient)
 	return httpClient->headerCount;
 }
 
-inline static void clearHttpClient(HttpClient httpClient)
+inline static MpnwResult clearHttpClient(HttpClient httpClient)
 {
 	assert(httpClient);
 
@@ -711,7 +711,11 @@ inline static void clearHttpClient(HttpClient httpClient)
 	if (httpClient->zlibStream)
 	{
 		z_stream* zlibStream = httpClient->zlibStream;
-		inflateReset(zlibStream);
+		int zlibResult = inflateReset(zlibStream);
+
+		if (zlibResult != Z_OK)
+			return zlibErrorToMpnwResult(zlibResult);
+
 		zlibStream->avail_out = (uInt)(httpClient->responseBufferSize - 1);
 		zlibStream->next_out = (Bytef*)httpClient->response;
 	}
@@ -726,6 +730,7 @@ inline static void clearHttpClient(HttpClient httpClient)
 	httpClient->isBody = false;
 	httpClient->result = TIMED_OUT_MPNW_RESULT;
 	httpClient->isRunning = true;
+	return SUCCESS_MPNW_RESULT;
 }
 MpnwResult httpClientSendGET(
 	HttpClient httpClient,
@@ -901,7 +906,11 @@ MpnwResult httpClientSendGET(
 	index += 2;
 
 	assert(index == requestLength);
-	clearHttpClient(httpClient);
+
+	MpnwResult mpnwResult = clearHttpClient(httpClient);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
 
 	bool isAlreadyConnected = false;
 
@@ -912,7 +921,7 @@ MpnwResult httpClientSendGET(
 		{
 			disconnectStreamClient(streamClient);
 
-			MpnwResult mpnwResult = connectHostnameStreamClient(
+			mpnwResult = connectHostnameStreamClient(
 				streamClient,
 				host,
 				service ? service : "https",
@@ -950,7 +959,7 @@ MpnwResult httpClientSendGET(
 	}
 	else
 	{
-		MpnwResult mpnwResult = connectHostnameStreamClient(
+		mpnwResult = connectHostnameStreamClient(
 			streamClient,
 			host,
 			service ? service : "https",
@@ -984,7 +993,7 @@ MpnwResult httpClientSendGET(
 
 	resetStreamClientTimeout(streamClient);
 
-	MpnwResult mpnwResult = streamClientSend(
+	mpnwResult = streamClientSend(
 		streamClient,
 		request,
 		requestLength);
@@ -1332,7 +1341,11 @@ MpnwResult httpClientSendPOST(
 	}
 
 	assert(index == requestLength);
-	clearHttpClient(httpClient);
+
+	MpnwResult mpnwResult = clearHttpClient(httpClient);
+
+	if (mpnwResult != SUCCESS_MPNW_RESULT)
+		return mpnwResult;
 
 	bool isAlreadyConnected = false;
 
@@ -1343,7 +1356,7 @@ MpnwResult httpClientSendPOST(
 		{
 			disconnectStreamClient(streamClient);
 
-			MpnwResult mpnwResult = connectHostnameStreamClient(
+			mpnwResult = connectHostnameStreamClient(
 				streamClient,
 				host,
 				service ? service : "https",
@@ -1381,7 +1394,7 @@ MpnwResult httpClientSendPOST(
 	}
 	else
 	{
-		MpnwResult mpnwResult = connectHostnameStreamClient(
+		mpnwResult = connectHostnameStreamClient(
 			streamClient,
 			host,
 			service ? service : "https",
@@ -1415,7 +1428,7 @@ MpnwResult httpClientSendPOST(
 
 	resetStreamClientTimeout(streamClient);
 
-	MpnwResult mpnwResult = streamClientSend(
+	mpnwResult = streamClientSend(
 		streamClient,
 		request,
 		requestLength);
