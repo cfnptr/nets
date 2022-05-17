@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "mpnw/http_client.h"
+#include "mpnw/compression.h"
 #include "mpmt/thread.h"
-#include "zlib.h"
 
 #include <stdio.h>
 #include <ctype.h>
@@ -64,21 +64,6 @@ static int cmpHttpHeaders(const void* a, const void* b)
 	}
 
 	return 0;
-}
-inline static MpnwResult zlibErrorToMpnwResult(int result)
-{
-	switch (result)
-	{
-	default:
-		return UNKNOWN_ERROR_MPNW_RESULT;
-	case Z_NEED_DICT:
-	case Z_DATA_ERROR:
-	case Z_STREAM_ERROR:
-		return BAD_DATA_MPNW_RESULT;
-	case Z_MEM_ERROR:
-	case Z_BUF_ERROR:
-		return OUT_OF_MEMORY_MPNW_RESULT;
-	}
 }
 
 inline static void finalizeResponse(HttpClient httpClient)
