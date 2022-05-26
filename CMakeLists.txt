@@ -23,7 +23,7 @@ if (TARGET mpnw-static)
 endif ()
 
 project(mpnw 
-	VERSION 1.3.0
+	VERSION 2.0.0
 	DESCRIPTION "Multi-platform networking library"
 	HOMEPAGE_URL "https://github.com/cfnptr/mpnw"
 	LANGUAGES C)
