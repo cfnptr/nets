@@ -64,8 +64,8 @@ MpnwResult createStreamServer(
 	assert(onReceive);
 	assert(streamServer);
 
-	StreamServer streamServerInstance = malloc(
-		sizeof(StreamServer_T));
+	StreamServer streamServerInstance = calloc(
+		1, sizeof(StreamServer_T));
 
 	if (!streamServerInstance)
 		return OUT_OF_MEMORY_MPNW_RESULT;

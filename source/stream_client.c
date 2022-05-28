@@ -42,8 +42,8 @@ MpnwResult createStreamClient(
 	assert(onReceive);
 	assert(streamClient);
 
-	StreamClient streamClientInstance = malloc(
-		sizeof(StreamClient_T));
+	StreamClient streamClientInstance = calloc(
+		1, sizeof(StreamClient_T));
 
 	if (!streamClientInstance)
 		return OUT_OF_MEMORY_MPNW_RESULT;
