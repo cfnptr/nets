@@ -909,7 +909,7 @@ MpnwResult httpClientSendGET(
 			mpnwResult = connectHostnameStreamClient(
 				streamClient,
 				host,
-				service ? service : "https",
+				service ? service : "443",
 				true);
 
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -947,7 +947,7 @@ MpnwResult httpClientSendGET(
 		mpnwResult = connectHostnameStreamClient(
 			streamClient,
 			host,
-			service ? service : "https",
+			service ? service : "443",
 			true);
 
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -992,7 +992,7 @@ MpnwResult httpClientSendGET(
 			mpnwResult = connectHostnameStreamClient(
 				streamClient,
 				host,
-				service ? service : "https",
+				service ? service : "443",
 				true);
 
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -1344,7 +1344,7 @@ MpnwResult httpClientSendPOST(
 			mpnwResult = connectHostnameStreamClient(
 				streamClient,
 				host,
-				service ? service : "https",
+				service ? service : "443",
 				true);
 
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -1382,7 +1382,7 @@ MpnwResult httpClientSendPOST(
 		mpnwResult = connectHostnameStreamClient(
 			streamClient,
 			host,
-			service ? service : "https",
+			service ? service : "443",
 			true);
 
 		if (mpnwResult != SUCCESS_MPNW_RESULT)
@@ -1427,7 +1427,7 @@ MpnwResult httpClientSendPOST(
 			mpnwResult = connectHostnameStreamClient(
 				streamClient,
 				host,
-				service ? service : "https",
+				service ? service : "443",
 				true);
 
 			if (mpnwResult != SUCCESS_MPNW_RESULT)
