@@ -72,7 +72,7 @@ inline static void finalizeResponse(HttpClient httpClient)
 
 	if (httpClient->isClose)
 		disconnectStreamClient(httpClient->handle);
-	if (httpClient->zlibStream)
+	if (httpClient->zlibStream && httpClient->isCompressed)
 		httpClient->responseLength = httpClient->zlibStream->total_out;
 
 	httpClient->response[httpClient->responseLength] = '\0';
@@ -434,7 +434,6 @@ static void onStreamClientReceive(
 						memcpy(response + httpClient->responseLength,
 							receiveBuffer + lineOffset, chunkSize * sizeof(char));
 						httpClient->responseLength += chunkSize;
-
 					}
 
 					httpClient->chunkSize = 0;
