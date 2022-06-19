@@ -137,7 +137,7 @@ if (MPNW_BUILD_SHARED)
 	target_link_libraries(mpnw-shared PUBLIC
 		${MPNW_LINK_LIBRARIES})
 	target_include_directories(mpnw-shared PUBLIC
-		${MPNW_LINK_LIBRARIES})
+		${MPNW_INCLUDE_DIRECTORIES})
 endif ()
 
 if (MPNW_BUILD_EXAMPLES)
