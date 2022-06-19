@@ -75,24 +75,40 @@ set(MPMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/mpmt)
 
-add_subdirectory(libraries/zlib)
+set(MPNW_INCLUDE_DIRECTORIES
+	${PROJECT_BINARY_DIR}
+	${PROJECT_SOURCE_DIR}/include)
+set(MPNW_LINK_LIBRARIES mpmt-static)
+
+if (CMAKE_SYSTEM_NAME MATCHES "Linux" OR
+	CMAKE_SYSTEM_NAME MATCHES "Darwin")
+
+	find_package(ZLIB)
+
+	if (ZLIB_FOUND)
+		list(APPEND MPNW_LINK_LIBRARIES ZLIB::ZLIB)
+	else ()
+		list(APPEND MPNW_INCLUDE_DIRECTORIES
+			${PROJECT_BINARY_DIR}/libraries/zlib
+			${PROJECT_SOURCE_DIR}/libraries/zlib)
+		list(APPEND MPNW_LINK_LIBRARIES zlibstatic)
+		add_subdirectory(libraries/zlib)
+	endif ()
+else ()
+	list(APPEND MPNW_INCLUDE_DIRECTORIES
+		${PROJECT_BINARY_DIR}/libraries/zlib
+		${PROJECT_SOURCE_DIR}/libraries/zlib)
+	list(APPEND MPNW_LINK_LIBRARIES zlibstatic)
+	add_subdirectory(libraries/zlib)
+endif ()
 
 configure_file(
 	cmake/defines.h.in
 	mpnw/defines.h)
 
-set(MPNW_LINK_LIBRARIES mpmt-static)
-
-set(MPNW_INCLUDE_DIRECTORIES
-	${PROJECT_BINARY_DIR}
-	${PROJECT_SOURCE_DIR}/include
-	${PROJECT_BINARY_DIR}/libraries/zlib
-	${PROJECT_SOURCE_DIR}/libraries/zlib)
-
 if(MPNW_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND MPNW_LINK_LIBRARIES
-		OpenSSL::SSL
-		OpenSSL::Crypto)
+		OpenSSL::SSL OpenSSL::Crypto)
 endif ()
 
 set(MPNW_SOURCES
@@ -108,7 +124,7 @@ add_library(mpnw-static STATIC
 set_target_properties(mpnw-static PROPERTIES
 	OUTPUT_NAME "mpnw")
 target_link_libraries(mpnw-static PUBLIC
-	${MPNW_LINK_LIBRARIES} zlibstatic)
+	${MPNW_LINK_LIBRARIES})
 target_include_directories(mpnw-static PUBLIC
 	${MPNW_INCLUDE_DIRECTORIES})
 
@@ -119,9 +135,9 @@ if (MPNW_BUILD_SHARED)
 		OUTPUT_NAME "mpnw"
 		WINDOWS_EXPORT_ALL_SYMBOLS ON)
 	target_link_libraries(mpnw-shared PUBLIC
-		${MPNW_LINK_LIBRARIES} zlib)
+		${MPNW_LINK_LIBRARIES})
 	target_include_directories(mpnw-shared PUBLIC
-		${MPNW_INCLUDE_DIRECTORIES})
+		${MPNW_LINK_LIBRARIES})
 endif ()
 
 if (MPNW_BUILD_EXAMPLES)
