@@ -1251,7 +1251,7 @@ MpnwResult resolveSocketAddresses(
 	SocketAddress socketAddress = malloc(
 		sizeof(SocketAddress_T));
 
-	if (!socketAddresses)
+	if (!socketAddress)
 	{
 		destroyResolvedSocketAddresses(
 			addresses, 0);
