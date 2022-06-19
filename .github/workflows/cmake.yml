@@ -16,7 +16,11 @@ jobs:
       uses: actions/checkout@v3
       with:
         submodules: true
-        
+
+    - if: matrix.os == 'ubuntu-latest' 
+      name: Install Ubuntu OpenSSL
+      run: sudo apt-get update && sudo apt-get install openssl libssl-dev
+
     - if: matrix.os == 'macos-latest' 
       name: Install macOS OpenSSL
       run: brew update && brew install openssl
