@@ -230,7 +230,8 @@ inline static MpnwResult errorToMpnwResult(int error)
 inline static MpnwResult lastErrorToMpnwResult()
 {
 #if __linux__ || __APPLE__
-	return errorToMpnwResult(errno);
+	int error = errno; errno = 0;
+	return errorToMpnwResult(error);
 #elif _WIN32
 	return errorToMpnwResult(WSAGetLastError());
 #endif
