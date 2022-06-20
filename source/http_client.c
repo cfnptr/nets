@@ -255,10 +255,7 @@ inline static MpnwResult processResponseLine(
 		if (chunkSize == 0)
 		{
 			if (errno != 0)
-			{
-				errno = 0;
 				return BAD_DATA_MPNW_RESULT;
-			}
 
 			finalizeResponse(httpClient);
 			return SUCCESS_MPNW_RESULT;
