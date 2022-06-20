@@ -106,13 +106,20 @@ inline static MpnwResult processResponseLine(
 
 			if (header)
 			{
+				errno = 0;
+
 				int64_t chunkSize = (int64_t)strtol(
 					header->value,
 					NULL,
 					10);
 
 				if (chunkSize == 0)
+				{
+					if (errno != 0)
+						return BAD_DATA_MPNW_RESULT;
 					return SUCCESS_MPNW_RESULT;
+				}
+
 				if (chunkSize < 0)
 					return BAD_DATA_MPNW_RESULT;
 				if ((size_t)chunkSize + 1 > httpClient->responseBufferSize)
@@ -245,6 +252,12 @@ inline static MpnwResult processResponseLine(
 
 		if (chunkSize == 0)
 		{
+			if (errno != 0)
+			{
+				errno = 0;
+				return BAD_DATA_MPNW_RESULT;
+			}
+
 			finalizeResponse(httpClient);
 			return SUCCESS_MPNW_RESULT;
 		}
