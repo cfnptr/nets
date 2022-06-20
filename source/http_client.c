@@ -245,6 +245,8 @@ inline static MpnwResult processResponseLine(
 	}
 	else
 	{
+		errno = 0;
+
 		int64_t chunkSize = (int64_t)strtol(
 			line,
 			NULL,
