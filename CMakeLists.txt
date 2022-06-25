@@ -76,7 +76,7 @@ set(MPMT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/mpmt)
 
 set(MPNW_INCLUDE_DIRECTORIES
-	${PROJECT_BINARY_DIR}
+	${PROJECT_BINARY_DIR}/include
 	${PROJECT_SOURCE_DIR}/include)
 set(MPNW_LINK_LIBRARIES mpmt-static)
 
@@ -104,7 +104,7 @@ endif ()
 
 configure_file(
 	cmake/defines.h.in
-	mpnw/defines.h)
+	include/mpnw/defines.h)
 
 if(MPNW_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND MPNW_LINK_LIBRARIES
@@ -146,7 +146,7 @@ if (MPNW_BUILD_EXAMPLES)
 	target_link_libraries(mpnw-datagram-example PRIVATE
 		mpnw-static)
 	target_include_directories(mpnw-datagram-example PRIVATE
-		${PROJECT_BINARY_DIR}
+		${PROJECT_BINARY_DIR}/include
 		${PROJECT_SOURCE_DIR}/include)
 
 	add_executable(mpnw-https-example
@@ -154,6 +154,6 @@ if (MPNW_BUILD_EXAMPLES)
 	target_link_libraries(mpnw-https-example PRIVATE
 		mpnw-static)
 	target_include_directories(mpnw-https-example PRIVATE
-		${PROJECT_BINARY_DIR}
+		${PROJECT_BINARY_DIR}/include
 		${PROJECT_SOURCE_DIR}/include)
 endif ()
