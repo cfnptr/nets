@@ -119,18 +119,14 @@ set(MPNW_SOURCES
 	source/stream_client.c
 	source/stream_server.c)
 
-add_library(mpnw-static STATIC
-	${MPNW_SOURCES})
-set_target_properties(mpnw-static PROPERTIES
-	OUTPUT_NAME "mpnw")
+add_library(mpnw-static STATIC ${MPNW_SOURCES})
 target_link_libraries(mpnw-static PUBLIC
 	${MPNW_LINK_LIBRARIES})
 target_include_directories(mpnw-static PUBLIC
 	${MPNW_INCLUDE_DIRECTORIES})
 
 if (MPNW_BUILD_SHARED)
-	add_library(mpnw-shared SHARED
-		${MPNW_SOURCES})
+	add_library(mpnw-shared SHARED ${MPNW_SOURCES})
 	set_target_properties(mpnw-shared PROPERTIES
 		OUTPUT_NAME "mpnw"
 		WINDOWS_EXPORT_ALL_SYMBOLS ON)
