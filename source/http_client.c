@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
 
 struct HttpClient_T
 {
