@@ -74,7 +74,6 @@ endif ()
 set(NETS_INCLUDE_DIRECTORIES
 	${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	${PROJECT_BINARY_DIR}/libraries/zlib ${PROJECT_SOURCE_DIR}/libraries/zlib)
-set(NETS_LINK_LIBRARIES mpmt-static zlibstatic)
 
 set(MPMT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -98,14 +97,14 @@ set(NETS_SOURCES
 	source/stream_server.c)
 
 add_library(nets-static STATIC ${NETS_SOURCES})
-target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES})
+target_link_libraries(nets-static PUBLIC mpmt-static zlibstatic)
 target_include_directories(nets-static PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 
 if (NETS_BUILD_SHARED)
 	add_library(nets-shared SHARED ${NETS_SOURCES})
 	set_target_properties(nets-shared PROPERTIES
 		OUTPUT_NAME "nets" WINDOWS_EXPORT_ALL_SYMBOLS ON)
-	target_link_libraries(nets-shared PUBLIC ${NETS_LINK_LIBRARIES})
+	target_link_libraries(nets-shared PUBLIC mpmt-static zlib)
 	target_include_directories(nets-shared PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 endif ()
 
