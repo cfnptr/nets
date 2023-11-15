@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mpnw/http_client.h"
+#include "nets/http_client.h"
 #include <stdio.h>
 
-#if !MPNW_SUPPORT_OPENSSL
+#if !NETS_SUPPORT_OPENSSL
 #error OpenSSL is not supported
 #endif
 
@@ -35,23 +35,23 @@ int main()
 
 	SslContext sslContext;
 
-	MpnwResult mpnwResult = createPublicSslContext(
+	NetsResult netsResult = createPublicSslContext(
 		TLS_SECURITY_PROTOCOL,
 		NULL,
 		NULL,
 		&sslContext);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to create SSL context. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		terminateNetwork();
 		return EXIT_FAILURE;
 	}
 
 	HttpClient httpClient;
 
-	mpnwResult = createHttpClient(
+	netsResult = createHttpClient(
 		DATA_BUFFER_SIZE,
 		RESPONSE_BUFFER_SIZE,
 		HEADER_BUFFER_SIZE,
@@ -60,16 +60,16 @@ int main()
 		sslContext,
 		&httpClient);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to create HTTP client. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		destroySslContext(sslContext);
 		terminateNetwork();
 		return EXIT_FAILURE;
 	}
 
-	mpnwResult = httpClientSendGET(
+	netsResult = httpClientSendGET(
 		httpClient,
 		REQUEST_URL,
 		strlen(REQUEST_URL),
@@ -77,10 +77,10 @@ int main()
 		0,
 		false);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to get page. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		destroyHttpClient(httpClient);
 		destroySslContext(sslContext);
 		terminateNetwork();

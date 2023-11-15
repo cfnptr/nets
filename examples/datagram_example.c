@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mpnw/datagram_server.h"
-#include "mpnw/datagram_client.h"
+#include "nets/datagram_server.h"
+#include "nets/datagram_client.h"
 
 #include "mpmt/thread.h"
 #include <stdio.h>
@@ -53,16 +53,16 @@ static void onServerReceive(
 		"(value: %hhu)\n", buffer[0]);
 	fflush(stdout);
 
-	MpnwResult mpnwResult = datagramServerSend(
+	NetsResult netsResult = datagramServerSend(
 		server,
 		buffer,
 		1,
 		address);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("[SERVER]: Failed to send response. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		fflush(stdout);
 	}
 }
@@ -76,10 +76,10 @@ static void serverHandler(void* argument)
 
 	while (server->isRunning)
 	{
-		MpnwResult mpnwResult = updateDatagramServer(
+		NetsResult netsResult = updateDatagramServer(
 			server->server);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 			sleepThread(0.001);
 	}
 }
@@ -93,7 +93,7 @@ inline static Server* createServer()
 
 	DatagramServer datagramServer;
 
-	MpnwResult mpnwResult = createDatagramServer(
+	NetsResult netsResult = createDatagramServer(
 		IP_V4_ADDRESS_FAMILY,
 		SERVER_PORT,
 		RECEIVE_BUFFER_SIZE,
@@ -101,10 +101,10 @@ inline static Server* createServer()
 		NULL,
 		&datagramServer);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to create datagram server. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		free(server);
 		return NULL;
 	}
@@ -166,21 +166,21 @@ static void clientHandler(void* argument)
 
 	while (client->isRunning)
 	{
-		MpnwResult mpnwResult = updateDatagramClient(
+		NetsResult netsResult = updateDatagramClient(
 			client->client);
 
-		if (mpnwResult == SUCCESS_MPNW_RESULT)
+		if (netsResult == SUCCESS_NETS_RESULT)
 		{
 			continue;
 		}
-		else if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+		else if (netsResult == IN_PROGRESS_NETS_RESULT)
 		{
 			sleepThread(0.001);
 			continue;
 		}
 
 		printf("[CLIENT]: Failed to update client. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		fflush(stdout);
 		client->isRunning = false;
 		return;
@@ -196,22 +196,22 @@ inline static Client* createClient()
 
 	SocketAddress remoteAddress;
 
-	MpnwResult mpnwResult = createSocketAddress(
+	NetsResult netsResult = createSocketAddress(
 		LOOPBACK_IP_ADDRESS_V4,
 		SERVER_PORT,
 		&remoteAddress);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to create client socket address. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		free(client);
 		return NULL;
 	}
 
 	DatagramClient datagramClient;
 
-	mpnwResult = createDatagramClient(
+	netsResult = createDatagramClient(
 		remoteAddress,
 		RECEIVE_BUFFER_SIZE,
 		onClientReceive,
@@ -220,10 +220,10 @@ inline static Client* createClient()
 
 	destroySocketAddress(remoteAddress);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to create datagram client. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		free(client);
 		return NULL;
 	}
@@ -285,15 +285,15 @@ int main()
 
 	uint8_t message = 1;
 
-	MpnwResult mpnwResult = datagramClientSend(
+	NetsResult netsResult = datagramClientSend(
 		client->client,
 		&message,
 		sizeof(uint8_t));
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to send client datagram. (error: %s)\n",
-			mpnwResultToString(mpnwResult));
+			netsResultToString(netsResult));
 		destroyClient(client);
 		destroyServer(server);
 		terminateNetwork();

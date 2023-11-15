@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mpnw/http_client.h"
-#include "mpnw/compression.h"
+#include "nets/http_client.h"
+#include "nets/compression.h"
 #include "mpmt/thread.h"
 
 #include <stdio.h>
@@ -38,7 +38,7 @@ struct HttpClient_T
 	bool isCompressed;
 	bool isClose;
 	bool isBody;
-	MpnwResult result;
+	NetsResult result;
 	bool isRunning;
 };
 
@@ -77,10 +77,10 @@ inline static void finalizeResponse(HttpClient httpClient)
 		httpClient->responseLength = httpClient->zlibStream->total_out;
 
 	httpClient->response[httpClient->responseLength] = '\0';
-	httpClient->result = SUCCESS_MPNW_RESULT;
+	httpClient->result = SUCCESS_NETS_RESULT;
 	httpClient->isRunning = false;
 }
-inline static MpnwResult processResponseLine(
+inline static NetsResult processResponseLine(
 	HttpClient httpClient,
 	const char* line,
 	size_t length)
@@ -117,14 +117,14 @@ inline static MpnwResult processResponseLine(
 				if (chunkSize == 0)
 				{
 					if (errno != 0)
-						return BAD_DATA_MPNW_RESULT;
-					return SUCCESS_MPNW_RESULT;
+						return BAD_DATA_NETS_RESULT;
+					return SUCCESS_NETS_RESULT;
 				}
 
 				if (chunkSize < 0)
-					return BAD_DATA_MPNW_RESULT;
+					return BAD_DATA_NETS_RESULT;
 				if ((size_t)chunkSize + 1 > httpClient->responseBufferSize)
-					return OUT_OF_MEMORY_MPNW_RESULT;
+					return OUT_OF_MEMORY_NETS_RESULT;
 
 				httpClient->chunkSize = chunkSize;
 			}
@@ -138,7 +138,7 @@ inline static MpnwResult processResponseLine(
 				if (!header || header->valueLength != 7 ||
 					memcmp(header->value, "chunked", 7 * sizeof(char)) != 0)
 				{
-					return BAD_DATA_MPNW_RESULT;
+					return BAD_DATA_NETS_RESULT;
 				}
 
 				httpClient->isChunked = true;
@@ -154,7 +154,7 @@ inline static MpnwResult processResponseLine(
 				if (!httpClient->zlibStream || header->valueLength != 4 ||
 					memcmp(header->value, "gzip", 4 * sizeof(char)) != 0)
 				{
-					return BAD_DATA_MPNW_RESULT;
+					return BAD_DATA_NETS_RESULT;
 				}
 
 				httpClient->isCompressed = true;
@@ -175,20 +175,20 @@ inline static MpnwResult processResponseLine(
 				else if (header->valueLength != 10 &&
 					memcmp(header->value, "keep-alive", 10 * sizeof(char)) != 0)
 				{
-					return BAD_DATA_MPNW_RESULT;
+					return BAD_DATA_NETS_RESULT;
 				}
 			}
 
 			httpClient->isBody = true;
 		}
 
-		return SUCCESS_MPNW_RESULT;
+		return SUCCESS_NETS_RESULT;
 	}
 
 	if (httpClient->statusCode == 0)
 	{
 		if (length < 10 || memcmp(line, "HTTP/1.1 ", 9 * sizeof(char)) != 0)
-			return BAD_DATA_MPNW_RESULT;
+			return BAD_DATA_NETS_RESULT;
 
 		uint16_t statusCode = (uint16_t)strtol(
 			line + 9,
@@ -196,30 +196,30 @@ inline static MpnwResult processResponseLine(
 			10);
 
 		if (statusCode == 0)
-			return BAD_DATA_MPNW_RESULT;
+			return BAD_DATA_NETS_RESULT;
 
 		httpClient->statusCode = statusCode;
 	}
 	else if (!httpClient->isBody)
 	{
 		if (httpClient->headerCount == httpClient->headerBufferSize)
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 
 		const char* pointer = memchr(line, ':', length);
 		int keyLength = pointer ? (int)(pointer - line) : 0;
 
 		if (keyLength == 0 || length < keyLength + 2)
-			return BAD_DATA_MPNW_RESULT;
+			return BAD_DATA_NETS_RESULT;
 
 		int valueLength = (int)(length - (keyLength + 2));
 
 		if (valueLength == 0)
-			return BAD_DATA_MPNW_RESULT;
+			return BAD_DATA_NETS_RESULT;
 
 		char* key = malloc((keyLength + 1) * sizeof(char));
 
 		if (!key)
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 
 		memcpy(key, line,
 			keyLength * sizeof(char));
@@ -230,7 +230,7 @@ inline static MpnwResult processResponseLine(
 		if (!value)
 		{
 			free(key);
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 		}
 
 		memcpy(value, line + (length - valueLength),
@@ -256,21 +256,21 @@ inline static MpnwResult processResponseLine(
 		if (chunkSize == 0)
 		{
 			if (errno != 0)
-				return BAD_DATA_MPNW_RESULT;
+				return BAD_DATA_NETS_RESULT;
 
 			finalizeResponse(httpClient);
-			return SUCCESS_MPNW_RESULT;
+			return SUCCESS_NETS_RESULT;
 		}
 
 		if (chunkSize < 0)
-			return BAD_DATA_MPNW_RESULT;
+			return BAD_DATA_NETS_RESULT;
 		if (httpClient->responseLength + chunkSize + 1 > httpClient->responseBufferSize)
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 
 		httpClient->chunkSize = chunkSize;
 	}
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 static void onStreamClientReceive(
 	StreamClient streamClient,
@@ -285,7 +285,7 @@ static void onStreamClientReceive(
 
 	if (byteCount == 0)
 	{
-		httpClient->result = CONNECTION_IS_CLOSED_MPNW_RESULT;
+		httpClient->result = CONNECTION_IS_CLOSED_NETS_RESULT;
 		httpClient->isRunning = false;
 		return;
 	}
@@ -309,7 +309,7 @@ static void onStreamClientReceive(
 
 				if (result != Z_OK && result != Z_STREAM_END)
 				{
-					httpClient->result = zlibErrorToMpnwResult(result);
+					httpClient->result = zlibErrorToNetsResult(result);
 					httpClient->isRunning = false;
 					return;
 				}
@@ -336,7 +336,7 @@ static void onStreamClientReceive(
 
 				if (result != Z_OK && result != Z_STREAM_END)
 				{
-					httpClient->result = zlibErrorToMpnwResult(result);
+					httpClient->result = zlibErrorToNetsResult(result);
 					httpClient->isRunning = false;
 					return;
 				}
@@ -371,7 +371,7 @@ static void onStreamClientReceive(
 
 		size_t index = pointer - buffer;
 
-		MpnwResult mpnwResult;
+		NetsResult netsResult;
 
 		if (httpClient->chunkSize > 0)
 		{
@@ -380,7 +380,7 @@ static void onStreamClientReceive(
 
 			if (chunkSize + size > httpClient->responseBufferSize)
 			{
-				httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
+				httpClient->result = OUT_OF_MEMORY_NETS_RESULT;
 				httpClient->isRunning = false;
 				return;
 			}
@@ -390,7 +390,7 @@ static void onStreamClientReceive(
 			memcpy(response + chunkSize,
 				receiveBuffer, size * sizeof(char));
 
-			mpnwResult = processResponseLine(
+			netsResult = processResponseLine(
 				httpClient,
 				response,
 				chunkSize + size);
@@ -399,15 +399,15 @@ static void onStreamClientReceive(
 		}
 		else
 		{
-			mpnwResult = processResponseLine(
+			netsResult = processResponseLine(
 				httpClient,
 				buffer + lineOffset,
 				index - lineOffset);
 		}
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 		{
-			httpClient->result = mpnwResult;
+			httpClient->result = netsResult;
 			httpClient->isRunning = false;
 			return;
 		}
@@ -437,7 +437,7 @@ static void onStreamClientReceive(
 
 						if (result != Z_OK && result != Z_STREAM_END)
 						{
-							httpClient->result = zlibErrorToMpnwResult(result);
+							httpClient->result = zlibErrorToNetsResult(result);
 							httpClient->isRunning = false;
 							return;
 						}
@@ -465,7 +465,7 @@ static void onStreamClientReceive(
 
 					if (result != Z_OK && result != Z_STREAM_END)
 					{
-						httpClient->result = zlibErrorToMpnwResult(result);
+						httpClient->result = zlibErrorToNetsResult(result);
 						httpClient->isRunning = false;
 						return;
 					}
@@ -494,7 +494,7 @@ static void onStreamClientReceive(
 
 		if (chunkSize + size > httpClient->responseBufferSize)
 		{
-			httpClient->result = OUT_OF_MEMORY_MPNW_RESULT;
+			httpClient->result = OUT_OF_MEMORY_NETS_RESULT;
 			httpClient->isRunning = false;
 			return;
 		}
@@ -505,7 +505,7 @@ static void onStreamClientReceive(
 	}
 }
 
-MpnwResult createHttpClient(
+NetsResult createHttpClient(
 	size_t dataBufferSize,
 	size_t responseBufferSize,
 	size_t headerBufferSize,
@@ -523,7 +523,7 @@ MpnwResult createHttpClient(
 		1, sizeof(HttpClient_T));
 
 	if (!httpClientInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	httpClientInstance->chunkSize = 0;
 	httpClientInstance->responseLength = 0;
@@ -535,12 +535,12 @@ MpnwResult createHttpClient(
 	httpClientInstance->isCompressed = false;
 	httpClientInstance->isClose = false;
 	httpClientInstance->isBody = false;
-	httpClientInstance->result = SUCCESS_MPNW_RESULT;
+	httpClientInstance->result = SUCCESS_NETS_RESULT;
 	httpClientInstance->isRunning = false;
 
 	StreamClient handle;
 
-	MpnwResult mpnwResult = createStreamClient(
+	NetsResult netsResult = createStreamClient(
 		dataBufferSize,
 		timeoutTime,
 		onStreamClientReceive,
@@ -548,10 +548,10 @@ MpnwResult createHttpClient(
 		sslContext,
 		&handle);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyHttpClient(httpClientInstance);
-		return mpnwResult;
+		return netsResult;
 	}
 
 	httpClientInstance->handle = handle;
@@ -562,7 +562,7 @@ MpnwResult createHttpClient(
 	if (!response)
 	{
 		destroyHttpClient(httpClientInstance);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	httpClientInstance->response = response;
@@ -574,7 +574,7 @@ MpnwResult createHttpClient(
 	if (!headers)
 	{
 		destroyHttpClient(httpClientInstance);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	httpClientInstance->headers = headers;
@@ -588,7 +588,7 @@ MpnwResult createHttpClient(
 		if (!zlibStream)
 		{
 			destroyHttpClient(httpClientInstance);
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 		}
 
 		httpClientInstance->zlibStream = zlibStream;
@@ -598,7 +598,7 @@ MpnwResult createHttpClient(
 		if (result != Z_OK)
 		{
 			destroyHttpClient(httpClientInstance);
-			return zlibErrorToMpnwResult(result);
+			return zlibErrorToNetsResult(result);
 		}
 	}
 	else
@@ -607,7 +607,7 @@ MpnwResult createHttpClient(
 	}
 
 	*httpClient = httpClientInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 void destroyHttpClient(HttpClient httpClient)
 {
@@ -691,7 +691,7 @@ size_t getHttpClientHeaderCount(HttpClient httpClient)
 	return httpClient->headerCount;
 }
 
-inline static MpnwResult clearHttpClient(HttpClient httpClient)
+inline static NetsResult clearHttpClient(HttpClient httpClient)
 {
 	assert(httpClient);
 
@@ -711,7 +711,7 @@ inline static MpnwResult clearHttpClient(HttpClient httpClient)
 		int zlibResult = inflateReset(zlibStream);
 
 		if (zlibResult != Z_OK)
-			return zlibErrorToMpnwResult(zlibResult);
+			return zlibErrorToNetsResult(zlibResult);
 
 		zlibStream->avail_out = (uInt)(httpClient->responseBufferSize - 1);
 		zlibStream->next_out = (Bytef*)httpClient->response;
@@ -725,11 +725,11 @@ inline static MpnwResult clearHttpClient(HttpClient httpClient)
 	httpClient->isCompressed = false;
 	httpClient->isClose = false;
 	httpClient->isBody = false;
-	httpClient->result = TIMED_OUT_MPNW_RESULT;
+	httpClient->result = TIMED_OUT_NETS_RESULT;
 	httpClient->isRunning = true;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
-MpnwResult httpClientSendGET(
+NetsResult httpClientSendGET(
 	HttpClient httpClient,
 	const char* url,
 	size_t urlLength,
@@ -767,9 +767,9 @@ MpnwResult httpClientSendGET(
 		&pathOffset);
 
 	if (hostLength == 0)
-		return BAD_DATA_MPNW_RESULT;
+		return BAD_DATA_NETS_RESULT;
 	if (hostLength > 255)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	char host[256];
 
@@ -783,7 +783,7 @@ MpnwResult httpClientSendGET(
 	if (serviceLength != 0)
 	{
 		if (serviceLength > 31)
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 
 		memcpy(serviceBuffer, url + serviceOffset,
 			serviceLength * sizeof(char));
@@ -809,7 +809,7 @@ MpnwResult httpClientSendGET(
 	}
 
 	if (requestLength > getStreamClientBufferSize(streamClient))
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	char* request = (char*)getStreamClientBuffer(streamClient);
 
@@ -904,10 +904,10 @@ MpnwResult httpClientSendGET(
 
 	assert(index == requestLength);
 
-	MpnwResult mpnwResult = clearHttpClient(httpClient);
+	NetsResult netsResult = clearHttpClient(httpClient);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
 	bool isAlreadyConnected = false;
 
@@ -918,14 +918,14 @@ MpnwResult httpClientSendGET(
 		{
 			disconnectStreamClient(streamClient);
 
-			mpnwResult = connectHostnameStreamClient(
+			netsResult = connectHostnameStreamClient(
 				streamClient,
 				host,
 				service ? service : "443",
 				true);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
-				return mpnwResult;
+			if (netsResult != SUCCESS_NETS_RESULT)
+				return netsResult;
 
 			setSocketNoDelay(
 				getStreamClientSocket(streamClient),
@@ -939,7 +939,7 @@ MpnwResult httpClientSendGET(
 				if (!hostname)
 				{
 					disconnectStreamClient(streamClient);
-					return OUT_OF_MEMORY_MPNW_RESULT;
+					return OUT_OF_MEMORY_NETS_RESULT;
 				}
 
 				free(httpClient->lastHostname);
@@ -956,14 +956,14 @@ MpnwResult httpClientSendGET(
 	}
 	else
 	{
-		mpnwResult = connectHostnameStreamClient(
+		netsResult = connectHostnameStreamClient(
 			streamClient,
 			host,
 			service ? service : "443",
 			true);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
-			return mpnwResult;
+		if (netsResult != SUCCESS_NETS_RESULT)
+			return netsResult;
 
 		setSocketNoDelay(
 			getStreamClientSocket(streamClient),
@@ -977,7 +977,7 @@ MpnwResult httpClientSendGET(
 			if (!hostname)
 			{
 				disconnectStreamClient(streamClient);
-				return OUT_OF_MEMORY_MPNW_RESULT;
+				return OUT_OF_MEMORY_NETS_RESULT;
 			}
 
 			free(httpClient->lastHostname);
@@ -990,59 +990,59 @@ MpnwResult httpClientSendGET(
 
 	resetStreamClientTimeout(streamClient);
 
-	mpnwResult = streamClientSend(
+	netsResult = streamClientSend(
 		streamClient,
 		request,
 		requestLength);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		if (isAlreadyConnected)
 		{
 			disconnectStreamClient(streamClient);
 
-			mpnwResult = connectHostnameStreamClient(
+			netsResult = connectHostnameStreamClient(
 				streamClient,
 				host,
 				service ? service : "443",
 				true);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
-				return mpnwResult;
+			if (netsResult != SUCCESS_NETS_RESULT)
+				return netsResult;
 
 			setSocketNoDelay(
 				getStreamClientSocket(streamClient),
 				true);
 
-			mpnwResult = streamClientSend(
+			netsResult = streamClientSend(
 				streamClient,
 				request,
 				requestLength);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			if (netsResult != SUCCESS_NETS_RESULT)
 			{
 				disconnectStreamClient(streamClient);
-				return mpnwResult;
+				return netsResult;
 			}
 		}
 		else
 		{
 			disconnectStreamClient(streamClient);
-			return mpnwResult;
+			return netsResult;
 		}
 	}
 
 	while (httpClient->isRunning)
 	{
-		mpnwResult = updateStreamClient(streamClient);
+		netsResult = updateStreamClient(streamClient);
 
-		if (mpnwResult == SUCCESS_MPNW_RESULT)
+		if (netsResult == SUCCESS_NETS_RESULT)
 			continue;
 
-		if (mpnwResult != IN_PROGRESS_MPNW_RESULT)
+		if (netsResult != IN_PROGRESS_NETS_RESULT)
 		{
 			disconnectStreamClient(streamClient);
-			return mpnwResult;
+			return netsResult;
 		}
 
 		sleepThread(0.001);
@@ -1053,7 +1053,7 @@ MpnwResult httpClientSendGET(
 
 	return httpClient->result;
 }
-MpnwResult httpClientSendPOST(
+NetsResult httpClientSendPOST(
 	HttpClient httpClient,
 	const char* url,
 	size_t urlLength,
@@ -1105,9 +1105,9 @@ MpnwResult httpClientSendPOST(
 		&pathOffset);
 
 	if (hostLength == 0)
-		return BAD_DATA_MPNW_RESULT;
+		return BAD_DATA_NETS_RESULT;
 	if (hostLength > 255)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	char host[256];
 
@@ -1121,7 +1121,7 @@ MpnwResult httpClientSendPOST(
 	if (serviceLength != 0)
 	{
 		if (serviceLength > 31)
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 
 		memcpy(serviceBuffer, url + serviceOffset,
 			serviceLength * sizeof(char));
@@ -1161,7 +1161,7 @@ MpnwResult httpClientSendPOST(
 	}
 
 	if (contentLength > UINT32_MAX)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	requestLength += contentLength;
 
@@ -1169,12 +1169,12 @@ MpnwResult httpClientSendPOST(
 	int clStringLength = snprintf(clString, 16, "%u", (uint32_t)contentLength);
 
 	if (clStringLength <= 0)
-		return UNKNOWN_ERROR_MPNW_RESULT;
+		return UNKNOWN_ERROR_NETS_RESULT;
 
 	requestLength += clStringLength;
 
 	if (requestLength > getStreamClientBufferSize(streamClient))
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	char* request = (char*)getStreamClientBuffer(streamClient);
 
@@ -1339,10 +1339,10 @@ MpnwResult httpClientSendPOST(
 
 	assert(index == requestLength);
 
-	MpnwResult mpnwResult = clearHttpClient(httpClient);
+	NetsResult netsResult = clearHttpClient(httpClient);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
 	bool isAlreadyConnected = false;
 
@@ -1353,14 +1353,14 @@ MpnwResult httpClientSendPOST(
 		{
 			disconnectStreamClient(streamClient);
 
-			mpnwResult = connectHostnameStreamClient(
+			netsResult = connectHostnameStreamClient(
 				streamClient,
 				host,
 				service ? service : "443",
 				true);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
-				return mpnwResult;
+			if (netsResult != SUCCESS_NETS_RESULT)
+				return netsResult;
 
 			setSocketNoDelay(
 				getStreamClientSocket(streamClient),
@@ -1374,7 +1374,7 @@ MpnwResult httpClientSendPOST(
 				if (!hostname)
 				{
 					disconnectStreamClient(streamClient);
-					return OUT_OF_MEMORY_MPNW_RESULT;
+					return OUT_OF_MEMORY_NETS_RESULT;
 				}
 
 				free(httpClient->lastHostname);
@@ -1391,14 +1391,14 @@ MpnwResult httpClientSendPOST(
 	}
 	else
 	{
-		mpnwResult = connectHostnameStreamClient(
+		netsResult = connectHostnameStreamClient(
 			streamClient,
 			host,
 			service ? service : "443",
 			true);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
-			return mpnwResult;
+		if (netsResult != SUCCESS_NETS_RESULT)
+			return netsResult;
 
 		setSocketNoDelay(
 			getStreamClientSocket(streamClient),
@@ -1412,7 +1412,7 @@ MpnwResult httpClientSendPOST(
 			if (!hostname)
 			{
 				disconnectStreamClient(streamClient);
-				return OUT_OF_MEMORY_MPNW_RESULT;
+				return OUT_OF_MEMORY_NETS_RESULT;
 			}
 
 			free(httpClient->lastHostname);
@@ -1425,59 +1425,59 @@ MpnwResult httpClientSendPOST(
 
 	resetStreamClientTimeout(streamClient);
 
-	mpnwResult = streamClientSend(
+	netsResult = streamClientSend(
 		streamClient,
 		request,
 		requestLength);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		if (isAlreadyConnected)
 		{
 			disconnectStreamClient(streamClient);
 
-			mpnwResult = connectHostnameStreamClient(
+			netsResult = connectHostnameStreamClient(
 				streamClient,
 				host,
 				service ? service : "443",
 				true);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
-				return mpnwResult;
+			if (netsResult != SUCCESS_NETS_RESULT)
+				return netsResult;
 
 			setSocketNoDelay(
 				getStreamClientSocket(streamClient),
 				true);
 
-			mpnwResult = streamClientSend(
+			netsResult = streamClientSend(
 				streamClient,
 				request,
 				requestLength);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			if (netsResult != SUCCESS_NETS_RESULT)
 			{
 				disconnectStreamClient(streamClient);
-				return mpnwResult;
+				return netsResult;
 			}
 		}
 		else
 		{
 			disconnectStreamClient(streamClient);
-			return mpnwResult;
+			return netsResult;
 		}
 	}
 
 	while (httpClient->isRunning)
 	{
-		mpnwResult = updateStreamClient(streamClient);
+		netsResult = updateStreamClient(streamClient);
 
-		if (mpnwResult == SUCCESS_MPNW_RESULT)
+		if (netsResult == SUCCESS_NETS_RESULT)
 			continue;
 
-		if (mpnwResult != IN_PROGRESS_MPNW_RESULT)
+		if (netsResult != IN_PROGRESS_NETS_RESULT)
 		{
 			disconnectStreamClient(streamClient);
-			return mpnwResult;
+			return netsResult;
 		}
 
 		sleepThread(0.001);

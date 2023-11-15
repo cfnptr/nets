@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mpnw/stream_client.h"
+#include "nets/stream_client.h"
 
 #include "mpmt/thread.h"
 #include "mpmt/common.h"
@@ -29,7 +29,7 @@ struct StreamClient_T
 	double timeout;
 };
 
-MpnwResult createStreamClient(
+NetsResult createStreamClient(
 	size_t bufferSize,
 	double timeoutTime,
 	OnStreamClientReceive onReceive,
@@ -46,7 +46,7 @@ MpnwResult createStreamClient(
 		1, sizeof(StreamClient_T));
 
 	if (!streamClientInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	streamClientInstance->timeoutTime = timeoutTime;
 	streamClientInstance->onReceive = onReceive;
@@ -61,14 +61,14 @@ MpnwResult createStreamClient(
 	if (!buffer)
 	{
 		destroyStreamClient(streamClientInstance);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	streamClientInstance->buffer = buffer;
 	streamClientInstance->bufferSize = bufferSize;
 
 	*streamClient = streamClientInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 void destroyStreamClient(StreamClient streamClient)
 {
@@ -148,7 +148,7 @@ bool isStreamClientConnected(StreamClient streamClient)
 	assert(streamClient);
 	return streamClient->socket;
 }
-MpnwResult connectAddressStreamClient(
+NetsResult connectAddressStreamClient(
 	StreamClient streamClient,
 	SocketAddress remoteAddress,
 	const char* hostname)
@@ -162,15 +162,15 @@ MpnwResult connectAddressStreamClient(
 
 	SocketAddress socketAddress;
 
-	MpnwResult mpnwResult = createAnySocketAddress(
+	NetsResult netsResult = createAnySocketAddress(
 		addressFamily, &socketAddress);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
 	Socket socket;
 
-	mpnwResult = createSocket(
+	netsResult = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
 		socketAddress,
@@ -181,32 +181,32 @@ MpnwResult connectAddressStreamClient(
 
 	destroySocketAddress(socketAddress);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
 	double timeout = getCurrentClock() + streamClient->timeoutTime;
 
 	while (getCurrentClock() < timeout)
 	{
-		mpnwResult = connectSocket(socket, remoteAddress);
+		netsResult = connectSocket(socket, remoteAddress);
 
-		if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
 		{
 			sleepThread(0.001);
 			continue;
 		}
-		if (mpnwResult != SUCCESS_MPNW_RESULT &&
-			mpnwResult != ALREADY_CONNECTED_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT &&
+			netsResult != ALREADY_CONNECTED_NETS_RESULT)
 		{
 			destroySocket(socket);
-			return mpnwResult;
+			return netsResult;
 		}
 
 		goto CONNECT_SSL;
 	}
 
 	destroySocket(socket);
-	return TIMED_OUT_MPNW_RESULT;
+	return TIMED_OUT_NETS_RESULT;
 
 CONNECT_SSL:
 
@@ -215,33 +215,33 @@ CONNECT_SSL:
 		assert(hostname == NULL);
 		streamClient->socket = socket;
 		streamClient->timeout = timeout;
-		return SUCCESS_MPNW_RESULT;
+		return SUCCESS_NETS_RESULT;
 	}
 
 	while (getCurrentClock() < timeout)
 	{
-		mpnwResult = connectSslSocket(socket, hostname);
+		netsResult = connectSslSocket(socket, hostname);
 
-		if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
 		{
 			sleepThread(0.001);
 			continue;
 		}
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 		{
 			destroySocket(socket);
-			return mpnwResult;
+			return netsResult;
 		}
 
 		streamClient->socket = socket;
 		streamClient->timeout = timeout;
-		return SUCCESS_MPNW_RESULT;
+		return SUCCESS_NETS_RESULT;
 	}
 
 	destroySocket(socket);
-	return TIMED_OUT_MPNW_RESULT;
+	return TIMED_OUT_NETS_RESULT;
 }
-inline static MpnwResult connectByHostname(
+inline static NetsResult connectByHostname(
 	StreamClient streamClient,
 	const char* hostname,
 	const char* service,
@@ -257,7 +257,7 @@ inline static MpnwResult connectByHostname(
 	SocketAddress* resolvedAddresses;
 	size_t resolvedAddressCount;
 
-	MpnwResult mpnwResult = resolveSocketAddresses(
+	NetsResult netsResult = resolveSocketAddresses(
 		hostname,
 		service,
 		addressFamily,
@@ -265,20 +265,20 @@ inline static MpnwResult connectByHostname(
 		&resolvedAddresses,
 		&resolvedAddressCount);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
 	SocketAddress socketAddress;
 
-	mpnwResult = createAnySocketAddress(
+	netsResult = createAnySocketAddress(
 		addressFamily, &socketAddress);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyResolvedSocketAddresses(
 			resolvedAddresses,
 			resolvedAddressCount);
-		return mpnwResult;
+		return netsResult;
 	}
 
 	double timeout = getCurrentClock() + streamClient->timeoutTime;
@@ -287,7 +287,7 @@ inline static MpnwResult connectByHostname(
 	{
 		Socket socket;
 
-		mpnwResult = createSocket(
+		netsResult = createSocket(
 			STREAM_SOCKET_TYPE,
 			addressFamily,
 			socketAddress,
@@ -296,28 +296,28 @@ inline static MpnwResult connectByHostname(
 			streamClient->sslContext,
 			&socket);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 		{
 			destroySocketAddress(socketAddress);
 			destroyResolvedSocketAddresses(
 				resolvedAddresses,
 				resolvedAddressCount);
-			return mpnwResult;
+			return netsResult;
 		}
 
 		SocketAddress remoteAddress = resolvedAddresses[i];
 
 		while (getCurrentClock() < timeout)
 		{
-			mpnwResult = connectSocket(socket, remoteAddress);
+			netsResult = connectSocket(socket, remoteAddress);
 
-			if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+			if (netsResult == IN_PROGRESS_NETS_RESULT)
 			{
 				sleepThread(0.001);
 				continue;
 			}
-			if (mpnwResult != SUCCESS_MPNW_RESULT &&
-				mpnwResult != ALREADY_CONNECTED_MPNW_RESULT)
+			if (netsResult != SUCCESS_NETS_RESULT &&
+				netsResult != ALREADY_CONNECTED_NETS_RESULT)
 			{
 				destroySocket(socket);
 				goto CONTINUE;
@@ -331,7 +331,7 @@ inline static MpnwResult connectByHostname(
 		destroyResolvedSocketAddresses(
 			resolvedAddresses,
 			resolvedAddressCount);
-		return TIMED_OUT_MPNW_RESULT;
+		return TIMED_OUT_NETS_RESULT;
 
 CONNECT_SSL:
 
@@ -344,20 +344,20 @@ CONNECT_SSL:
 				resolvedAddressCount);
 			streamClient->socket = socket;
 			streamClient->timeout = timeout;
-			return SUCCESS_MPNW_RESULT;
+			return SUCCESS_NETS_RESULT;
 		}
 
 		while (getCurrentClock() < timeout)
 		{
-			mpnwResult = connectSslSocket(socket,
+			netsResult = connectSslSocket(socket,
 				setSNI ? hostname : NULL);
 
-			if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+			if (netsResult == IN_PROGRESS_NETS_RESULT)
 			{
 				sleepThread(0.001);
 				continue;
 			}
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			if (netsResult != SUCCESS_NETS_RESULT)
 			{
 				destroySocket(socket);
 				goto CONTINUE;
@@ -369,7 +369,7 @@ CONNECT_SSL:
 				resolvedAddressCount);
 			streamClient->socket = socket;
 			streamClient->timeout = timeout;
-			return SUCCESS_MPNW_RESULT;
+			return SUCCESS_NETS_RESULT;
 		}
 
 		destroySocket(socket);
@@ -377,15 +377,15 @@ CONNECT_SSL:
 		destroyResolvedSocketAddresses(
 			resolvedAddresses,
 			resolvedAddressCount);
-		return TIMED_OUT_MPNW_RESULT;
+		return TIMED_OUT_NETS_RESULT;
 CONTINUE:
 		continue;
 	}
 
 	destroySocketAddress(socketAddress);
-	return mpnwResult;
+	return netsResult;
 }
-MpnwResult connectHostnameStreamClient(
+NetsResult connectHostnameStreamClient(
 	StreamClient streamClient,
 	const char* hostname,
 	const char* service,
@@ -396,27 +396,27 @@ MpnwResult connectHostnameStreamClient(
 	assert(service);
 	assert(!streamClient->socket);
 
-	MpnwResult mpnwResult = connectByHostname(
+	NetsResult netsResult = connectByHostname(
 		streamClient,
 		hostname,
 		service,
 		setSNI,
 		IP_V4_ADDRESS_FAMILY);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
-		MpnwResult mpnwResult6 = connectByHostname(
+		NetsResult netsResult6 = connectByHostname(
 			streamClient,
 			hostname,
 			service,
 			setSNI,
 			IP_V6_ADDRESS_FAMILY);
 
-		if (mpnwResult6 != SUCCESS_MPNW_RESULT)
-			return mpnwResult;
+		if (netsResult6 != SUCCESS_NETS_RESULT)
+			return netsResult;
 	}
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 void disconnectStreamClient(StreamClient streamClient)
 {
@@ -434,7 +434,7 @@ void disconnectStreamClient(StreamClient streamClient)
 	}
 }
 
-MpnwResult updateStreamClient(StreamClient streamClient)
+NetsResult updateStreamClient(StreamClient streamClient)
 {
 	assert(streamClient);
 	assert(streamClient->socket);
@@ -442,19 +442,19 @@ MpnwResult updateStreamClient(StreamClient streamClient)
 	double currentTime = getCurrentClock();
 
 	if (currentTime > streamClient->timeout)
-		return TIMED_OUT_MPNW_RESULT;
+		return TIMED_OUT_NETS_RESULT;
 
 	uint8_t* receiveBuffer = streamClient->buffer;
 	size_t byteCount;
 
-	MpnwResult mpnwResult = socketReceive(
+	NetsResult netsResult = socketReceive(
 		streamClient->socket,
 		receiveBuffer,
 		streamClient->bufferSize,
 		&byteCount);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
 	streamClient->timeout = currentTime +
 		streamClient->timeoutTime;
@@ -463,7 +463,7 @@ MpnwResult updateStreamClient(StreamClient streamClient)
 		receiveBuffer,
 		byteCount);
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 void resetStreamClientTimeout(StreamClient streamClient)
 {
@@ -473,7 +473,7 @@ void resetStreamClientTimeout(StreamClient streamClient)
 		streamClient->timeoutTime;
 }
 
-MpnwResult streamClientSend(
+NetsResult streamClientSend(
 	StreamClient streamClient,
 	const void* sendBuffer,
 	size_t byteCount)
@@ -483,18 +483,18 @@ MpnwResult streamClientSend(
 	assert(byteCount > 0);
 	assert(streamClient->socket);
 
-	MpnwResult mpnwResult = socketSend(
+	NetsResult netsResult = socketSend(
 		streamClient->socket,
 		sendBuffer,
 		byteCount);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 
-MpnwResult streamClientSendMessage(
+NetsResult streamClientSendMessage(
 	StreamClient streamClient,
 	StreamMessage streamMessage)
 {
@@ -504,13 +504,13 @@ MpnwResult streamClientSendMessage(
 	assert(streamMessage.size == streamMessage.offset);
 	assert(streamClient->socket);
 
-	MpnwResult mpnwResult = socketSend(
+	NetsResult netsResult = socketSend(
 		streamClient->socket,
 		streamMessage.buffer,
 		streamMessage.size);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }

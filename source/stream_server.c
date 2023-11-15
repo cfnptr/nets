@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mpnw/stream_server.h"
+#include "nets/stream_server.h"
 #include "mpmt/common.h"
 
 struct StreamSession_T
@@ -38,7 +38,7 @@ struct StreamServer_T
 	Socket acceptSocket;
 };
 
-MpnwResult createStreamServer(
+NetsResult createStreamServer(
 	AddressFamily addressFamily,
 	const char* service,
 	size_t sessionBufferSize,
@@ -68,7 +68,7 @@ MpnwResult createStreamServer(
 		1, sizeof(StreamServer_T));
 
 	if (!streamServerInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	streamServerInstance->timeoutTime = timeoutTime;
 	streamServerInstance->onCreate = onCreate;
@@ -83,7 +83,7 @@ MpnwResult createStreamServer(
 	if (!dataBuffer)
 	{
 		destroyStreamServer(streamServerInstance);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	streamServerInstance->dataBuffer = dataBuffer;
@@ -95,7 +95,7 @@ MpnwResult createStreamServer(
 	if (!sessionBuffer)
 	{
 		destroyStreamServer(streamServerInstance);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	streamServerInstance->sessionBufferSize = sessionBufferSize;
@@ -104,21 +104,21 @@ MpnwResult createStreamServer(
 
 	SocketAddress socketAddress;
 
-	MpnwResult mpnwResult = createSocketAddress(
+	NetsResult netsResult = createSocketAddress(
 		addressFamily == IP_V4_ADDRESS_FAMILY ?
 			ANY_IP_ADDRESS_V4 : ANY_IP_ADDRESS_V6,
 		service,
 		&socketAddress);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyStreamServer(streamServerInstance);
-		return mpnwResult;
+		return netsResult;
 	}
 
 	Socket acceptSocket;
 
-	mpnwResult = createSocket(
+	netsResult = createSocket(
 		STREAM_SOCKET_TYPE,
 		addressFamily,
 		socketAddress,
@@ -129,26 +129,26 @@ MpnwResult createStreamServer(
 
 	destroySocketAddress(socketAddress);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyStreamServer(streamServerInstance);
-		return mpnwResult;
+		return netsResult;
 	}
 
 	streamServerInstance->acceptSocket = acceptSocket;
 
-	mpnwResult = listenSocket(
+	netsResult = listenSocket(
 		acceptSocket,
 		connectionQueueSize);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyStreamServer(streamServerInstance);
-		return mpnwResult;
+		return netsResult;
 	}
 
 	*streamServer = streamServerInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 void destroyStreamServer(StreamServer streamServer)
 {
@@ -163,7 +163,7 @@ void destroyStreamServer(StreamServer streamServer)
 	{
 		StreamSession streamSession = sessionBuffer[i];
 		Socket receiveSocket = streamSession->receiveSocket;
-		onDestroy(streamServer, streamSession, SUCCESS_MPNW_RESULT);
+		onDestroy(streamServer, streamSession, SUCCESS_NETS_RESULT);
 		destroySocketAddress(streamSession->socketAddress);
 		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
@@ -291,21 +291,21 @@ bool updateStreamServer(StreamServer streamServer)
 		Socket receiveSocket = streamSession->receiveSocket;
 		double lastUpdateTime = streamSession->lastUpdateTime;
 
-		MpnwResult mpnwResult;
+		NetsResult netsResult;
 
 		if (lastUpdateTime < 0.0)
 		{
 			if (lastUpdateTime + currentTime > timeoutTime)
 			{
-				mpnwResult = TIMED_OUT_MPNW_RESULT;
+				netsResult = TIMED_OUT_NETS_RESULT;
 				goto DESTROY_SESSION;
 			}
 
-			mpnwResult = acceptSslSocket(receiveSocket);
+			netsResult = acceptSslSocket(receiveSocket);
 
-			if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+			if (netsResult == IN_PROGRESS_NETS_RESULT)
 				continue;
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			if (netsResult != SUCCESS_NETS_RESULT)
 				goto DESTROY_SESSION;
 
 			streamSession->lastUpdateTime = currentTime;
@@ -315,47 +315,47 @@ bool updateStreamServer(StreamServer streamServer)
 		{
 			if (currentTime - lastUpdateTime > timeoutTime)
 			{
-				mpnwResult = TIMED_OUT_MPNW_RESULT;
+				netsResult = TIMED_OUT_NETS_RESULT;
 				goto DESTROY_SESSION;
 			}
 		}
 
 		size_t byteCount;
 
-		mpnwResult = socketReceive(
+		netsResult = socketReceive(
 			receiveSocket,
 			dataBuffer,
 			dataBufferSize,
 			&byteCount);
 
-		if (mpnwResult == IN_PROGRESS_MPNW_RESULT)
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
 		{
-			mpnwResult = onUpdate(
+			netsResult = onUpdate(
 				streamServer,
 				streamSession);
 
-			if (mpnwResult != SUCCESS_MPNW_RESULT)
+			if (netsResult != SUCCESS_NETS_RESULT)
 				goto DESTROY_SESSION;
 			continue;
 		}
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 			goto DESTROY_SESSION;
 
-		mpnwResult = onReceive(
+		netsResult = onReceive(
 			streamServer,
 			streamSession,
 			dataBuffer,
 			byteCount);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 			goto DESTROY_SESSION;
 
-		mpnwResult = onUpdate(
+		netsResult = onUpdate(
 			streamServer,
 			streamSession);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 			goto DESTROY_SESSION;
 
 		streamSession->lastUpdateTime = currentTime;
@@ -363,7 +363,7 @@ bool updateStreamServer(StreamServer streamServer)
 		continue;
 
 	DESTROY_SESSION:
-		onDestroy(streamServer, streamSession, mpnwResult);
+		onDestroy(streamServer, streamSession, netsResult);
 		destroyStreamSession(streamSession);
 
 		for (size_t j = i + 1; j < sessionCount; j++)
@@ -384,11 +384,11 @@ bool updateStreamServer(StreamServer streamServer)
 
 		Socket acceptedSocket;
 
-		MpnwResult mpnwResult = acceptSocket(
+		NetsResult netsResult = acceptSocket(
 			serverSocket,
 			&acceptedSocket);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 		{
 			streamServer->sessionCount = sessionCount;
 			return isUpdated;
@@ -406,11 +406,11 @@ bool updateStreamServer(StreamServer streamServer)
 
 		SocketAddress socketAddress;
 
-		mpnwResult = createAnySocketAddress(
+		netsResult = createAnySocketAddress(
 			IP_V6_ADDRESS_FAMILY,
 			&socketAddress);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
+		if (netsResult != SUCCESS_NETS_RESULT)
 		{
 			destroyStreamSession(streamSession);
 			continue;
@@ -448,7 +448,7 @@ bool updateStreamServer(StreamServer streamServer)
 	}
 }
 
-MpnwResult streamSessionSend(
+NetsResult streamSessionSend(
 	StreamSession streamSession,
 	const void* sendBuffer,
 	size_t byteCount)
@@ -462,7 +462,7 @@ MpnwResult streamSessionSend(
 		sendBuffer,
 		byteCount);
 }
-MpnwResult streamSessionSendMessage(
+NetsResult streamSessionSendMessage(
 	StreamSession streamSession,
 	StreamMessage streamMessage)
 {

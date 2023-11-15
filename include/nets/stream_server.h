@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "mpnw/socket.h"
+#include "nets/socket.h"
 
 /*
  * Stream server structure. (TCP)
@@ -51,12 +51,12 @@ typedef bool(*OnStreamSessionCreate)(
  *
  * streamServer - stream server instance.
  * streamSession - stream session instance.
- * mpnwResult - destruction reason.
+ * netsResult - destruction reason.
  */
 typedef void(*OnStreamSessionDestroy)(
 	StreamServer streamServer,
 	StreamSession streamSession,
-	MpnwResult mpnwResult);
+	NetsResult netsResult);
 /*
  * Stream session receive function
  * Destroys session on failure return result.
@@ -66,7 +66,7 @@ typedef void(*OnStreamSessionDestroy)(
  * receiveBuffer - receive buffer instance.
  * byteCount - received byte count.
  */
-typedef MpnwResult(*OnStreamSessionReceive)(
+typedef NetsResult(*OnStreamSessionReceive)(
 	StreamServer streamServer,
 	StreamSession streamSession,
 	const uint8_t* receiveBuffer,
@@ -78,13 +78,13 @@ typedef MpnwResult(*OnStreamSessionReceive)(
  * streamServer - stream server instance.
  * streamSession - stream session instance.
  */
-typedef MpnwResult(*OnStreamSessionUpdate)(
+typedef NetsResult(*OnStreamSessionUpdate)(
 	StreamServer streamServer,
 	StreamSession streamSession);
 
 /*
  * Create a new stream server instance (TCP).
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * addressFamily - local socket address family.
  * service - local address service string.
@@ -100,7 +100,7 @@ typedef MpnwResult(*OnStreamSessionUpdate)(
  * sslContext - SSL context or NULL.
  * streamServer - pointer to the stream server.
  */
-MpnwResult createStreamServer(
+NetsResult createStreamServer(
 	AddressFamily addressFamily,
 	const char* service,
 	size_t sessionBufferSize,
@@ -196,23 +196,23 @@ bool updateStreamServer(StreamServer streamServer);
 
 /*
  * Send data to the specified session.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * streamSession - stream session instance.
  * sendBuffer - data send buffer.
  * byteCount - send byte count.
  */
-MpnwResult streamSessionSend(
+NetsResult streamSessionSend(
 	StreamSession streamSession,
 	const void* sendBuffer,
 	size_t byteCount);
 /*
  * Send stream message to the specified session.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * streamSession - stream session instance.
  * sendBuffer - send stream message.
  */
-MpnwResult streamSessionSendMessage(
+NetsResult streamSessionSendMessage(
 	StreamSession streamSession,
 	StreamMessage streamMessage);

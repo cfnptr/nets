@@ -1,4 +1,4 @@
-# MPNW ![CI](https://github.com/cfnptr/mpnw/actions/workflows/cmake.yml/badge.svg)
+# Nets ![CI](https://github.com/cfnptr/nets/actions/workflows/cmake.yml/badge.svg)
 
 A library providing generic interface for transferring data over a **network** across different platforms.
 
@@ -34,26 +34,31 @@ A library providing generic interface for transferring data over a **network** a
 
 | Name                      | Description                          | Default value |
 |---------------------------|--------------------------------------|---------------|
-| MPNW_BUILD_SHARED         | Build MPNW shared library            | `ON`          |
-| MPNW_BUILD_EXAMPLES       | Build MPNW usage examples            | `ON`          |
-| MPNW_USE_OPENSSL          | Use OpenSSL for secure communication | `ON`          |
-| MPNW_ALLOW_DEPRECATED_SSL | Allow deprecated OpenSSL functions   | `OFF`         |
+| NETS_BUILD_SHARED         | Build Nets shared library            | `ON`          |
+| NETS_BUILD_EXAMPLES       | Build Nets usage examples            | `ON`          |
+| NETS_USE_OPENSSL          | Use OpenSSL for secure communication | `ON`          |
+| NETS_ALLOW_DEPRECATED_SSL | Allow deprecated OpenSSL functions   | `OFF`         |
 
 ## Cloning
 
 ```
-git clone --recursive https://github.com/cfnptr/mpnw
+git clone --recursive https://github.com/cfnptr/nets
 ```
 
 ## Usage examples
 
-Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/datagram_example.c)<br/>
-HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cfnptr/mpnw/blob/main/examples/https_example.c)
+Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/nets/blob/main/examples/datagram_example.c)<br/>
+HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cfnptr/nets/blob/main/examples/https_example.c)
 
 ## Third-party
 
 * [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache-2.0 License)
-* [zlib](https://www.zlib.net/) (zlib License)
+* [zlib](https://github.com/madler/zlib) (zlib License)
+
+### Inspired by
+
+* [asio](https://github.com/boostorg/asio/)
+* [libuv](https://github.com/libuv/libuv/)
 
 ### Special thanks to Gigaflops.

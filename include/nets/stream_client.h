@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "mpnw/socket.h"
+#include "nets/socket.h"
 
 /*
  * Stream client structure. (TCP)
@@ -38,7 +38,7 @@ typedef void(*OnStreamClientReceive)(
 
 /*
  * Create a new stream client instance (TCP).
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * bufferSize - data buffer size.
  * timeoutTime - time out time. (seconds)
@@ -47,7 +47,7 @@ typedef void(*OnStreamClientReceive)(
  * sslContext - SSL context instance or NULL.
  * streamClient - pointer to the stream client.
  */
-MpnwResult createStreamClient(
+NetsResult createStreamClient(
 	size_t bufferSize,
 	double timeoutTime,
 	OnStreamClientReceive onReceive,
@@ -125,26 +125,26 @@ void setStreamClientSslContext(
 bool isStreamClientConnected(StreamClient streamClient);
 /*
  * Connect stream client to the server by address.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * streamClient - stream client instance.
  * remoteAddress - remote socket address.
  * hostname - SNI hostname or NULL.
  */
-MpnwResult connectAddressStreamClient(
+NetsResult connectAddressStreamClient(
 	StreamClient streamClient,
 	SocketAddress remoteAddress,
 	const char* hostname);
 /*
  * Connect stream client to the server by hostname.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * streamClient - stream client instance.
  * hostname - server hostname string.
  * service - server service string.
  * setSNI - set SNI hostname.
  */
-MpnwResult connectHostnameStreamClient(
+NetsResult connectHostnameStreamClient(
 	StreamClient streamClient,
 	const char* hostname,
 	const char* service,
@@ -157,11 +157,11 @@ void disconnectStreamClient(StreamClient streamClient);
 
 /*
  * Receive buffered data.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * streamClient - stream client instance.
  */
-MpnwResult updateStreamClient(StreamClient streamClient);
+NetsResult updateStreamClient(StreamClient streamClient);
 /*
  * Resets stream client response timeout counter.
  * streamClient - stream client instance.
@@ -170,24 +170,24 @@ void resetStreamClientTimeout(StreamClient streamClient);
 
 /*
  * Send data to the server.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * streamClient - stream client instance.
  * sendBuffer - data send buffer.
  * byteCount - send byte count.
  */
-MpnwResult streamClientSend(
+NetsResult streamClientSend(
 	StreamClient streamClient,
 	const void* sendBuffer,
 	size_t byteCount);
 
 /*
  * Send stream message to the server.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * streamClient - stream client instance.
  * sendBuffer - send stream message.
  */
-MpnwResult streamClientSendMessage(
+NetsResult streamClientSendMessage(
 	StreamClient streamClient,
 	StreamMessage streamMessage);

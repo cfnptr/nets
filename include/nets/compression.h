@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,25 +13,25 @@
 // limitations under the License.
 
 #pragma once
-#include "mpnw/defines.h"
+#include "nets/defines.h"
 #include "zlib.h"
 
 /*
- * Converts zlib error the MPNW result.
+ * Converts zlib error the NETS result.
  * result - zlib result value.
  */
-inline static MpnwResult zlibErrorToMpnwResult(int result)
+inline static NetsResult zlibErrorToNetsResult(int result)
 {
 	switch (result)
 	{
 	default:
-		return UNKNOWN_ERROR_MPNW_RESULT;
+		return UNKNOWN_ERROR_NETS_RESULT;
 	case Z_NEED_DICT:
 	case Z_DATA_ERROR:
 	case Z_STREAM_ERROR:
-		return BAD_DATA_MPNW_RESULT;
+		return BAD_DATA_NETS_RESULT;
 	case Z_MEM_ERROR:
 	case Z_BUF_ERROR:
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 }

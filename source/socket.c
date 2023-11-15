@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mpnw/socket.h"
+#include "nets/socket.h"
 
 #if __linux__ || __APPLE__
 #include <netdb.h>
@@ -43,7 +43,7 @@ static WSADATA wsaData;
 #error Unknown operating system
 #endif
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 #include "openssl/ssl.h"
 #else
 #define SSL_CTX void
@@ -57,7 +57,7 @@ struct Socket_T
 	AddressFamily family;
 	bool isBlocking;
 	bool isOnlyIPV6;
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	SslContext sslContext;
 	SSL* ssl;
 #endif
@@ -87,7 +87,7 @@ bool initializeNetwork()
 		return false;
 #endif
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
 #endif
@@ -107,7 +107,7 @@ void terminateNetwork()
 		abort();
 #endif
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	EVP_cleanup();
 #endif
 
@@ -127,139 +127,139 @@ void disableSigpipe()
 #endif
 }
 
-inline static MpnwResult errorToMpnwResult(int error)
+inline static NetsResult errorToNetsResult(int error)
 {
 #if __linux__ || __APPLE__
 	switch (error)
 	{
 	default:
-		return UNKNOWN_ERROR_MPNW_RESULT;
+		return UNKNOWN_ERROR_NETS_RESULT;
 	case EALREADY:
 	case EINPROGRESS:
 	case EWOULDBLOCK:
-		return IN_PROGRESS_MPNW_RESULT;
+		return IN_PROGRESS_NETS_RESULT;
 	case EAFNOSUPPORT:
 	case EPROTONOSUPPORT:
 	case ESOCKTNOSUPPORT:
 	case EOPNOTSUPP:
-		return NOT_SUPPORTED_MPNW_RESULT;
+		return NOT_SUPPORTED_NETS_RESULT;
 	case EMFILE:
-		return OUT_OF_DESCRIPTORS_MPNW_RESULT;
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	case ENOBUFS:
 	case ENOMEM:
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	case EACCES:
 	case EPERM:
-		return NO_ACCESS_MPNW_RESULT;
+		return NO_ACCESS_NETS_RESULT;
 	case EADDRINUSE:
-		return ADDRESS_IS_ALREADY_IN_USE_MPNW_RESULT;
+		return ADDRESS_IS_ALREADY_IN_USE_NETS_RESULT;
 	case EADDRNOTAVAIL:
-		return BAD_ADDRESS_MPNW_RESULT;
+		return BAD_ADDRESS_NETS_RESULT;
 	case EINVAL:
 	case EFAULT:
 	case ENOTSOCK:
 	case EBADF:
-		return BAD_DATA_MPNW_RESULT;
+		return BAD_DATA_NETS_RESULT;
 	case EISCONN:
-		return ALREADY_CONNECTED_MPNW_RESULT;
+		return ALREADY_CONNECTED_NETS_RESULT;
 	case ECONNREFUSED:
-		return CONNECTION_IS_REFUSED_MPNW_RESULT;
+		return CONNECTION_IS_REFUSED_NETS_RESULT;
 	case ECONNABORTED:
-		return CONNECTION_IS_ABORTED_MPNW_RESULT;
+		return CONNECTION_IS_ABORTED_NETS_RESULT;
 	case ECONNRESET:
-		return CONNECTION_IS_RESET_MPNW_RESULT;
+		return CONNECTION_IS_RESET_NETS_RESULT;
 	case EPIPE:
-		return CONNECTION_IS_CLOSED_MPNW_RESULT;
+		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	case ENETUNREACH:
-		return NETWORK_IS_NOT_REACHABLE_MPNW_RESULT;
+		return NETWORK_IS_NOT_REACHABLE_NETS_RESULT;
 	case EHOSTUNREACH:
-		return HOST_IS_NOT_REACHABLE_MPNW_RESULT;
+		return HOST_IS_NOT_REACHABLE_NETS_RESULT;
 	case ETIMEDOUT:
-		return TIMED_OUT_MPNW_RESULT;
+		return TIMED_OUT_NETS_RESULT;
 	case EINTR:
-		return INTERRUPTED_MPNW_RESULT;
+		return INTERRUPTED_NETS_RESULT;
 	}
 #elif _WIN32
 	switch (error)
 	{
 	default:
-		return UNKNOWN_ERROR_MPNW_RESULT;
+		return UNKNOWN_ERROR_NETS_RESULT;
 	case WSAEALREADY:
 	case WSAEINPROGRESS:
 	case WSAEWOULDBLOCK:
-		return IN_PROGRESS_MPNW_RESULT;
+		return IN_PROGRESS_NETS_RESULT;
 	case WSAEAFNOSUPPORT:
 	case WSAEPROTONOSUPPORT:
 	case WSAESOCKTNOSUPPORT:
 	case WSAEOPNOTSUPP:
-		return NOT_SUPPORTED_MPNW_RESULT;
+		return NOT_SUPPORTED_NETS_RESULT;
 	case WSAEMFILE:
-		return OUT_OF_DESCRIPTORS_MPNW_RESULT;
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	case WSAENOBUFS:
 	case WSA_NOT_ENOUGH_MEMORY:
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	case WSAEACCES:
-		return NO_ACCESS_MPNW_RESULT;
+		return NO_ACCESS_NETS_RESULT;
 	case WSAEADDRINUSE:
-		return ADDRESS_IS_ALREADY_IN_USE_MPNW_RESULT;
+		return ADDRESS_IS_ALREADY_IN_USE_NETS_RESULT;
 	case WSAEADDRNOTAVAIL:
-		return BAD_ADDRESS_MPNW_RESULT;
+		return BAD_ADDRESS_NETS_RESULT;
 	case WSAEINVAL:
 	case WSAEFAULT:
 	case WSAENOTSOCK:
-		return BAD_DATA_MPNW_RESULT;
+		return BAD_DATA_NETS_RESULT;
 	case WSAEISCONN:
-		return ALREADY_CONNECTED_MPNW_RESULT;
+		return ALREADY_CONNECTED_NETS_RESULT;
 	case WSAECONNREFUSED:
-		return CONNECTION_IS_REFUSED_MPNW_RESULT;
+		return CONNECTION_IS_REFUSED_NETS_RESULT;
 	case WSAECONNABORTED:
-		return CONNECTION_IS_ABORTED_MPNW_RESULT;
+		return CONNECTION_IS_ABORTED_NETS_RESULT;
 	case WSAECONNRESET:
-		return CONNECTION_IS_RESET_MPNW_RESULT;
+		return CONNECTION_IS_RESET_NETS_RESULT;
 	case WSAENETUNREACH:
-		return NETWORK_IS_NOT_REACHABLE_MPNW_RESULT;
+		return NETWORK_IS_NOT_REACHABLE_NETS_RESULT;
 	case WSAEHOSTUNREACH:
-		return HOST_IS_NOT_REACHABLE_MPNW_RESULT;
+		return HOST_IS_NOT_REACHABLE_NETS_RESULT;
 	case WSAETIMEDOUT:
-		return TIMED_OUT_MPNW_RESULT;
+		return TIMED_OUT_NETS_RESULT;
 	case WSAEINTR:
-		return INTERRUPTED_MPNW_RESULT;
+		return INTERRUPTED_NETS_RESULT;
 	}
 #endif
 }
-inline static MpnwResult lastErrorToMpnwResult()
+inline static NetsResult lastErrorToNetsResult()
 {
 #if __linux__ || __APPLE__
-	return errorToMpnwResult(errno);
+	return errorToNetsResult(errno);
 #elif _WIN32
-	return errorToMpnwResult(WSAGetLastError());
+	return errorToNetsResult(WSAGetLastError());
 #endif
 }
-inline static MpnwResult sslErrorToMpnwResult(int error)
+inline static NetsResult sslErrorToNetsResult(int error)
 {
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	switch (error)
 	{
 	default:
-		return UNKNOWN_ERROR_MPNW_RESULT;
+		return UNKNOWN_ERROR_NETS_RESULT;
 	case SSL_ERROR_ZERO_RETURN:
-		return CONNECTION_IS_CLOSED_MPNW_RESULT;
+		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	case SSL_ERROR_WANT_READ:
 	case SSL_ERROR_WANT_WRITE:
 	case SSL_ERROR_WANT_CONNECT:
 	case SSL_ERROR_WANT_ACCEPT:
 	case SSL_ERROR_WANT_X509_LOOKUP:
-		return IN_PROGRESS_MPNW_RESULT;
+		return IN_PROGRESS_NETS_RESULT;
 	case SSL_ERROR_SYSCALL:
 	case SSL_ERROR_SSL:
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 	}
 #else
 	abort();
 #endif
 }
 
-inline static MpnwResult createSocketHandle(
+inline static NetsResult createSocketHandle(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
@@ -312,7 +312,7 @@ inline static MpnwResult createSocketHandle(
 		protocol);
 
 	if (handleInstance == INVALID_SOCKET)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 
 	if (addressFamily == IP_V6_ADDRESS_FAMILY)
 	{
@@ -334,7 +334,7 @@ inline static MpnwResult createSocketHandle(
 		if (result != 0)
 		{
 			closesocket(handleInstance);
-			return lastErrorToMpnwResult();
+			return lastErrorToNetsResult();
 		}
 	}
 
@@ -349,7 +349,7 @@ inline static MpnwResult createSocketHandle(
 		if (flags == -1)
 		{
 			closesocket(handleInstance);
-			return FAILED_TO_SET_FLAG_MPNW_RESULT;
+			return FAILED_TO_SET_FLAG_NETS_RESULT;
 		}
 
 		int result = fcntl(
@@ -368,7 +368,7 @@ inline static MpnwResult createSocketHandle(
 		if (result != 0)
 		{
 			closesocket(handleInstance);
-			return FAILED_TO_SET_FLAG_MPNW_RESULT;
+			return FAILED_TO_SET_FLAG_NETS_RESULT;
 		}
 	}
 
@@ -380,13 +380,13 @@ inline static MpnwResult createSocketHandle(
 	if (result != 0)
 	{
 		closesocket(handleInstance);
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 	}
 
 	*handle = handleInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
-MpnwResult createSocket(
+NetsResult createSocket(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
@@ -404,9 +404,9 @@ MpnwResult createSocket(
 		(addressFamily == IP_V4_ADDRESS_FAMILY && !isOnlyIPV6));
 
 	if (!networkInitialized)
-		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
+		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert((socketType != DATAGRAM_SOCKET_TYPE) ||
 		(socketType == DATAGRAM_SOCKET_TYPE && !sslContext));
 #else
@@ -417,7 +417,7 @@ MpnwResult createSocket(
 		1, sizeof(Socket_T));
 
 	if (!socketInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	socketInstance->queueSize = 0;
 	socketInstance->type = socketType;
@@ -427,7 +427,7 @@ MpnwResult createSocket(
 
 	SOCKET handle;
 
-	MpnwResult mpnwResult = createSocketHandle(
+	NetsResult netsResult = createSocketHandle(
 		socketType,
 		addressFamily,
 		socketAddress,
@@ -435,15 +435,15 @@ MpnwResult createSocket(
 		isOnlyIPV6,
 		&handle);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroySocket(socketInstance);
-		return mpnwResult;
+		return netsResult;
 	}
 
 	socketInstance->handle = handle;
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	if (sslContext)
 	{
 		SSL* ssl = SSL_new(sslContext->handle);
@@ -451,7 +451,7 @@ MpnwResult createSocket(
 		if (!ssl)
 		{
 			destroySocket(socketInstance);
-			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
 
 		socketInstance->sslContext = sslContext;
@@ -462,7 +462,7 @@ MpnwResult createSocket(
 		if (result != 1)
 		{
 			destroySocket(socketInstance);
-			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
 	}
 	else
@@ -472,7 +472,7 @@ MpnwResult createSocket(
 #endif
 
 	*_socket = socketInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 void destroySocket(Socket socket)
 {
@@ -481,7 +481,7 @@ void destroySocket(Socket socket)
 
 	assert(networkInitialized);
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 		SSL_free(socket->ssl);
 #endif
@@ -580,7 +580,7 @@ bool getSocketRemoteAddress(
 }
 SslContext getSocketSslContext(Socket socket)
 {
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert(socket);
 	assert(networkInitialized);
 	return socket->sslContext;
@@ -667,7 +667,7 @@ size_t getSocketQueueSize(Socket socket)
 	return socket->queueSize;
 }
 
-MpnwResult listenSocket(
+NetsResult listenSocket(
 	Socket socket,
 	size_t queueSize)
 {
@@ -683,12 +683,12 @@ MpnwResult listenSocket(
 		(int)queueSize);
 
 	if (result != 0)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 
 	socket->queueSize = queueSize;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
-MpnwResult acceptSocket(
+NetsResult acceptSocket(
 	Socket socket,
 	Socket* accepted)
 {
@@ -701,7 +701,7 @@ MpnwResult acceptSocket(
 	SOCKET handle = accept(socket->handle, NULL, 0);
 
 	if (handle == INVALID_SOCKET)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 
 	Socket acceptedInstance = calloc(
 		1, sizeof(Socket_T));
@@ -709,7 +709,7 @@ MpnwResult acceptSocket(
 	if (!acceptedInstance)
 	{
 		closesocket(socket->handle);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	acceptedInstance->handle = handle;
@@ -725,7 +725,7 @@ MpnwResult acceptSocket(
 		if (flags == -1)
 		{
 			destroySocket(acceptedInstance);
-			return FAILED_TO_SET_FLAG_MPNW_RESULT;
+			return FAILED_TO_SET_FLAG_NETS_RESULT;
 		}
 
 		int result = fcntl(
@@ -744,11 +744,11 @@ MpnwResult acceptSocket(
 		if (result != 0)
 		{
 			destroySocket(acceptedInstance);
-			return FAILED_TO_SET_FLAG_MPNW_RESULT;
+			return FAILED_TO_SET_FLAG_NETS_RESULT;
 		}
 	}
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
 		SSL* ssl = SSL_new(socket->sslContext->handle);
@@ -756,7 +756,7 @@ MpnwResult acceptSocket(
 		if (!ssl)
 		{
 			destroySocket(acceptedInstance);
-			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
 
 		acceptedInstance->sslContext = socket->sslContext;
@@ -767,7 +767,7 @@ MpnwResult acceptSocket(
 		if (result != 1)
 		{
 			destroySocket(acceptedInstance);
-			return FAILED_TO_CREATE_SSL_MPNW_RESULT;
+			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
 	}
 	else
@@ -782,31 +782,31 @@ MpnwResult acceptSocket(
 	acceptedInstance->isOnlyIPV6 = socket->isOnlyIPV6;
 
 	*accepted = acceptedInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 
-MpnwResult acceptSslSocket(Socket socket)
+NetsResult acceptSslSocket(Socket socket)
 {
 	assert(socket);
 	assert(networkInitialized);
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert(socket->sslContext);
 	int result = SSL_accept(socket->ssl) == 1;
 
 	if (result != 1)
 	{
-		return sslErrorToMpnwResult(SSL_get_error(
+		return sslErrorToNetsResult(SSL_get_error(
 			socket->ssl, result));
 	}
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 #else
 	abort();
 #endif
 }
 
-MpnwResult connectSocket(
+NetsResult connectSocket(
 	Socket socket,
 	SocketAddress remoteAddress)
 {
@@ -831,18 +831,18 @@ MpnwResult connectSocket(
 		length);
 
 	if (result != 0)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
-MpnwResult connectSslSocket(
+NetsResult connectSslSocket(
 	Socket socket,
 	const char* hostname)
 {
 	assert(socket);
 	assert(networkInitialized);
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert(socket->sslContext);
 
 	if (hostname)
@@ -852,7 +852,7 @@ MpnwResult connectSslSocket(
 
 		if (result != 1)
 		{
-			return sslErrorToMpnwResult(SSL_get_error(
+			return sslErrorToNetsResult(SSL_get_error(
 				socket->ssl, result));
 		}
 	}
@@ -861,17 +861,17 @@ MpnwResult connectSslSocket(
 
 	if (result != 1)
 	{
-		return sslErrorToMpnwResult(SSL_get_error(
+		return sslErrorToNetsResult(SSL_get_error(
 			socket->ssl, result));
 	}
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 #else
 	abort();
 #endif
 }
 
-MpnwResult shutdownSocket(
+NetsResult shutdownSocket(
 	Socket socket,
 	SocketShutdown _shutdown)
 {
@@ -908,12 +908,12 @@ MpnwResult shutdownSocket(
 		type);
 
 	if (result != 0)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 
-MpnwResult socketReceive(
+NetsResult socketReceive(
 	Socket socket,
 	void* receiveBuffer,
 	size_t bufferSize,
@@ -925,7 +925,7 @@ MpnwResult socketReceive(
 	assert(byteCount);
 	assert(networkInitialized);
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
 		int result = SSL_read(
@@ -935,12 +935,12 @@ MpnwResult socketReceive(
 
 		if (result < 0)
 		{
-			return sslErrorToMpnwResult(SSL_get_error(
+			return sslErrorToNetsResult(SSL_get_error(
 				socket->ssl, result));
 		}
 
 		*byteCount = (size_t)result;
-		return SUCCESS_MPNW_RESULT;
+		return SUCCESS_NETS_RESULT;
 	}
 #endif
 
@@ -951,12 +951,12 @@ MpnwResult socketReceive(
 		0);
 
 	if (result < 0)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 
 	*byteCount = (size_t)result;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
-MpnwResult socketSend(
+NetsResult socketSend(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount)
@@ -965,7 +965,7 @@ MpnwResult socketSend(
 	assert(sendBuffer);
 	assert(networkInitialized);
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
 		int result = SSL_write(
@@ -975,14 +975,14 @@ MpnwResult socketSend(
 
 		if (result < 0)
 		{
-			return sslErrorToMpnwResult(SSL_get_error(
+			return sslErrorToNetsResult(SSL_get_error(
 				socket->ssl, result));
 		}
 
 		if (result != byteCount)
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 
-		return SUCCESS_MPNW_RESULT;
+		return SUCCESS_NETS_RESULT;
 	}
 #endif
 
@@ -993,13 +993,13 @@ MpnwResult socketSend(
 		0);
 
 	if (result < 0)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 	if (result != byteCount)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
-MpnwResult socketReceiveFrom(
+NetsResult socketReceiveFrom(
 	Socket socket,
 	SocketAddress remoteAddress,
 	void* receiveBuffer,
@@ -1013,7 +1013,7 @@ MpnwResult socketReceiveFrom(
 	assert(byteCount);
 	assert(networkInitialized);
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert(!socket->sslContext);
 #endif
 
@@ -1034,13 +1034,13 @@ MpnwResult socketReceiveFrom(
 		&length);
 
 	if (count < 0)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 
 	remoteAddress->handle = storage;
 	*byteCount = (size_t)count;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
-MpnwResult socketSendTo(
+NetsResult socketSendTo(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount,
@@ -1051,7 +1051,7 @@ MpnwResult socketSendTo(
 	assert(remoteAddress);
 	assert(networkInitialized);
 
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert(!socket->sslContext);
 #endif
 
@@ -1075,14 +1075,14 @@ MpnwResult socketSendTo(
 		length);
 
 	if (result < 0)
-		return lastErrorToMpnwResult();
+		return lastErrorToNetsResult();
 	if (result != byteCount)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 
-MpnwResult createSocketAddress(
+NetsResult createSocketAddress(
 	const char* host,
 	const char* service,
 	SocketAddress* socketAddress)
@@ -1092,13 +1092,13 @@ MpnwResult createSocketAddress(
 	assert(socketAddress);
 
 	if (!networkInitialized)
-		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
+		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
 	SocketAddress socketAddressInstance = calloc(
 		1, sizeof(SocketAddress_T));
 
 	if (!socketAddressInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	struct addrinfo hints;
 
@@ -1118,7 +1118,7 @@ MpnwResult createSocketAddress(
 	if (result != 0)
 	{
 		free(socketAddressInstance);
-		return FAILED_TO_RESOLVE_ADDRESS_MPNW_RESULT;
+		return FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT;
 	}
 
 	memcpy(&socketAddressInstance->handle,
@@ -1128,9 +1128,9 @@ MpnwResult createSocketAddress(
 	freeaddrinfo(addressInfos);
 
 	*socketAddress = socketAddressInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
-MpnwResult createAnySocketAddress(
+NetsResult createAnySocketAddress(
 	AddressFamily addressFamily,
 	SocketAddress* socketAddress)
 {
@@ -1181,7 +1181,7 @@ void destroySocketAddress(SocketAddress socketAddress)
 	free(socketAddress);
 }
 
-MpnwResult resolveSocketAddresses(
+NetsResult resolveSocketAddresses(
 	const char* host,
 	const char* service,
 	AddressFamily family,
@@ -1197,7 +1197,7 @@ MpnwResult resolveSocketAddresses(
 	assert(addressCount);
 
 	if (!networkInitialized)
-		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
+		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
 	struct addrinfo hints;
 
@@ -1237,7 +1237,7 @@ MpnwResult resolveSocketAddresses(
 		&addressInfos);
 
 	if (result != 0)
-		return FAILED_TO_RESOLVE_ADDRESS_MPNW_RESULT;
+		return FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT;
 
 	SocketAddress* addresses = malloc(
 		sizeof(SocketAddress));
@@ -1245,7 +1245,7 @@ MpnwResult resolveSocketAddresses(
 	if (!addresses)
 	{
 		freeaddrinfo(addressInfos);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	SocketAddress socketAddress = malloc(
@@ -1256,7 +1256,7 @@ MpnwResult resolveSocketAddresses(
 		destroyResolvedSocketAddresses(
 			addresses, 0);
 		freeaddrinfo(addressInfos);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	addresses[0] = socketAddress;
@@ -1278,7 +1278,7 @@ MpnwResult resolveSocketAddresses(
 			destroyResolvedSocketAddresses(
 				addresses, count);
 			freeaddrinfo(addressInfos);
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 		}
 
 		addresses = newAddresses;
@@ -1290,7 +1290,7 @@ MpnwResult resolveSocketAddresses(
 			destroyResolvedSocketAddresses(
 				addresses, count);
 			freeaddrinfo(addressInfos);
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 		}
 
 		addresses[count++] = socketAddress;
@@ -1305,7 +1305,7 @@ MpnwResult resolveSocketAddresses(
 
 	*socketAddresses = addresses;
 	*addressCount = count;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 void destroyResolvedSocketAddresses(
 	SocketAddress* socketAddresses,
@@ -1712,24 +1712,24 @@ bool getSocketAddressHostService(
 		flags) == 0;
 }
 
-MpnwResult createPublicSslContext(
+NetsResult createPublicSslContext(
 	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
 	const char* certificatesDirectory,
 	SslContext* sslContext)
 {
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(sslContext);
 
 	if (!networkInitialized)
-		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
+		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
 	SslContext sslContextInstance = calloc(
 		1, sizeof(SslContext_T));
 
 	if (!sslContextInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	SSL_CTX* handle;
 
@@ -1741,7 +1741,7 @@ MpnwResult createPublicSslContext(
 		handle = SSL_CTX_new(TLS_method());
 		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
-#if MPNW_SUPPORT_DEPRECATED_SSL
+#if NETS_SUPPORT_DEPRECATED_SSL
 		handle = SSL_CTX_new(TLSv1_2_method());
 		break;
 #else
@@ -1753,7 +1753,7 @@ MpnwResult createPublicSslContext(
 	if (!handle)
 	{
 		destroySslContext(sslContextInstance);
-		return FAILED_TO_CREATE_SSL_MPNW_RESULT;
+		return FAILED_TO_CREATE_SSL_NETS_RESULT;
 	}
 
 	sslContextInstance->handle = handle;
@@ -1775,36 +1775,36 @@ MpnwResult createPublicSslContext(
 	if (result != 1)
 	{
 		destroySslContext(sslContextInstance);
-		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
+		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
 	*sslContext = sslContextInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 #else
-	return NO_OPENSSL_SUPPORT_MPNW_RESULT;
+	return NO_OPENSSL_SUPPORT_NETS_RESULT;
 #endif
 }
-MpnwResult createPrivateSslContext(
+NetsResult createPrivateSslContext(
 	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,
 	bool certificateChain,
 	SslContext* sslContext)
 {
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
 	assert(certificateFilePath);
 	assert(privateKeyFilePath);
 	assert(sslContext);
 
 	if (!networkInitialized)
-		return NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT;
+		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
 	SslContext sslContextInstance = calloc(
 		1, sizeof(SslContext_T));
 
 	if (!sslContextInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	SSL_CTX* handle;
 
@@ -1816,7 +1816,7 @@ MpnwResult createPrivateSslContext(
 		handle = SSL_CTX_new(TLS_method());
 		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
-#if MPNW_SUPPORT_DEPRECATED_SSL
+#if NETS_SUPPORT_DEPRECATED_SSL
 		handle = SSL_CTX_new(TLSv1_2_method());
 		break;
 #else
@@ -1827,7 +1827,7 @@ MpnwResult createPrivateSslContext(
 	if (!handle)
 	{
 		destroySslContext(sslContextInstance);
-		return FAILED_TO_CREATE_SSL_MPNW_RESULT;
+		return FAILED_TO_CREATE_SSL_NETS_RESULT;
 	}
 
 	sslContextInstance->handle = handle;
@@ -1851,7 +1851,7 @@ MpnwResult createPrivateSslContext(
 	if (result != 1)
 	{
 		destroySslContext(sslContextInstance);
-		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
+		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
 	result = SSL_CTX_use_PrivateKey_file(
@@ -1862,7 +1862,7 @@ MpnwResult createPrivateSslContext(
 	if (result != 1)
 	{
 		destroySslContext(sslContextInstance);
-		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
+		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
 	result = SSL_CTX_check_private_key(handle);
@@ -1870,19 +1870,19 @@ MpnwResult createPrivateSslContext(
 	if (result != 1)
 	{
 		destroySslContext(sslContextInstance);
-		return FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT;
+		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
 	*sslContext = sslContextInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 #else
-	return NO_OPENSSL_SUPPORT_MPNW_RESULT;
+	return NO_OPENSSL_SUPPORT_NETS_RESULT;
 #endif
 }
 
 void destroySslContext(SslContext sslContext)
 {
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	if (!sslContext)
 		return;
 
@@ -1897,7 +1897,7 @@ void destroySslContext(SslContext sslContext)
 
 SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext)
 {
-#if MPNW_SUPPORT_OPENSSL
+#if NETS_SUPPORT_OPENSSL
 	assert(sslContext);
 	assert(networkInitialized);
 
@@ -1907,7 +1907,7 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext)
 	if (method == TLS_method())
 		return TLS_SECURITY_PROTOCOL;
 
-#if MPNW_SUPPORT_DEPRECATED_SSL
+#if NETS_SUPPORT_DEPRECATED_SSL
 	if (method == TLSv1_2_method())
 		return TLS_1_2_SECURITY_PROTOCOL;
 #endif
@@ -1918,14 +1918,14 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext)
 #endif
 }
 
-MpnwResult sHandleStreamMessage(
+NetsResult sHandleStreamMessage(
 	const uint8_t* receiveBuffer,
 	size_t byteCount,
 	uint8_t* messageBuffer,
 	size_t messageBufferSize,
 	size_t* messageByteCount,
 	uint8_t messageLengthSize,
-	MpnwResult(*receiveFunction)(
+	NetsResult(*receiveFunction)(
 		const uint8_t*, size_t, void*),
 	void* functionHandle)
 {

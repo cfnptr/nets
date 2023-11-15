@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "mpnw/stream_client.h"
+#include "nets/stream_client.h"
 
 // ================================================
 // Note: this is simple HTTP client implementation.
@@ -43,7 +43,7 @@ typedef struct HttpPair
 
 /*
  * Create a new HTTP client instance.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * dataBufferSize - data buffer size.
  * responseBufferSize - HTTP response buffer size.
@@ -53,7 +53,7 @@ typedef struct HttpPair
  * sslContext - SSL context instance or NULL.
  * httpClient - pointer to the HTTP client.
  */
-MpnwResult createHttpClient(
+NetsResult createHttpClient(
 	size_t dataBufferSize,
 	size_t responseBufferSize,
 	size_t headerBufferSize,
@@ -111,7 +111,7 @@ size_t getHttpClientHeaderCount(HttpClient httpClient);
 
 /*
  * Send HTTP GET request to the server.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * httpClient - HTTP client instance.
  * url - URL string.
@@ -120,7 +120,7 @@ size_t getHttpClientHeaderCount(HttpClient httpClient);
  * headerCount - HTTP header count or 0.
  * keepAlive - keep connection alice. (speedup)
  */
-MpnwResult httpClientSendGET(
+NetsResult httpClientSendGET(
 	HttpClient httpClient,
 	const char* url,
 	size_t urlLength,
@@ -129,7 +129,7 @@ MpnwResult httpClientSendGET(
 	bool keepAlive);
 /*
  * Send HTTP POST request to the server.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * httpClient - HTTP client instance.
  * url - URL string.
@@ -141,7 +141,7 @@ MpnwResult httpClientSendGET(
  * isMultipart - use for binary values.
  * keepAlive - keep connection alice. (speedup)
  */
-MpnwResult httpClientSendPOST(
+NetsResult httpClientSendPOST(
 	HttpClient httpClient,
 	const char* url,
 	size_t urlLength,

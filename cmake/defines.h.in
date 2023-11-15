@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#define __MPNW__
+#define __NETS__
 
-#define MPNW_VERSION_MAJOR @mpnw_VERSION_MAJOR@
-#define MPNW_VERSION_MINOR @mpnw_VERSION_MINOR@
-#define MPNW_VERSION_PATCH @mpnw_VERSION_PATCH@
+#define NETS_VERSION_MAJOR @nets_VERSION_MAJOR@
+#define NETS_VERSION_MINOR @nets_VERSION_MINOR@
+#define NETS_VERSION_PATCH @nets_VERSION_PATCH@
 
-#define MPNW_SUPPORT_OPENSSL @MPNW_SUPPORT_OPENSSL@
-#define MPNW_SUPPORT_DEPRECATED_SSL @MPNW_SUPPORT_DEPRECATED_SSL@
+#define NETS_SUPPORT_OPENSSL @NETS_SUPPORT_OPENSSL@
+#define NETS_SUPPORT_DEPRECATED_SSL @NETS_SUPPORT_DEPRECATED_SSL@
 
-#define MPNW_LITTLE_ENDIAN @MPNW_LITTLE_ENDIAN@
+#define NETS_LITTLE_ENDIAN @NETS_LITTLE_ENDIAN@
 
 #if __linux__
 #include <byteswap.h>
@@ -45,7 +45,7 @@
 #define swapBytes64(x) _byteswap_uint64(x)
 #endif
 
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 #define hostToNet16(x) swapBytes16(x)
 #define hostToNet32(x) swapBytes32(x)
 #define hostToNet64(x) swapBytes64(x)
@@ -62,47 +62,47 @@
 #endif
 
 /*
- * MPNW results.
+ * Nets results.
  */
-typedef enum MpnwResult_T
+typedef enum NetsResult_T
 {
-	SUCCESS_MPNW_RESULT = 0,
-	IN_PROGRESS_MPNW_RESULT = 1,
-	NETWORK_IS_NOT_INITIALIZED_MPNW_RESULT = 2,
-	OUT_OF_MEMORY_MPNW_RESULT = 3,
-	OUT_OF_DESCRIPTORS_MPNW_RESULT = 4,
-	NOT_SUPPORTED_MPNW_RESULT = 5,
-	NO_ACCESS_MPNW_RESULT = 6,
-	ADDRESS_IS_ALREADY_IN_USE_MPNW_RESULT = 7,
-	BAD_ADDRESS_MPNW_RESULT = 8,
-	BAD_DATA_MPNW_RESULT = 9,
-	FAILED_TO_SET_FLAG_MPNW_RESULT = 10,
-	ALREADY_CONNECTED_MPNW_RESULT = 11,
-	CONNECTION_IS_REFUSED_MPNW_RESULT = 12,
-	CONNECTION_IS_ABORTED_MPNW_RESULT = 13,
-	CONNECTION_IS_RESET_MPNW_RESULT = 14,
-	CONNECTION_IS_CLOSED_MPNW_RESULT = 15,
-	NETWORK_IS_NOT_REACHABLE_MPNW_RESULT = 16,
-	HOST_IS_NOT_REACHABLE_MPNW_RESULT = 17,
-	TIMED_OUT_MPNW_RESULT = 18,
-	INTERRUPTED_MPNW_RESULT = 19,
-	FAILED_TO_RESOLVE_ADDRESS_MPNW_RESULT = 20,
-	FAILED_TO_CREATE_SSL_MPNW_RESULT = 21,
-	FAILED_TO_LOAD_CERTIFICATE_MPNW_RESULT = 22,
-	NO_OPENSSL_SUPPORT_MPNW_RESULT = 23,
-	UNKNOWN_ERROR_MPNW_RESULT = 24,
-	MPNW_RESULT_COUNT = 25,
-} MpnwResult_T;
+	SUCCESS_NETS_RESULT = 0,
+	IN_PROGRESS_NETS_RESULT = 1,
+	NETWORK_IS_NOT_INITIALIZED_NETS_RESULT = 2,
+	OUT_OF_MEMORY_NETS_RESULT = 3,
+	OUT_OF_DESCRIPTORS_NETS_RESULT = 4,
+	NOT_SUPPORTED_NETS_RESULT = 5,
+	NO_ACCESS_NETS_RESULT = 6,
+	ADDRESS_IS_ALREADY_IN_USE_NETS_RESULT = 7,
+	BAD_ADDRESS_NETS_RESULT = 8,
+	BAD_DATA_NETS_RESULT = 9,
+	FAILED_TO_SET_FLAG_NETS_RESULT = 10,
+	ALREADY_CONNECTED_NETS_RESULT = 11,
+	CONNECTION_IS_REFUSED_NETS_RESULT = 12,
+	CONNECTION_IS_ABORTED_NETS_RESULT = 13,
+	CONNECTION_IS_RESET_NETS_RESULT = 14,
+	CONNECTION_IS_CLOSED_NETS_RESULT = 15,
+	NETWORK_IS_NOT_REACHABLE_NETS_RESULT = 16,
+	HOST_IS_NOT_REACHABLE_NETS_RESULT = 17,
+	TIMED_OUT_NETS_RESULT = 18,
+	INTERRUPTED_NETS_RESULT = 19,
+	FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT = 20,
+	FAILED_TO_CREATE_SSL_NETS_RESULT = 21,
+	FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT = 22,
+	NO_OPENSSL_SUPPORT_NETS_RESULT = 23,
+	UNKNOWN_ERROR_NETS_RESULT = 24,
+	NETS_RESULT_COUNT = 25,
+} NetsResult_T;
 
 /*
- * MPNW result type.
+ * NETS result type.
  */
-typedef uint8_t MpnwResult;
+typedef uint8_t NetsResult;
 
 /*
- * MPNW result strings.
+ * NETS result strings.
  */
-static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
+static const char* const netsResultStrings[NETS_RESULT_COUNT] = {
 	"Success",
 	"In progress",
 	"Network is not initialized",
@@ -131,15 +131,15 @@ static const char* const mpnwResultStrings[MPNW_RESULT_COUNT] = {
 };
 
 /*
- * Returns MPNW result as string.
- * result - MPNW result.
+ * Returns NETS result as string.
+ * result - NETS result.
  */
-inline static const char* mpnwResultToString(
-	MpnwResult result)
+inline static const char* netsResultToString(
+	NetsResult result)
 {
-	if (result >= MPNW_RESULT_COUNT)
-		return "Unknown MPNW result";
-	return mpnwResultStrings[result];
+	if (result >= NETS_RESULT_COUNT)
+		return "Unknown NETS result";
+	return netsResultStrings[result];
 }
 
 /*
@@ -183,7 +183,7 @@ inline static StreamMessage createStreamMessage(
 	}
 	else if (lengthSize == sizeof(uint16_t))
 	{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 		*((uint16_t*)buffer) = (uint16_t)messageSize;
 #else
 		*((uint16_t*)buffer) = swapBytes16(messageSize);
@@ -193,7 +193,7 @@ inline static StreamMessage createStreamMessage(
 	}
 	else if (lengthSize == sizeof(uint32_t))
 	{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 		*((uint32_t*)buffer) = (uint32_t)messageSize;
 #else
 		*((uint32_t*)buffer) = swapBytes32(messageSize);
@@ -203,7 +203,7 @@ inline static StreamMessage createStreamMessage(
 	}
 	else if (lengthSize == sizeof(uint64_t))
 	{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 		*((uint64_t*)buffer) = (uint64_t)messageSize;
 #else
 		*((uint64_t*)buffer) = swapBytes64(messageSize);

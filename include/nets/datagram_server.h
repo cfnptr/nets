@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "mpnw/socket.h"
+#include "nets/socket.h"
 
 /*
  * Datagram server structure. (UDP)
@@ -40,7 +40,7 @@ typedef void(*OnDatagramServerReceive)(
 
 /*
  * Create a new datagram server (UDP).
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * addressFamily - local socket address family.
  * service - local address service string.
@@ -49,7 +49,7 @@ typedef void(*OnDatagramServerReceive)(
  * handle - receive function argument.
  * datagramServer - pointer to the datagram server.
  */
-MpnwResult createDatagramServer(
+NetsResult createDatagramServer(
 	AddressFamily addressFamily,
 	const char* service,
 	size_t bufferSize,
@@ -84,22 +84,22 @@ void* getDatagramServerHandle(DatagramServer datagramServer);
 Socket getDatagramServerSocket(DatagramServer datagramServer);
 /*
  * Receive buffered datagrams.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * datagramServer - datagram server instance.
  */
-MpnwResult updateDatagramServer(DatagramServer datagramServer);
+NetsResult updateDatagramServer(DatagramServer datagramServer);
 
 /*
  * Send message to the specified address.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * datagramServer - datagram server instance.
  * sendBuffer - datagram send buffer.
  * byteCount - send byte count.
  * remoteAddress - destination socket address.
  */
-MpnwResult datagramServerSend(
+NetsResult datagramServerSend(
 	DatagramServer datagramServer,
 	const void* sendBuffer,
 	size_t byteCount,

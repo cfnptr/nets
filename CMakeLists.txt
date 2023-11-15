@@ -1,4 +1,4 @@
-# Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+# Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,25 +18,26 @@ if (${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
 	message(FATAL_ERROR "Prevented in-tree build")
 endif ()
 
-if (TARGET mpnw-static)
+if (TARGET nets-static)
 	return()
 endif ()
 
-project(mpnw 
+project(nets 
 	VERSION 2.0.3
-	DESCRIPTION "Multi-platform networking library"
-	HOMEPAGE_URL "https://github.com/cfnptr/mpnw"
+	DESCRIPTION "Secure multi-platform networking library \
+		with implemented TCP / UDP / HTTP server and client "
+	HOMEPAGE_URL "https://github.com/cfnptr/nets"
 	LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
-option(MPNW_BUILD_SHARED "Build MPNW shared library" ON)
-option(MPNW_BUILD_EXAMPLES "Build MPNW usage examples" ON)
-option(MPNW_USE_OPENSSL "Use OpenSSL for secure communication" ON)
-option(MPNW_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
+option(NETS_BUILD_SHARED "Build Nets shared library" ON)
+option(NETS_BUILD_EXAMPLES "Build MNetsPNW usage examples" ON)
+option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
+option(NETS_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
 
-if (MPNW_USE_OPENSSL)
+if (NETS_USE_OPENSSL)
 	if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
 		set(OPENSSL_ROOT_DIR /usr/local/opt/openssl@3 CACHE FILEPATH "" FORCE)
 		set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.a CACHE FILEPATH "" FORCE)
@@ -46,72 +47,49 @@ if (MPNW_USE_OPENSSL)
 	find_package(OpenSSL)
 
 	if (OpenSSL_FOUND)
-		set(MPNW_SUPPORT_OPENSSL 1)
+		set(NETS_SUPPORT_OPENSSL 1)
 	else ()
-		set(MPNW_SUPPORT_OPENSSL 0)
+		set(NETS_SUPPORT_OPENSSL 0)
 	endif ()
 
-	if (MPNW_ALLOW_DEPRECATED_SSL)
-		set(MPNW_SUPPORT_DEPRECATED_SSL 1)
+	if (NETS_ALLOW_DEPRECATED_SSL)
+		set(NETS_SUPPORT_DEPRECATED_SSL 1)
 	else ()
-		set(MPNW_SUPPORT_DEPRECATED_SSL 0)
+		set(NETS_SUPPORT_DEPRECATED_SSL 0)
 	endif ()
 else ()
-	set(MPNW_SUPPORT_OPENSSL 0)
-	set(MPNW_SUPPORT_DEPRECATED_SSL 0)
+	set(NETS_SUPPORT_OPENSSL 0)
+	set(NETS_SUPPORT_DEPRECATED_SSL 0)
 endif ()
 
 include(TestBigEndian)
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 
 if (IS_BIG_ENDIAN)
-	set(MPNW_LITTLE_ENDIAN 0)
+	set(NETS_LITTLE_ENDIAN 0)
 else ()
-	set(MPNW_LITTLE_ENDIAN 1)
+	set(NETS_LITTLE_ENDIAN 1)
 endif ()
+
+set(NETS_INCLUDE_DIRECTORIES
+	${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
+	${PROJECT_BINARY_DIR}/libraries/zlib ${PROJECT_SOURCE_DIR}/libraries/zlib)
+set(NETS_LINK_LIBRARIES mpmt-static zlibstatic)
 
 set(MPMT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/mpmt)
 
-set(MPNW_INCLUDE_DIRECTORIES
-	${PROJECT_BINARY_DIR}/include
-	${PROJECT_SOURCE_DIR}/include)
-set(MPNW_LINK_LIBRARIES mpmt-static)
+add_subdirectory(libraries/zlib)
+configure_file(cmake/defines.h.in include/nets/defines.h)
 
-if (CMAKE_SYSTEM_NAME MATCHES "Linux" OR
-	CMAKE_SYSTEM_NAME MATCHES "Darwin")
-
-	find_package(ZLIB)
-
-	if (ZLIB_FOUND)
-		list(APPEND MPNW_LINK_LIBRARIES ZLIB::ZLIB)
-	else ()
-		list(APPEND MPNW_INCLUDE_DIRECTORIES
-			${PROJECT_BINARY_DIR}/libraries/zlib
-			${PROJECT_SOURCE_DIR}/libraries/zlib)
-		list(APPEND MPNW_LINK_LIBRARIES zlibstatic)
-		add_subdirectory(libraries/zlib)
-	endif ()
-else ()
-	list(APPEND MPNW_INCLUDE_DIRECTORIES
-		${PROJECT_BINARY_DIR}/libraries/zlib
-		${PROJECT_SOURCE_DIR}/libraries/zlib)
-	list(APPEND MPNW_LINK_LIBRARIES zlibstatic)
-	add_subdirectory(libraries/zlib)
-endif ()
-
-configure_file(
-	cmake/defines.h.in
-	include/mpnw/defines.h)
-
-if(MPNW_USE_OPENSSL AND OpenSSL_FOUND)
-	list(APPEND MPNW_LINK_LIBRARIES
+if(NETS_USE_OPENSSL AND OpenSSL_FOUND)
+	list(APPEND NETS_LINK_LIBRARIES
 		OpenSSL::SSL OpenSSL::Crypto)
 endif ()
 
-set(MPNW_SOURCES
+set(NETS_SOURCES
 	source/datagram_client.c
 	source/datagram_server.c
 	source/http_client.c
@@ -119,37 +97,26 @@ set(MPNW_SOURCES
 	source/stream_client.c
 	source/stream_server.c)
 
-add_library(mpnw-static STATIC ${MPNW_SOURCES})
-target_link_libraries(mpnw-static PUBLIC
-	${MPNW_LINK_LIBRARIES})
-target_include_directories(mpnw-static PUBLIC
-	${MPNW_INCLUDE_DIRECTORIES})
+add_library(nets-static STATIC ${NETS_SOURCES})
+target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES})
+target_include_directories(nets-static PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 
-if (MPNW_BUILD_SHARED)
-	add_library(mpnw-shared SHARED ${MPNW_SOURCES})
-	set_target_properties(mpnw-shared PROPERTIES
-		OUTPUT_NAME "mpnw"
-		WINDOWS_EXPORT_ALL_SYMBOLS ON)
-	target_link_libraries(mpnw-shared PUBLIC
-		${MPNW_LINK_LIBRARIES})
-	target_include_directories(mpnw-shared PUBLIC
-		${MPNW_INCLUDE_DIRECTORIES})
+if (NETS_BUILD_SHARED)
+	add_library(nets-shared SHARED ${NETS_SOURCES})
+	set_target_properties(nets-shared PROPERTIES
+		OUTPUT_NAME "nets" WINDOWS_EXPORT_ALL_SYMBOLS ON)
+	target_link_libraries(nets-shared PUBLIC ${NETS_LINK_LIBRARIES})
+	target_include_directories(nets-shared PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 endif ()
 
-if (MPNW_BUILD_EXAMPLES)
-	add_executable(mpnw-datagram-example
-		examples/datagram_example.c)
-	target_link_libraries(mpnw-datagram-example PRIVATE
-		mpnw-static)
-	target_include_directories(mpnw-datagram-example PRIVATE
-		${PROJECT_BINARY_DIR}/include
-		${PROJECT_SOURCE_DIR}/include)
+if (NETS_BUILD_EXAMPLES)
+	add_executable(nets-datagram-example examples/datagram_example.c)
+	target_link_libraries(nets-datagram-example PRIVATE nets-static)
+	target_include_directories(nets-datagram-example PRIVATE
+		${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include)
 
-	add_executable(mpnw-https-example
-		examples/https_example.c)
-	target_link_libraries(mpnw-https-example PRIVATE
-		mpnw-static)
-	target_include_directories(mpnw-https-example PRIVATE
-		${PROJECT_BINARY_DIR}/include
-		${PROJECT_SOURCE_DIR}/include)
+	add_executable(nets-https-example examples/https_example.c)
+	target_link_libraries(nets-https-example PRIVATE nets-static)
+	target_include_directories(nets-https-example PRIVATE
+		${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include)
 endif ()

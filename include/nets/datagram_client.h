@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "mpnw/socket.h"
+#include "nets/socket.h"
 
 /*
  * Datagram client structure (UDP).
@@ -38,7 +38,7 @@ typedef void(*OnDatagramClientReceive)(
 
 /*
  * Create a new datagram client instance (UDP).
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * remoteAddress - remote socket address.
  * bufferSize - data buffer size.
@@ -46,7 +46,7 @@ typedef void(*OnDatagramClientReceive)(
  * handle - receive function argument.
  * datagramClient - pointer to the datagram client.
  */
-MpnwResult createDatagramClient(
+NetsResult createDatagramClient(
 	SocketAddress remoteAddress,
 	size_t bufferSize,
 	OnDatagramClientReceive onReceive,
@@ -86,21 +86,21 @@ Socket getDatagramClientSocket(DatagramClient datagramClient);
 
 /*
  * Receive buffered datagrams.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * datagramClient - datagram client instance.
  */
-MpnwResult updateDatagramClient(DatagramClient datagramClient);
+NetsResult updateDatagramClient(DatagramClient datagramClient);
 
 /*
  * Send message to the datagram server.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * datagramClient - datagram client instance.
  * sendBuffer - datagram send buffer.
  * byteCount - send byte count.
  */
-MpnwResult datagramClientSend(
+NetsResult datagramClientSend(
 	DatagramClient datagramClient,
 	const void* sendBuffer,
 	size_t byteCount);

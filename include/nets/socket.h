@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "mpnw/defines.h"
+#include "nets/defines.h"
 
 #include <string.h>
 #include <stdbool.h>
@@ -168,7 +168,7 @@ void disableSigpipe();
 
 /*
  * Create a new socket instance.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socketType - socket communication type.
  * addressFamily - internet protocol address family.
@@ -178,7 +178,7 @@ void disableSigpipe();
  * sslContext - SSL context or NULL.
  * socket - pointer to the socket.
  */
-MpnwResult createSocket(
+NetsResult createSocket(
 	SocketType socketType,
 	AddressFamily addressFamily,
 	SocketAddress socketAddress,
@@ -271,94 +271,94 @@ size_t getSocketQueueSize(Socket socket);
 
 /*
  * Put socket in a listening state.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  * queueSize - pending connections queue size.
  */
-MpnwResult listenSocket(
+NetsResult listenSocket(
 	Socket socket,
 	size_t queueSize);
 
 /*
  * Accept a new socket connection.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  * accepted - pointer to the accepted socket.
  */
-MpnwResult acceptSocket(
+NetsResult acceptSocket(
 	Socket socket,
 	Socket* accepted);
 /*
  * Accept socket SSL connection.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  */
-MpnwResult acceptSslSocket(Socket socket);
+NetsResult acceptSslSocket(Socket socket);
 
 /*
  * Connect socket to the address.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  * remoteAddress - remote address instance.
  */
-MpnwResult connectSocket(
+NetsResult connectSocket(
 	Socket socket,
 	SocketAddress remoteAddress);
 /*
  * Connect socket SSL.
- * Returns operation MPNW result,
+ * Returns operation Nets result,
  *
  * socket - socket instance.
  * hostname - SNI hostname or NULL.
  */
-MpnwResult connectSslSocket(
+NetsResult connectSslSocket(
 	Socket socket,
 	const char* hostname);
 
 /*
  * Shutdown part of the full-duplex connection.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  * shutdown - socket connection shutdown.
  */
-MpnwResult shutdownSocket(
+NetsResult shutdownSocket(
 	Socket socket,
 	SocketShutdown shutdown);
 
 /*
  * Receive socket message.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  * receiveBuffer - message receive buffer.
  * bufferSize - message receive buffer size.
  * byteCount - pointer to the byte count.
  */
-MpnwResult socketReceive(
+NetsResult socketReceive(
 	Socket socket,
 	void* receiveBuffer,
 	size_t bufferSize,
 	size_t* byteCount);
 /*
  * Send socket message.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  * sendBuffer - message send buffer.
  * byteCount - send byte count.
  */
-MpnwResult socketSend(
+NetsResult socketSend(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount);
 /*
  * Receive socket message from address.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  * remoteAddress - remote socket address.
@@ -366,7 +366,7 @@ MpnwResult socketSend(
  * bufferSize - message receive buffer size.
  * byteCount - pointer to the byte count.
  */
-MpnwResult socketReceiveFrom(
+NetsResult socketReceiveFrom(
 	Socket socket,
 	SocketAddress remoteAddress,
 	void* receiveBuffer,
@@ -374,14 +374,14 @@ MpnwResult socketReceiveFrom(
 	size_t* byteCount);
 /*
  * Send socket message to the address.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * socket - socket instance.
  * sendBuffer - message send buffer.
  * byteCount - message byte count to send.
  * socketAddress - remote socket address.
  */
-MpnwResult socketSendTo(
+NetsResult socketSendTo(
 	Socket socket,
 	const void* sendBuffer,
 	size_t byteCount,
@@ -391,24 +391,24 @@ MpnwResult socketSendTo(
 
 /*
  * Create a new socket address.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * host - address host name string.
  * service - address service name string.
  * socketAddress - pointer to the address.
  */
-MpnwResult createSocketAddress(
+NetsResult createSocketAddress(
 	const char* host,
 	const char* service,
 	SocketAddress* socketAddress);
 /*
  * Create a new any socket address.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * addressFamily - address family type.
  * socketAddress - pointer to the address.
  */
-MpnwResult createAnySocketAddress(
+NetsResult createAnySocketAddress(
 	AddressFamily addressFamily,
 	SocketAddress* socketAddress);
 /*
@@ -426,7 +426,7 @@ void destroySocketAddress(SocketAddress socketAddress);
 
 /*
  * Resolve a new resolved socket address array.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * host - address host name string.
  * service - address service name string.
@@ -435,7 +435,7 @@ void destroySocketAddress(SocketAddress socketAddress);
  * socketAddresses - pointer to the socket address array.
  * addressCount - pointer to the socket address count.
  */
-MpnwResult resolveSocketAddresses(
+NetsResult resolveSocketAddresses(
 	const char* host,
 	const char* service,
 	AddressFamily family,
@@ -587,21 +587,21 @@ bool getSocketAddressHostService(
 
 /*
  * Create a new public SSL context.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * securityProtocol - security protocol type.
  * certificateFilePath - certificate file path string or NULL.
  * certificatesDirectory - certificate's directory path string or NULL.
  * sslContext - pointer to the SSL context.
  */
-MpnwResult createPublicSslContext(
+NetsResult createPublicSslContext(
 	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
 	const char* certificatesDirectory,
 	SslContext* sslContext);
 /*
  * Create a new private SSL context.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * securityProtocol - security protocol type.
  * certificateFilePath - certificates file path string.
@@ -609,7 +609,7 @@ MpnwResult createPublicSslContext(
  * certificateChain - file path is certificate chain.
  * sslContext - pointer to the SSL context.
  */
-MpnwResult createPrivateSslContext(
+NetsResult createPrivateSslContext(
 	SecurityProtocol securityProtocol,
 	const char* certificateFilePath,
 	const char* privateKeyFilePath,
@@ -630,7 +630,7 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext);
 
 /*
  * Splits and handles received stream data to the messages.
- * Returns operation MPNW result.
+ * Returns operation Nets result.
  *
  * receiveBuffer - message receive buffer.
  * byteCount - message received byte count.
@@ -641,14 +641,14 @@ SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext);
  * receiveFunction - pointer to the reception handler.
  * functionHandle - receive function handle or NULL.
  */
-inline static MpnwResult handleStreamMessage(
+inline static NetsResult handleStreamMessage(
 	const uint8_t* receiveBuffer,
 	size_t byteCount,
 	uint8_t* messageBuffer,
 	size_t messageBufferSize,
 	size_t* messageByteCount,
 	uint8_t messageLengthSize,
-	MpnwResult(*receiveFunction)(
+	NetsResult(*receiveFunction)(
 		const uint8_t*, size_t, void*),
 	void* functionHandle)
 {
@@ -665,7 +665,7 @@ inline static MpnwResult handleStreamMessage(
 
 	// Check instead of assert for safety
 	if (byteCount == 0)
-		return CONNECTION_IS_CLOSED_MPNW_RESULT;
+		return CONNECTION_IS_CLOSED_NETS_RESULT;
 
 	size_t _messageByteCount = *messageByteCount;
 	size_t pointer = 0;
@@ -686,7 +686,7 @@ inline static MpnwResult handleStreamMessage(
 				memcpy(messageBuffer + _messageByteCount,
 					receiveBuffer, byteCount * sizeof(uint8_t));
 				*messageByteCount += byteCount;
-				return SUCCESS_MPNW_RESULT;
+				return SUCCESS_NETS_RESULT;
 			}
 
 			// Copy remaining message size part
@@ -705,7 +705,7 @@ inline static MpnwResult handleStreamMessage(
 		}
 		else if (messageLengthSize == sizeof(uint16_t))
 		{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 			messageSize = *(uint16_t*)messageBuffer;
 #else
 			datagramSize = swapBytes16(*(uint16_t*)datagramBuffer);
@@ -713,7 +713,7 @@ inline static MpnwResult handleStreamMessage(
 		}
 		else if (messageLengthSize == sizeof(uint32_t))
 		{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 			messageSize = *(uint32_t*)messageBuffer;
 #else
 			datagramSize = swapBytes32(*(uint32_t*)datagramBuffer);
@@ -721,7 +721,7 @@ inline static MpnwResult handleStreamMessage(
 		}
 		else if (messageLengthSize == sizeof(uint64_t))
 		{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 			messageSize = *(uint64_t*)messageBuffer;
 #else
 			datagramSize = swapBytes64(*(uint64_t*)datagramBuffer);
@@ -734,7 +734,7 @@ inline static MpnwResult handleStreamMessage(
 
 		// Received message is bigger than buffer
 		if (messageSize > messageBufferSize - messageLengthSize)
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 
 		size_t neededPartSize = messageSize -
 			(_messageByteCount - messageLengthSize);
@@ -747,19 +747,19 @@ inline static MpnwResult handleStreamMessage(
 			memcpy(messageBuffer + _messageByteCount,
 				receiveBuffer + pointer, messagePartSize * sizeof(uint8_t));
 			*messageByteCount = _messageByteCount + messagePartSize;
-			return SUCCESS_MPNW_RESULT;
+			return SUCCESS_NETS_RESULT;
 		}
 
 		memcpy(messageBuffer + _messageByteCount,
 			receiveBuffer + pointer, neededPartSize * sizeof(uint8_t));
 
-		MpnwResult mpnwResult = receiveFunction(
+		NetsResult netsResult = receiveFunction(
 			messageBuffer + messageLengthSize,
 			messageSize,
 			functionHandle);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
-			return mpnwResult;
+		if (netsResult != SUCCESS_NETS_RESULT)
+			return netsResult;
 
 		*messageByteCount = 0;
 		pointer += neededPartSize;
@@ -776,7 +776,7 @@ inline static MpnwResult handleStreamMessage(
 			memcpy(messageBuffer, receiveBuffer + pointer,
 				messageSizePart * sizeof(uint8_t));
 			*messageByteCount += messageSizePart;
-			return SUCCESS_MPNW_RESULT;
+			return SUCCESS_NETS_RESULT;
 		}
 
 		// Decode received message size
@@ -788,7 +788,7 @@ inline static MpnwResult handleStreamMessage(
 		}
 		else if (messageLengthSize == sizeof(uint16_t))
 		{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 			messageSize = *(uint16_t*)(receiveBuffer + pointer);
 #else
 			datagramSize = swapBytes16(*(uint16_t*)(receiveBuffer + pointer));
@@ -796,7 +796,7 @@ inline static MpnwResult handleStreamMessage(
 		}
 		else if (messageLengthSize == sizeof(uint32_t))
 		{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 			messageSize = *(uint32_t*)(receiveBuffer + pointer);
 #else
 			datagramSize = swapBytes32(*(uint32_t*)(receiveBuffer + pointer));
@@ -804,7 +804,7 @@ inline static MpnwResult handleStreamMessage(
 		}
 		else if (messageLengthSize == sizeof(uint64_t))
 		{
-#if MPNW_LITTLE_ENDIAN
+#if NETS_LITTLE_ENDIAN
 			messageSize = *(uint64_t*)(receiveBuffer + pointer);
 #else
 			datagramSize = swapBytes64(*(uint64_t*)(receiveBuffer + pointer));
@@ -817,7 +817,7 @@ inline static MpnwResult handleStreamMessage(
 
 		// Received message is bigger than buffer
 		if (messageSize > messageBufferSize - messageLengthSize)
-			return OUT_OF_MEMORY_MPNW_RESULT;
+			return OUT_OF_MEMORY_NETS_RESULT;
 
 		// Received not full message
 		if (messageSize > (byteCount - pointer) - messageLengthSize)
@@ -827,32 +827,32 @@ inline static MpnwResult handleStreamMessage(
 			memcpy(messageBuffer, receiveBuffer + pointer,
 				messagePartSize * sizeof(uint8_t));
 			*messageByteCount += messagePartSize;
-			return SUCCESS_MPNW_RESULT;
+			return SUCCESS_NETS_RESULT;
 		}
 
 		// Handle received message data
-		MpnwResult mpnwResult = receiveFunction(
+		NetsResult netsResult = receiveFunction(
 			receiveBuffer + pointer + messageLengthSize,
 			messageSize,
 			functionHandle);
 
-		if (mpnwResult != SUCCESS_MPNW_RESULT)
-			return mpnwResult;
+		if (netsResult != SUCCESS_NETS_RESULT)
+			return netsResult;
 
 		pointer += messageLengthSize + messageSize;
 	}
 
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 
 // For library symbols
-MpnwResult sHandleStreamMessage(
+NetsResult sHandleStreamMessage(
 	const uint8_t* receiveBuffer,
 	size_t byteCount,
 	uint8_t* messageBuffer,
 	size_t messageBufferSize,
 	size_t* messageByteCount,
 	uint8_t messageLengthSize,
-	MpnwResult(*receiveFunction)(
+	NetsResult(*receiveFunction)(
 		const uint8_t*, size_t, void*),
 	void* functionHandle);

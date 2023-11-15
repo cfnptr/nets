@@ -1,4 +1,4 @@
-// Copyright 2020-2022 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mpnw/datagram_server.h"
+#include "nets/datagram_server.h"
 
 struct DatagramServer_T
 {
@@ -24,7 +24,7 @@ struct DatagramServer_T
 	Socket socket;
 };
 
-MpnwResult createDatagramServer(
+NetsResult createDatagramServer(
 	AddressFamily addressFamily,
 	const char* service,
 	size_t bufferSize,
@@ -42,7 +42,7 @@ MpnwResult createDatagramServer(
 		1, sizeof(DatagramServer_T));
 
 	if (!datagramServerInstance)
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 
 	datagramServerInstance->onReceive = onReceive;
 	datagramServerInstance->handle = handle;
@@ -53,7 +53,7 @@ MpnwResult createDatagramServer(
 	if (!receiveBuffer)
 	{
 		destroyDatagramServer(datagramServerInstance);
-		return OUT_OF_MEMORY_MPNW_RESULT;
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	datagramServerInstance->buffer = receiveBuffer;
@@ -61,23 +61,23 @@ MpnwResult createDatagramServer(
 
 	SocketAddress socketAddress;
 
-	MpnwResult mpnwResult = createSocketAddress(
+	NetsResult netsResult = createSocketAddress(
 		addressFamily == IP_V4_ADDRESS_FAMILY ?
 			ANY_IP_ADDRESS_V4 : ANY_IP_ADDRESS_V6,
 		service,
 		&socketAddress);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyDatagramServer(datagramServerInstance);
-		return mpnwResult;
+		return netsResult;
 	}
 
 	datagramServerInstance->address = socketAddress;
 
 	Socket socket;
 
-	mpnwResult = createSocket(
+	netsResult = createSocket(
 		DATAGRAM_SOCKET_TYPE,
 		addressFamily,
 		socketAddress,
@@ -86,16 +86,16 @@ MpnwResult createDatagramServer(
 		NULL,
 		&socket);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
+	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyDatagramServer(datagramServerInstance);
-		return mpnwResult;
+		return netsResult;
 	}
 
 	datagramServerInstance->socket = socket;
 
 	*datagramServer = datagramServerInstance;
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 void destroyDatagramServer(DatagramServer datagramServer)
 {
@@ -136,32 +136,32 @@ Socket getDatagramServerSocket(DatagramServer datagramServer)
 	return datagramServer->socket;
 }
 
-MpnwResult updateDatagramServer(DatagramServer datagramServer)
+NetsResult updateDatagramServer(DatagramServer datagramServer)
 {
 	assert(datagramServer);
 
 	uint8_t* receiveBuffer = datagramServer->buffer;
 	size_t byteCount;
 
-	MpnwResult mpnwResult = socketReceiveFrom(
+	NetsResult netsResult = socketReceiveFrom(
 		datagramServer->socket,
 		datagramServer->address,
 		receiveBuffer,
 		datagramServer->bufferSize,
 		&byteCount);
 
-	if (mpnwResult != SUCCESS_MPNW_RESULT)
-		return mpnwResult;
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
 
 	datagramServer->onReceive(
 		datagramServer,
 		datagramServer->address,
 		receiveBuffer,
 		byteCount);
-	return SUCCESS_MPNW_RESULT;
+	return SUCCESS_NETS_RESULT;
 }
 
-MpnwResult datagramServerSend(
+NetsResult datagramServerSend(
 	DatagramServer datagramServer,
 	const void* sendBuffer,
 	size_t byteCount,
