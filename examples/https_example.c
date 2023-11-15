@@ -15,10 +15,6 @@
 #include "nets/http_client.h"
 #include <stdio.h>
 
-#if !NETS_SUPPORT_OPENSSL
-#error OpenSSL is not supported
-#endif
-
 #define DATA_BUFFER_SIZE 2048
 #define RESPONSE_BUFFER_SIZE 65536
 #define HEADER_BUFFER_SIZE 16
@@ -27,6 +23,7 @@
 
 int main()
 {
+	#if NETS_SUPPORT_OPENSSL
 	if (initializeNetwork() == false)
 	{
 		printf("Failed to initialize network.\n");
@@ -94,5 +91,7 @@ int main()
 	destroyHttpClient(httpClient);
 	destroySslContext(sslContext);
 	terminateNetwork();
+	#endif
+
 	return EXIT_SUCCESS;
 }
