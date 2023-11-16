@@ -1,4 +1,4 @@
-# Nets ![CI](https://github.com/cfnptr/nets/actions/workflows/cmake.yml/badge.svg)
+# NETS ![CI](https://github.com/cfnptr/nets/actions/workflows/cmake.yml/badge.svg)
 
 A library providing generic interface for transferring data over a **network** across different platforms.
 
