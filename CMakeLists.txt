@@ -14,20 +14,18 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-if (${CMAKE_SOURCE_DIR} MATCHES ${CMAKE_BINARY_DIR})
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "Prevented in-tree build")
-endif ()
+endif()
 
-if (TARGET nets-static)
+if(TARGET nets-static)
 	return()
-endif ()
+endif()
 
-project(nets 
-	VERSION 2.0.3
+project(nets VERSION 2.0.3 LANGUAGES C
 	DESCRIPTION "Secure multi-platform networking library \
 		with implemented TCP / UDP / HTTP server and client "
-	HOMEPAGE_URL "https://github.com/cfnptr/nets"
-	LANGUAGES C)
+	HOMEPAGE_URL "https://github.com/cfnptr/nets")
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
@@ -37,39 +35,39 @@ option(NETS_BUILD_EXAMPLES "Build MNetsPNW usage examples" ON)
 option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
 
-if (NETS_USE_OPENSSL)
-	if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+if(NETS_USE_OPENSSL)
+	if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 		set(OPENSSL_ROOT_DIR /usr/local/opt/openssl@3 CACHE FILEPATH "" FORCE)
 		set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.a CACHE FILEPATH "" FORCE)
 		set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.a CACHE FILEPATH "" FORCE)
-	endif ()
+	endif()
 
 	find_package(OpenSSL)
 
-	if (OpenSSL_FOUND)
+	if(OpenSSL_FOUND)
 		set(NETS_SUPPORT_OPENSSL 1)
-	else ()
+	else()
 		set(NETS_SUPPORT_OPENSSL 0)
-	endif ()
+	endif()
 
-	if (NETS_ALLOW_DEPRECATED_SSL)
+	if(NETS_ALLOW_DEPRECATED_SSL)
 		set(NETS_SUPPORT_DEPRECATED_SSL 1)
-	else ()
+	else()
 		set(NETS_SUPPORT_DEPRECATED_SSL 0)
-	endif ()
-else ()
+	endif()
+else()
 	set(NETS_SUPPORT_OPENSSL 0)
 	set(NETS_SUPPORT_DEPRECATED_SSL 0)
-endif ()
+endif()
 
 include(TestBigEndian)
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 
-if (IS_BIG_ENDIAN)
+if(IS_BIG_ENDIAN)
 	set(NETS_LITTLE_ENDIAN 0)
-else ()
+else()
 	set(NETS_LITTLE_ENDIAN 1)
-endif ()
+endif()
 
 set(NETS_INCLUDE_DIRECTORIES
 	${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
@@ -87,7 +85,7 @@ configure_file(cmake/defines.h.in include/nets/defines.h)
 if(NETS_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND NETS_LINK_LIBRARIES
 		OpenSSL::SSL OpenSSL::Crypto)
-endif ()
+endif()
 
 set(NETS_SOURCES
 	source/datagram_client.c
@@ -101,15 +99,15 @@ add_library(nets-static STATIC ${NETS_SOURCES})
 target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES} zlibstatic)
 target_include_directories(nets-static PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 
-if (NETS_BUILD_SHARED)
+if(NETS_BUILD_SHARED)
 	add_library(nets-shared SHARED ${NETS_SOURCES})
 	set_target_properties(nets-shared PROPERTIES
 		OUTPUT_NAME "nets" WINDOWS_EXPORT_ALL_SYMBOLS ON)
 	target_link_libraries(nets-shared PUBLIC ${NETS_LINK_LIBRARIES} zlib)
 	target_include_directories(nets-shared PUBLIC ${NETS_INCLUDE_DIRECTORIES})
-endif ()
+endif()
 
-if (NETS_BUILD_EXAMPLES)
+if(NETS_BUILD_EXAMPLES)
 	add_executable(nets-datagram-example examples/datagram_example.c)
 	target_link_libraries(nets-datagram-example PRIVATE nets-static)
 	target_include_directories(nets-datagram-example PRIVATE
@@ -119,4 +117,4 @@ if (NETS_BUILD_EXAMPLES)
 	target_link_libraries(nets-https-example PRIVATE nets-static)
 	target_include_directories(nets-https-example PRIVATE
 		${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include)
-endif ()
+endif()
