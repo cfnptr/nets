@@ -72,14 +72,22 @@ endif()
 set(NETS_INCLUDE_DIRECTORIES
 	${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
 	${PROJECT_BINARY_DIR}/libraries/zlib ${PROJECT_SOURCE_DIR}/libraries/zlib)
-set(NETS_LINK_LIBRARIES mpmt-static)
+set(NETS_LINK_LIBRARIES mpmt-static mpio-static)
 
 set(MPMT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/mpmt)
 
-add_subdirectory(libraries/zlib)
+set(MPIO_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(MPIO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(libraries/mpio)
+
+if(NOT TARGET zlibstatic)
+	set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+	add_subdirectory(libraries/zlib)
+endif()
+
 configure_file(cmake/defines.h.in include/nets/defines.h)
 
 if(NETS_USE_OPENSSL AND OpenSSL_FOUND)

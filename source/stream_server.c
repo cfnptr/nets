@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "nets/stream_server.h"
-#include "mpmt/common.h"
+#include "mpio/os.h"
 
 struct StreamSession_T
 {

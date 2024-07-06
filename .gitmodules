@@ -4,3 +4,6 @@
 [submodule "libraries/zlib"]
 	path = libraries/zlib
 	url = https://github.com/madler/zlib
+[submodule "libraries/mpio"]
+	path = libraries/mpio
+	url = https://github.com/cfnptr/mpio

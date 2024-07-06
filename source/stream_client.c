@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #include "nets/stream_client.h"
-
 #include "mpmt/thread.h"
-#include "mpmt/common.h"
+#include "mpio/os.h"
 
 struct StreamClient_T
 {

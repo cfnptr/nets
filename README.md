@@ -53,6 +53,7 @@ HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cf
 ## Third-party
 
 * [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)
+* [mpio](https://github.com/cfnptr/mpio/) (Apache-2.0 License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache-2.0 License)
 * [zlib](https://github.com/madler/zlib) (zlib License)
 
