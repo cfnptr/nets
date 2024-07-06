@@ -24,22 +24,28 @@ endif()
 
 project(nets VERSION 2.0.3 LANGUAGES C
 	DESCRIPTION "Secure multi-platform networking library \
-		with implemented TCP / UDP / HTTP server and client "
+		with implemented TCP / UDP / HTTP server and client"
 	HOMEPAGE_URL "https://github.com/cfnptr/nets")
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
 option(NETS_BUILD_SHARED "Build Nets shared library" ON)
-option(NETS_BUILD_EXAMPLES "Build MNetsPNW usage examples" ON)
+option(NETS_BUILD_EXAMPLES "Build Nets usage examples" ON)
 option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
 
 if(NETS_USE_OPENSSL)
 	if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-		set(OPENSSL_ROOT_DIR /usr/local/opt/openssl@3 CACHE FILEPATH "" FORCE)
-		set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.a CACHE FILEPATH "" FORCE)
-		set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.a CACHE FILEPATH "" FORCE)
+		if (EXISTS /opt/homebrew/opt/openssl@3)
+			set(OPENSSL_ROOT_DIR /opt/homebrew/opt/openssl@3 CACHE FILEPATH "" FORCE)
+		elseif(EXISTS /usr/local/opt/openssl@3) # support of old intel based macs
+			set(OPENSSL_ROOT_DIR /usr/local/opt/openssl@3 CACHE FILEPATH "" FORCE)
+		endif()
+		if(DEFINED OPENSSL_ROOT_DIR)
+			set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.a CACHE FILEPATH "" FORCE)
+			set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.a CACHE FILEPATH "" FORCE)
+		endif()
 	endif()
 
 	find_package(OpenSSL)
