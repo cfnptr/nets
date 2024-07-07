@@ -37,7 +37,7 @@ option(NETS_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
 
 if(NETS_USE_OPENSSL)
 	if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-		if (EXISTS /opt/homebrew/opt/openssl@3)
+		if(EXISTS /opt/homebrew/opt/openssl@3)
 			set(OPENSSL_ROOT_DIR /opt/homebrew/opt/openssl@3 CACHE FILEPATH "" FORCE)
 		elseif(EXISTS /usr/local/opt/openssl@3) # support of old intel based macs
 			set(OPENSSL_ROOT_DIR /usr/local/opt/openssl@3 CACHE FILEPATH "" FORCE)
