@@ -7,29 +7,29 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{matrix.os}}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: true
 
-    - if: matrix.os == 'ubuntu-latest' 
-      name: Install Ubuntu OpenSSL
+    - name: Install Ubuntu OpenSSL
+      if: matrix.os == 'ubuntu-latest' 
       run: sudo apt-get update && sudo apt-get install openssl libssl-dev
 
-    - if: matrix.os == 'macos-latest' 
-      name: Install macOS OpenSSL
+    - name: Install macOS OpenSSL
+      if: matrix.os == 'macos-latest' 
       run: brew update && brew install openssl
         
-    - if: matrix.os == 'windows-latest' 
-      name: Install Windows OpenSSL
+    - name: Install Windows OpenSSL
+      if: matrix.os == 'windows-latest' 
       run: choco install openssl
 
-    - name: Create Build Environment
+    - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Configure CMake
@@ -37,12 +37,26 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
 
-    - name: Build
+    - name: Build project
       working-directory: ${{runner.workspace}}/build
       shell: bash
-      run: cmake --build . --config $BUILD_TYPE
+      run: cmake --build . --config $BUILD_TYPE --parallel
 
-    - name: Test
+    - name: Run tests
       working-directory: ${{runner.workspace}}/build
       shell: bash
       run: ctest -C $BUILD_TYPE
+
+    - name: Archive artifacts
+      if: startsWith(github.ref, 'refs/tags/')
+      working-directory: ${{runner.workspace}}
+      shell: bash
+      run: 7z a -mx9 ${{github.event.repository.name}}-${{github.ref_name}}-${{runner.os}}-${{runner.arch}}.zip ./build/*
+
+    - name: Release artifacts
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: ${{runner.workspace}}/*.zip
