@@ -19,7 +19,7 @@ jobs:
 
     - name: Install Ubuntu OpenSSL
       if: matrix.os == 'ubuntu-latest' 
-      run: sudo apt-get update && sudo apt-get install openssl libssl-dev
+      run: sudo apt-get update && sudo apt-get install libssl-dev
 
     - name: Install macOS OpenSSL
       if: matrix.os == 'macos-latest' 
@@ -27,7 +27,7 @@ jobs:
         
     - name: Install Windows OpenSSL
       if: matrix.os == 'windows-latest' 
-      run: choco install openssl
+      run: vcpkg install openssl
 
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build
