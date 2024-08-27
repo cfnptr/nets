@@ -22,7 +22,7 @@ if(TARGET nets-static)
 	return()
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
 	set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 	if (NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
 		message(FATAL_ERROR "vcpkg is not installed or added to the System Environment Variables.")
