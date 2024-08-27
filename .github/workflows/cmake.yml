@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
+  VCPKG_ROOT: C:/vcpkg
 
 jobs:
   build:
@@ -16,11 +17,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: true
-
-    - name: Set vcpkg environment variable
-      if: matrix.os == 'windows-latest' 
-      shell: bash
-      run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
     - name: Install Ubuntu OpenSSL
       if: matrix.os == 'ubuntu-latest' 
