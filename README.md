@@ -21,14 +21,15 @@ A library providing generic interface for transferring data over a **network** a
 
 * C99 compiler
 * [Git 2.30+](https://git-scm.com/)
-* [CMake 3.10+](https://cmake.org/)
-* [OpenSSL 3.3+](https://openssl.org/) (Optional)
+* [CMake 3.22+](https://cmake.org/)
+* [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) (Windows only)
+* [brew](https://brew.sh/) (macOS only)
 
 ### OpenSSL installation
 
 * Ubuntu: sudo apt-get install libssl-dev
-* MacOS: [brew](https://brew.sh/) install openssl
-* Windows: [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) install openssl
+* macOS: brew install openssl
+* Windows: vcpkg install openssl
 
 ### CMake options
 

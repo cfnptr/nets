@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.22)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "Prevented in-tree build")
@@ -20,6 +20,13 @@ endif()
 
 if(TARGET nets-static)
 	return()
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
+	if (NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
+		message(FATAL_ERROR "vcpkg is not installed or added to the System Environment Variables.")
+	endif()
 endif()
 
 project(nets VERSION 2.0.3 LANGUAGES C
