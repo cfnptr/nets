@@ -17,6 +17,11 @@ jobs:
       with:
         submodules: true
 
+    - name: Set vcpkg environment variable
+      if: matrix.os == 'windows-latest' 
+      shell: bash
+      run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+
     - name: Install Ubuntu OpenSSL
       if: matrix.os == 'ubuntu-latest' 
       run: sudo apt-get update && sudo apt-get install libssl-dev
