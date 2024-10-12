@@ -1,4 +1,4 @@
-# NETS ![CI](https://github.com/cfnptr/nets/actions/workflows/cmake.yml/badge.svg)
+# Nets
 
 A library providing generic interface for transferring data over a **network** across different platforms.
 
@@ -13,9 +13,12 @@ A library providing generic interface for transferring data over a **network** a
 
 ## Supported operating systems
 
-* Ubuntu
-* MacOS
-* Windows
+* Windows (10/11)
+* Ubuntu (22.04/24.04)
+* macOS (14/15)
+
+This list includes only those systems on which functionality testing is conducted.
+However, you can also compile it under any other Linux distribution or operating system.
 
 ## Build requirements
 
@@ -25,11 +28,7 @@ A library providing generic interface for transferring data over a **network** a
 * [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) (Windows only)
 * [brew](https://brew.sh/) (macOS only)
 
-### OpenSSL installation
-
-* Ubuntu: sudo apt-get install libssl-dev
-* macOS: brew install openssl
-* Windows: vcpkg install openssl
+Use building [instructions](BUILDING.md) to install all required tools and libraries.
 
 ### CMake options
 
@@ -46,10 +45,10 @@ A library providing generic interface for transferring data over a **network** a
 git clone --recursive https://github.com/cfnptr/nets
 ```
 
-## Usage examples
+## Building ![CI](https://github.com/cfnptr/nets/actions/workflows/cmake.yml/badge.svg)
 
-Datagram client / server example: [examples/datagram_example.c](https://github.com/cfnptr/nets/blob/main/examples/datagram_example.c)<br/>
-HTTPS client (OpenSSL) example: [examples/https_example.c](https://github.com/cfnptr/nets/blob/main/examples/https_example.c)
+* Windows: ```./scripts/build-release.bat```
+* macOS / Ubuntu: ```./scripts/build-release.sh```
 
 ## Third-party
 

@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
-  VCPKG_ROOT: C:/vcpkg
+  VCPKG_CACHE: Windows-openssl_3.3.2
 
 jobs:
   build:
@@ -18,17 +18,30 @@ jobs:
       with:
         submodules: true
 
-    - name: Install Ubuntu OpenSSL
+    - name: Set vcpkg environment variable
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+
+    - name: Cache vcpkg packages
+      uses: actions/cache@v4
+      if: matrix.os == 'windows-latest'
+      id: vcpkg-cache
+      with:
+        path: C:/vcpkg/installed
+        key: ${{env.VCPKG_CACHE}}
+
+    - name: Install Ubuntu packages
       if: matrix.os == 'ubuntu-latest' 
       run: sudo apt-get update && sudo apt-get install libssl-dev
 
-    - name: Install macOS OpenSSL
+    - name: Install macOS packages
       if: matrix.os == 'macos-latest' 
       run: brew update && brew install openssl
         
-    - name: Install Windows OpenSSL
-      if: matrix.os == 'windows-latest' 
-      run: vcpkg install openssl
+    - name: Install Windows packages
+      if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}
+      run: vcpkg install openssl:x64-windows-static
 
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build

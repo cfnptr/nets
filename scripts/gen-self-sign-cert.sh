@@ -1,5 +1,4 @@
 #!/bin/bash
-cd "$(dirname "$BASH_SOURCE")"
 
 if ! openssl version ; then
     echo "Failed to get OpenSSL version, please check if it's installed."
