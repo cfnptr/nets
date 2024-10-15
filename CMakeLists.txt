@@ -22,33 +22,7 @@ if(TARGET nets-static)
 	return()
 endif()
 
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-	if(NOT DEFINED VCPKG_ROOT)
-		cmake_path(SET VCPKG_ROOT $ENV{VCPKG_ROOT})
-		message(STATUS "VCPKG_ROOT: " ${VCPKG_ROOT})
-	endif()
-	if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-		set(CMAKE_TOOLCHAIN_FILE ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
-		if (NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
-			message(FATAL_ERROR "vcpkg is not installed or added to the System Environment Variables.")
-		endif()
-	endif()
-
-	if(NOT DEFINED VCPKG_ARCH)
-		if($ENV{PROCESSOR_ARCHITECTURE} MATCHES "64")
-			set(VCPKG_ARCH "x64")
-		elseif($ENV{PROCESSOR_ARCHITECTURE} MATCHES "86")
-			set(VCPKG_ARCH "x86")
-		else()
-			message(FATAL_ERROR "Failed to determine target architecture")
-		endif()
-	endif()
-
-	if(NOT DEFINED VCPKG_TARGET_TRIPLET)
-		set(VCPKG_TARGET_TRIPLET "${VCPKG_ARCH}-windows-static")
-		message(STATUS "VCPKG_TARGET_TRIPLET: " ${VCPKG_TARGET_TRIPLET})
-	endif()
-endif()
+include(cmake/package-managers.cmake)
 
 project(nets VERSION 2.0.3 LANGUAGES C
 	DESCRIPTION "Secure multi-platform networking library \
@@ -64,18 +38,6 @@ option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
 
 if(NETS_USE_OPENSSL)
-	if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-		if(EXISTS /opt/homebrew/opt/openssl@3)
-			set(OPENSSL_ROOT_DIR /opt/homebrew/opt/openssl@3 CACHE FILEPATH "" FORCE)
-		elseif(EXISTS /usr/local/opt/openssl@3) # support of old intel based macs
-			set(OPENSSL_ROOT_DIR /usr/local/opt/openssl@3 CACHE FILEPATH "" FORCE)
-		endif()
-		if(DEFINED OPENSSL_ROOT_DIR)
-			set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.a CACHE FILEPATH "" FORCE)
-			set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.a CACHE FILEPATH "" FORCE)
-		endif()
-	endif()
-
 	find_package(OpenSSL)
 
 	if(OpenSSL_FOUND)
@@ -125,17 +87,11 @@ endif()
 configure_file(cmake/defines.h.in include/nets/defines.h)
 
 if(NETS_USE_OPENSSL AND OpenSSL_FOUND)
-	list(APPEND NETS_LINK_LIBRARIES
-		OpenSSL::SSL OpenSSL::Crypto)
+	list(APPEND NETS_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
-set(NETS_SOURCES
-	source/datagram_client.c
-	source/datagram_server.c
-	source/http_client.c
-	source/socket.c
-	source/stream_client.c
-	source/stream_server.c)
+set(NETS_SOURCES source/datagram_client.c source/datagram_server.c source/http_client.c 
+	source/socket.c source/stream_client.c source/stream_server.c)
 
 add_library(nets-static STATIC ${NETS_SOURCES})
 target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES} zlibstatic)

@@ -65,7 +65,7 @@ Or
 ## 2. Install required packages
 
 1. Run ```sudo apt-get update``` command using **Terminal** app
-2. And ```sudo apt-get install git gcc g++ cmake libssl-dev```
+2. And ```sudo apt-get install git cmake gcc g++ libssl-dev```
 
 
 # macOS (14/15)

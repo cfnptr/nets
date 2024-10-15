@@ -26,7 +26,7 @@ else
         exit $status
     fi
 
-    sudo apt-get update && sudo apt-get install git gcc g++ cmake libssl-dev
+    sudo apt-get update && sudo apt-get install git cmake gcc g++ libssl-dev
     status=$?
 
     if [ $status -ne 0 ]; then
