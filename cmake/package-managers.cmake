@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
