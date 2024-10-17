@@ -37,6 +37,8 @@ option(NETS_BUILD_EXAMPLES "Build Nets usage examples" ON)
 option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
 
+find_package(ZLIB REQUIRED)
+
 if(NETS_USE_OPENSSL)
 	find_package(OpenSSL)
 
@@ -65,10 +67,9 @@ else()
 	set(NETS_LITTLE_ENDIAN 1)
 endif()
 
-set(NETS_INCLUDE_DIRECTORIES
-	${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include
-	${PROJECT_BINARY_DIR}/libraries/zlib ${PROJECT_SOURCE_DIR}/libraries/zlib)
-set(NETS_LINK_LIBRARIES mpmt-static mpio-static)
+set(NETS_INCLUDE_DIRECTORIES ${ZLIB_INCLUDE_DIRS} 
+	${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include)
+set(NETS_LINK_LIBRARIES mpmt-static mpio-static ZLIB::ZLIB)
 
 set(MPMT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -78,11 +79,6 @@ add_subdirectory(libraries/mpmt)
 set(MPIO_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(MPIO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(libraries/mpio)
-
-if(NOT TARGET zlibstatic)
-	set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-	add_subdirectory(libraries/zlib)
-endif()
 
 configure_file(cmake/defines.h.in include/nets/defines.h)
 
@@ -94,14 +90,14 @@ set(NETS_SOURCES source/datagram_client.c source/datagram_server.c source/http_c
 	source/socket.c source/stream_client.c source/stream_server.c)
 
 add_library(nets-static STATIC ${NETS_SOURCES})
-target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES} zlibstatic)
+target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES})
 target_include_directories(nets-static PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 
 if(NETS_BUILD_SHARED)
 	add_library(nets-shared SHARED ${NETS_SOURCES})
 	set_target_properties(nets-shared PROPERTIES
 		OUTPUT_NAME "nets" WINDOWS_EXPORT_ALL_SYMBOLS ON)
-	target_link_libraries(nets-shared PUBLIC ${NETS_LINK_LIBRARIES} zlib)
+	target_link_libraries(nets-shared PUBLIC ${NETS_LINK_LIBRARIES})
 	target_include_directories(nets-shared PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 endif()
 
