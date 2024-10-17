@@ -95,8 +95,8 @@ target_include_directories(nets-static PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 
 if(NETS_BUILD_SHARED)
 	add_library(nets-shared SHARED ${NETS_SOURCES})
-	set_target_properties(nets-shared PROPERTIES
-		OUTPUT_NAME "nets" WINDOWS_EXPORT_ALL_SYMBOLS ON)
+	set_target_properties(nets-shared PROPERTIES OUTPUT_NAME "nets" 
+		WINDOWS_EXPORT_ALL_SYMBOLS ON POSITION_INDEPENDENT_CODE ON)
 	target_link_libraries(nets-shared PUBLIC ${NETS_LINK_LIBRARIES})
 	target_include_directories(nets-shared PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 endif()
