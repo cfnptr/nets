@@ -34,7 +34,6 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 
 | Name                      | Description                          | Default value |
 |---------------------------|--------------------------------------|---------------|
-| NETS_BUILD_SHARED         | Build Nets shared library            | `ON`          |
 | NETS_BUILD_EXAMPLES       | Build Nets usage examples            | `ON`          |
 | NETS_USE_OPENSSL          | Use OpenSSL for secure communication | `ON`          |
 | NETS_ALLOW_DEPRECATED_SSL | Allow deprecated OpenSSL functions   | `OFF`         |

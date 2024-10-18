@@ -32,7 +32,6 @@ project(nets VERSION 2.0.3 LANGUAGES C
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED TRUE)
 
-option(NETS_BUILD_SHARED "Build Nets shared library" ON)
 option(NETS_BUILD_EXAMPLES "Build Nets usage examples" ON)
 option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
@@ -92,14 +91,6 @@ set(NETS_SOURCES source/datagram_client.c source/datagram_server.c source/http_c
 add_library(nets-static STATIC ${NETS_SOURCES})
 target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES})
 target_include_directories(nets-static PUBLIC ${NETS_INCLUDE_DIRECTORIES})
-
-if(NETS_BUILD_SHARED)
-	add_library(nets-shared SHARED ${NETS_SOURCES})
-	set_target_properties(nets-shared PROPERTIES OUTPUT_NAME "nets" 
-		WINDOWS_EXPORT_ALL_SYMBOLS ON POSITION_INDEPENDENT_CODE ON)
-	target_link_libraries(nets-shared PUBLIC ${NETS_LINK_LIBRARIES})
-	target_include_directories(nets-shared PUBLIC ${NETS_INCLUDE_DIRECTORIES})
-endif()
 
 if(NETS_BUILD_EXAMPLES)
 	add_executable(nets-datagram-example examples/datagram_example.c)
