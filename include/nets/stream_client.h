@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,182 +12,155 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Network stream client functions. (TCP)
+ */
+
 #pragma once
 #include "nets/socket.h"
 
-/*
- * Stream client structure. (TCP)
-*/
-typedef struct StreamClient_T StreamClient_T;
-/*
- * Stream client instance. (TCP)
-*/
-typedef StreamClient_T* StreamClient;
+typedef struct StreamClient_T StreamClient_T; /**< Stream client structure. (TCP) */
+typedef StreamClient_T* StreamClient;         /**< Stream client instance. (TCP) */
 
-/*
- * Stream client receive function.
+/**
+ * @brief Stream client receive function. (TCP)
  *
- * streamClient - stream client instance.
- * receiveBuffer - receive buffer instance.
- * byteCount - received byte count.
+ * @param streamClient stream client instance
+ * @param[in] receiveBuffer received data buffer
+ * @param byteCount received byte count
  */
-typedef void(*OnStreamClientReceive)(
-	StreamClient streamClient,
-	const uint8_t* receiveBuffer,
-	size_t byteCount);
+typedef void(*OnStreamClientReceive)(StreamClient streamClient, const uint8_t* receiveBuffer, size_t byteCount);
 
-/*
- * Create a new stream client instance (TCP).
- * Returns operation Nets result.
+/**
+ * @brief Creates a new stream client instance. (TCP)
+ * @return The operation @ref NetsResult code.
  *
- * bufferSize - data buffer size.
- * timeoutTime - time out time. (seconds)
- * onReceive - data receive function.
- * handle - receive function argument.
- * sslContext - SSL context instance or NULL.
- * streamClient - pointer to the stream client.
+ * @param bufferSize receive data buffer size in bytes
+ * @param timeoutTime server timeout time in seconds
+ * @param[in] onReceive on data receive function
+ * @param[in] handle receive function argument or NULL
+ * @param sslContext socket SSL context instance or NULL
+ * @param[out] streamClient pointer to the stream client instance
  */
-NetsResult createStreamClient(
-	size_t bufferSize,
-	double timeoutTime,
-	OnStreamClientReceive onReceive,
-	void* handle,
-	SslContext sslContext,
-	StreamClient* streamClient);
-/*
- * Destroys stream client instance.
- * streamClient - stream client instance or NULL.
+NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamClientReceive onReceive,
+	void* handle, SslContext sslContext, StreamClient* streamClient);
+/**
+ * @brief Destroys stream client instance. (TCP)
+ * @param streamClient target stream client instance or NULL
  */
 void destroyStreamClient(StreamClient streamClient);
 
-/*
-* Returns stream client data buffer size.
-* streamClient - stream client instance.
-*/
+/***********************************************************************************************************************
+ * @brief Returns stream client receive buffer size in bytes.
+ * @param streamClient target stream client instance
+ */
 size_t getStreamClientBufferSize(StreamClient streamClient);
-/*
-* Returns stream client receive function.
-* streamClient - stream client instance.
-*/
+/**
+ * @brief Returns stream client receive function.
+ * @param streamClient target stream client instance
+ */
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient);
-/*
- * Returns stream client handle.
- * streamClient - stream client instance.
+/**
+ * @brief Returns stream client handle.
+ * @param streamClient target stream client instance
  */
 void* getStreamClientHandle(StreamClient streamClient);
-/*
- * Returns stream client data buffer.
- * streamClient - stream client instance.
+/**
+ * @brief Returns stream client data buffer.
+ * @param streamClient target stream client instance
  */
 uint8_t* getStreamClientBuffer(StreamClient streamClient);
-/*
- * Returns stream client socket.
- * streamClient - stream client instance.
+/**
+ * @brief Returns stream client socket instance.
+ * @param streamClient target stream client instance
  */
 Socket getStreamClientSocket(StreamClient streamClient);
 
-/*
- * Returns stream client timeout time. (seconds)
- * streamClient - stream client instance.
+/**
+ * @brief Returns stream client server timeout time. (in seconds)
+ * @param streamClient target stream client instance
  */
-double getStreamClientTimeoutTime(
-	StreamClient streamClient);
-/*
- * Sets stream client timeout time. (seconds)
+double getStreamClientTimeoutTime(StreamClient streamClient);
+/**
+ * @brief Sets stream client server timeout time. (in seconds)
  *
- * streamClient - stream client instance.
- * timeoutTime - timeout time value.
+ * @param streamClient target stream client instance
+ * @param timeoutTime server timeout time in seconds
  */
-void setStreamClientTimeoutTime(
-	StreamClient streamClient,
-	double timeoutTime);
+void setStreamClientTimeoutTime(StreamClient streamClient, double timeoutTime);
 
-/*
- * Returns stream client SSL context.
- * streamClient - stream client instance.
+/**
+ * @brief Returns stream client socket SSL context instance.
+ * @param streamClient target stream client instance
  */
-SslContext getStreamClientSslContext(
-	StreamClient streamClient);
-/*
- * Sets stream client SSL context.
+SslContext getStreamClientSslContext(StreamClient streamClient);
+/**
+ * @brief Sets stream client socket SSL context instance.
  *
- * streamClient - stream client instance.
- * sslContext - SSL context instance or NULL.
+ * @param streamClient target stream client instance
+ * @param sslContext socket SSL context instance or NULL
  */
-void setStreamClientSslContext(
-	StreamClient streamClient,
-	SslContext sslContext);
+void setStreamClientSslContext(StreamClient streamClient, SslContext sslContext);
 
-/*
- * Returns true if stream client has been connected.
- * streamClient - stream client instance.
+/***********************************************************************************************************************
+ * @brief Returns true if stream client has been connected.
+ * @param streamClient target stream client instance
  */
 bool isStreamClientConnected(StreamClient streamClient);
-/*
- * Connect stream client to the server by address.
- * Returns operation Nets result.
+/**
+ * @brief Connects stream client to the server with specified IP address.
+ * @return The operation @ref NetsResult code.
  *
- * streamClient - stream client instance.
- * remoteAddress - remote socket address.
- * hostname - SNI hostname or NULL.
+ * @param streamClient target stream client instance
+ * @param remoteAddress remote server IP address
+ * @param[in] hostname remote server hostname or NULL
  */
-NetsResult connectAddressStreamClient(
-	StreamClient streamClient,
-	SocketAddress remoteAddress,
-	const char* hostname);
-/*
- * Connect stream client to the server by hostname.
- * Returns operation Nets result.
+NetsResult connectAddressStreamClient(StreamClient streamClient, SocketAddress remoteAddress, const char* hostname);
+/**
+ * @brief Connects stream client to the server with specified hostname.
+ * @return The operation @ref NetsResult code.
  *
- * streamClient - stream client instance.
- * hostname - server hostname string.
- * service - server service string.
- * setSNI - set SNI hostname.
+ * @param streamClient target stream client instance
+ * @param[in] hostname server hostname string
+ * @param[in] service server service string (port)
+ * @param setSNI set SSL server SNI hostname
  */
-NetsResult connectHostnameStreamClient(
-	StreamClient streamClient,
-	const char* hostname,
-	const char* service,
-	bool setSNI);
-/*
- * Disconnect stream client from the server.
- * streamClient - stream client instance.
+NetsResult connectHostnameStreamClient(StreamClient streamClient, 
+	const char* hostname, const char* service, bool setSNI);
+/**
+ * @brief Disconnects stream client from the server.
+ * @param streamClient target stream client instance
  */
 void disconnectStreamClient(StreamClient streamClient);
 
-/*
- * Receive buffered data.
- * Returns operation Nets result.
- *
- * streamClient - stream client instance.
+/**
+ * @brief Receives pending stream data.
+ * @return The operation @ref NetsResult code.
+ * @param streamClient target stream client instance
  */
 NetsResult updateStreamClient(StreamClient streamClient);
-/*
- * Resets stream client response timeout counter.
- * streamClient - stream client instance.
+/**
+ * @brief Resets stream client response timeout counter.
+ * @param streamClient target stream client instance
  */
 void resetStreamClientTimeout(StreamClient streamClient);
 
-/*
- * Send data to the server.
- * Returns operation Nets result.
+/**
+ * @brief Sends stream data to the server.
+ * @return The operation @ref NetsResult code.
  *
- * streamClient - stream client instance.
- * sendBuffer - data send buffer.
- * byteCount - send byte count.
+ * @param streamClient target stream client instance
+ * @param[in] sendBuffer data send buffer
+ * @param byteCount data byte count to send
  */
-NetsResult streamClientSend(
-	StreamClient streamClient,
-	const void* sendBuffer,
-	size_t byteCount);
+NetsResult streamClientSend(StreamClient streamClient, const void* sendBuffer, size_t byteCount);
 
-/*
- * Send stream message to the server.
- * Returns operation Nets result.
+/**
+ * @brief Sends stream message to the server.
+ * @return The operation @ref NetsResult code.
  *
- * streamClient - stream client instance.
- * sendBuffer - send stream message.
+ * @param streamClient target stream client instance
+ * @param streamMessage stream message to send
  */
-NetsResult streamClientSendMessage(
-	StreamClient streamClient,
-	StreamMessage streamMessage);
+NetsResult streamClientSendMessage(StreamClient streamClient, StreamMessage streamMessage);

@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+/***********************************************************************************************************************
+ * @file
+ * @brief Common Nets library functions.
+ */
 
 #pragma once
 #include <stdint.h>
@@ -61,8 +66,8 @@
 #define netToHost64(x) (uint64_t)(x)
 #endif
 
-/*
- * Nets results.
+/***********************************************************************************************************************
+ * @brief Nets result type.
  */
 typedef enum NetsResult_T
 {
@@ -93,14 +98,10 @@ typedef enum NetsResult_T
 	UNKNOWN_ERROR_NETS_RESULT = 24,
 	NETS_RESULT_COUNT = 25,
 } NetsResult_T;
+typedef uint8_t NetsResult; /**< Nets result type. */
 
-/*
- * NETS result type.
- */
-typedef uint8_t NetsResult;
-
-/*
- * NETS result strings.
+/**
+ * @brief Nets result strings.
  */
 static const char* const netsResultStrings[NETS_RESULT_COUNT] = {
 	"Success",
@@ -130,20 +131,19 @@ static const char* const netsResultStrings[NETS_RESULT_COUNT] = {
 	"Unknown error",
 };
 
-/*
- * Returns NETS result as string.
- * result - NETS result.
+/**
+ * @brief Returns Nets result as string.
+ * @param result target Nets result
  */
-inline static const char* netsResultToString(
-	NetsResult result)
+inline static const char* netsResultToString(NetsResult result)
 {
 	if (result >= NETS_RESULT_COUNT)
-		return "Unknown NETS result";
+		return "Unknown Nets result";
 	return netsResultStrings[result];
 }
 
-/*
- * Stream message structure.
+/***********************************************************************************************************************
+ * @brief Stream message structure.
  */
 typedef struct StreamMessage
 {
@@ -152,20 +152,16 @@ typedef struct StreamMessage
 	size_t offset;
 } StreamMessage;
 
-/*
- * Creates a new stream message. (TCP)
+/**
+ * @brief Creates a new stream message. (TCP)
  *
- * buffer - message write buffer.
- * messageSize - message size in bytes.
- * lengthSize - message header size in bytes.
+ * @param[in,out] buffer message data buffer
+ * @param messageSize message size in bytes.
+ * @param lengthSize message header size in bytes
  */
-inline static StreamMessage createStreamMessage(
-	uint8_t* buffer,
-	size_t messageSize,
-	uint8_t lengthSize)
+inline static StreamMessage createStreamMessage(uint8_t* buffer, size_t messageSize, uint8_t lengthSize)
 {
 	assert(buffer != NULL);
-
 	assert(
 		(lengthSize == sizeof(uint8_t) && messageSize <= UINT8_MAX) ||
 		(lengthSize == sizeof(uint16_t) && messageSize <= UINT16_MAX) ||
@@ -183,38 +179,35 @@ inline static StreamMessage createStreamMessage(
 	}
 	else if (lengthSize == sizeof(uint16_t))
 	{
-#if NETS_LITTLE_ENDIAN
+		#if NETS_LITTLE_ENDIAN
 		*((uint16_t*)buffer) = (uint16_t)messageSize;
-#else
+		#else
 		*((uint16_t*)buffer) = swapBytes16(messageSize);
-#endif
+		#endif
 		streamMessage.size = messageSize + sizeof(uint16_t);
 		streamMessage.offset = sizeof(uint16_t);
 	}
 	else if (lengthSize == sizeof(uint32_t))
 	{
-#if NETS_LITTLE_ENDIAN
+		#if NETS_LITTLE_ENDIAN
 		*((uint32_t*)buffer) = (uint32_t)messageSize;
-#else
+		#else
 		*((uint32_t*)buffer) = swapBytes32(messageSize);
-#endif
+		#endif
 		streamMessage.size = messageSize + sizeof(uint32_t);
 		streamMessage.offset = sizeof(uint32_t);
 	}
 	else if (lengthSize == sizeof(uint64_t))
 	{
-#if NETS_LITTLE_ENDIAN
+		#if NETS_LITTLE_ENDIAN
 		*((uint64_t*)buffer) = (uint64_t)messageSize;
-#else
+		#else
 		*((uint64_t*)buffer) = swapBytes64(messageSize);
-#endif
+		#endif
 		streamMessage.size = messageSize + sizeof(uint64_t);
 		streamMessage.offset = sizeof(uint64_t);
 	}
-	else
-	{
-		abort();
-	}
+	else abort();
 
 	return streamMessage;
 }

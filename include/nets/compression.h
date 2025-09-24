@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Common compression functions. (Zlib)
+ */
+
 #pragma once
 #include "nets/defines.h"
 #include "zlib.h"
 
-/*
- * Converts zlib error the NETS result.
- * result - zlib result value.
+/**
+ * @brief Converts zlib error the Nets result.
+ * @param result target zlib result value
  */
 inline static NetsResult zlibErrorToNetsResult(int result)
 {

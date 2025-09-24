@@ -1,4 +1,4 @@
-# Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+# Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@ endif()
 
 include(cmake/package-managers.cmake)
 
-project(nets VERSION 2.0.3 LANGUAGES C
+project(nets VERSION 3.0.0 LANGUAGES C
 	DESCRIPTION "Secure multi-platform networking library \
-		with implemented TCP / UDP / HTTP server and client"
+		with implemented TCP / UDP server and client"
 	HOMEPAGE_URL "https://github.com/cfnptr/nets")
 
 set(CMAKE_C_STANDARD 99)
@@ -66,8 +66,8 @@ else()
 	set(NETS_LITTLE_ENDIAN 1)
 endif()
 
-set(NETS_INCLUDE_DIRECTORIES ${ZLIB_INCLUDE_DIRS} 
-	${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include)
+set(NETS_INCLUDE_DIRECTORIES ${ZLIB_INCLUDE_DIRS} ${PROJECT_BINARY_DIR}/include
+	${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/wrappers/cpp)
 set(NETS_LINK_LIBRARIES mpmt-static mpio-static ZLIB::ZLIB)
 
 set(MPMT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
@@ -85,7 +85,7 @@ if(NETS_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND NETS_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
-set(NETS_SOURCES source/datagram_client.c source/datagram_server.c source/http_client.c 
+set(NETS_SOURCES source/datagram_client.c source/datagram_server.c 
 	source/socket.c source/stream_client.c source/stream_server.c)
 
 add_library(nets-static STATIC ${NETS_SOURCES})
@@ -96,10 +96,5 @@ if(NETS_BUILD_EXAMPLES)
 	add_executable(nets-datagram-example examples/datagram_example.c)
 	target_link_libraries(nets-datagram-example PRIVATE nets-static)
 	target_include_directories(nets-datagram-example PRIVATE
-		${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include)
-
-	add_executable(nets-https-example examples/https_example.c)
-	target_link_libraries(nets-https-example PRIVATE nets-static)
-	target_include_directories(nets-https-example PRIVATE
 		${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include)
 endif()

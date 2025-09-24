@@ -43,6 +43,7 @@ Note! Use appropriate github link if Nets is used as a third-party library.
 
 1. Open **CMD** or **Terminal** app as Administrator. (Right click the app)
 2. Run ```scripts/update-vcpkg.bat``` command from the repository *scripts/* directory
+3. Reopen **CMD** or **Terminal** app to get updated system environment variables.
 
 Or
 

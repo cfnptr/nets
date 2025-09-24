@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,30 +35,20 @@ typedef struct Client
 	volatile bool isRunning;
 } Client;
 
-static void onServerReceive(
-	DatagramServer server,
-	SocketAddress address,
-	const uint8_t* buffer,
-	size_t byteCount)
+//**********************************************************************************************************************
+static void onServerReceive(DatagramServer server, SocketAddress address, const uint8_t* buffer, size_t byteCount)
 {
 	if (byteCount != 1)
 	{
-		printf("[SERVER]: Incorrect datagram size. "
-			"(%zu)\n", byteCount);
+		printf("[SERVER]: Incorrect datagram size. (%zu)\n", byteCount);
 		fflush(stdout);
 		return;
 	}
 
-	printf("[SERVER]: Received request. "
-		"(value: %hhu)\n", buffer[0]);
+	printf("[SERVER]: Received request. (value: %hhu)\n", buffer[0]);
 	fflush(stdout);
 
-	NetsResult netsResult = datagramServerSend(
-		server,
-		buffer,
-		1,
-		address);
-
+	NetsResult netsResult = datagramServerSend(server, buffer, 1, address);
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("[SERVER]: Failed to send response. (error: %s)\n",
@@ -68,39 +58,29 @@ static void onServerReceive(
 }
 static void serverHandler(void* argument)
 {
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	disableSigpipe();
-#endif
+	#endif
 
 	Server* server = (Server*)argument;
-
 	while (server->isRunning)
 	{
-		NetsResult netsResult = updateDatagramServer(
-			server->server);
-
+		NetsResult netsResult = updateDatagramServer(server->server);
 		if (netsResult != SUCCESS_NETS_RESULT)
 			sleepThread(0.001);
 	}
 }
 
+//**********************************************************************************************************************
 inline static Server* createServer()
 {
 	Server* server = malloc(sizeof(Server));
-
 	if (server == NULL)
 		return NULL;
 
 	DatagramServer datagramServer;
-
-	NetsResult netsResult = createDatagramServer(
-		IP_V4_ADDRESS_FAMILY,
-		SERVER_PORT,
-		RECEIVE_BUFFER_SIZE,
-		onServerReceive,
-		NULL,
-		&datagramServer);
-
+	NetsResult netsResult = createDatagramServer(IP_V4_SOCKET_FAMILY, SERVER_PORT, 
+		RECEIVE_BUFFER_SIZE, onServerReceive, NULL, &datagramServer);
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to create datagram server. (error: %s)\n",
@@ -112,10 +92,7 @@ inline static Server* createServer()
 	server->server = datagramServer;
 	server->isRunning = true;
 
-	Thread thread = createThread(
-		serverHandler,
-		server);
-
+	Thread thread = createThread(serverHandler, server);
 	if (thread == NULL)
 	{
 		printf("Failed to create server thread.\n");
@@ -139,36 +116,29 @@ inline static void destroyServer(Server* server)
 	free(server);
 }
 
-static void onClientReceive(
-	DatagramClient client,
-	const uint8_t* buffer,
-	size_t byteCount)
+//**********************************************************************************************************************
+static void onClientReceive(DatagramClient client, const uint8_t* buffer, size_t byteCount)
 {
 	if (byteCount != 1)
 	{
-		printf("[CLIENT]: Incorrect datagram size. "
-			"(%zu).\n", byteCount);
+		printf("[CLIENT]: Incorrect datagram size. (%zu).\n", byteCount);
 		fflush(stdout);
 		return;
 	}
 
-	printf("[CLIENT]: Received response. "
-		"(value: %hhu).\n", buffer[0]);
+	printf("[CLIENT]: Received response. (value: %hhu).\n", buffer[0]);
 	fflush(stdout);
 }
 static void clientHandler(void* argument)
 {
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	disableSigpipe();
-#endif
+	#endif
 
 	Client* client = (Client*)argument;
-
 	while (client->isRunning)
 	{
-		NetsResult netsResult = updateDatagramClient(
-			client->client);
-
+		NetsResult netsResult = updateDatagramClient(client->client);
 		if (netsResult == SUCCESS_NETS_RESULT)
 		{
 			continue;
@@ -187,20 +157,15 @@ static void clientHandler(void* argument)
 	}
 }
 
+//**********************************************************************************************************************
 inline static Client* createClient()
 {
 	Client* client = malloc(sizeof(Client));
-
 	if (client == NULL)
 		return NULL;
 
 	SocketAddress remoteAddress;
-
-	NetsResult netsResult = createSocketAddress(
-		LOOPBACK_IP_ADDRESS_V4,
-		SERVER_PORT,
-		&remoteAddress);
-
+	NetsResult netsResult = createSocketAddress(LOOPBACK_IP_ADDRESS_V4, SERVER_PORT, &remoteAddress);
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to create client socket address. (error: %s)\n",
@@ -210,14 +175,8 @@ inline static Client* createClient()
 	}
 
 	DatagramClient datagramClient;
-
-	netsResult = createDatagramClient(
-		remoteAddress,
-		RECEIVE_BUFFER_SIZE,
-		onClientReceive,
-		NULL,
-		&datagramClient);
-
+	netsResult = createDatagramClient(remoteAddress, 
+		RECEIVE_BUFFER_SIZE, onClientReceive, NULL, &datagramClient);
 	destroySocketAddress(remoteAddress);
 
 	if (netsResult != SUCCESS_NETS_RESULT)
@@ -231,10 +190,7 @@ inline static Client* createClient()
 	client->client = datagramClient;
 	client->isRunning = true;
 
-	Thread thread = createThread(
-		clientHandler,
-		client);
-
+	Thread thread = createThread(clientHandler, client);
 	if (thread == NULL)
 	{
 		printf("Failed to create client thread.\n");
@@ -258,6 +214,7 @@ inline static void destroyClient(Client* client)
 	free(client);
 }
 
+//**********************************************************************************************************************
 int main()
 {
 	if (initializeNetwork() == false)
@@ -267,7 +224,6 @@ int main()
 	}
 
 	Server* server = createServer();
-
 	if (server == NULL)
 	{
 		terminateNetwork();
@@ -275,7 +231,6 @@ int main()
 	}
 
 	Client* client = createClient();
-
 	if (client == NULL)
 	{
 		destroyServer(server);
@@ -285,11 +240,7 @@ int main()
 
 	uint8_t message = 1;
 
-	NetsResult netsResult = datagramClientSend(
-		client->client,
-		&message,
-		sizeof(uint8_t));
-
+	NetsResult netsResult = datagramClientSend(client->client, &message, sizeof(uint8_t));
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		printf("Failed to send client datagram. (error: %s)\n",

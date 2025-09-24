@@ -7,9 +7,9 @@ A library providing generic interface for transferring data over a **network** a
 * Blocking / non-blocking socket
 * Stream client / server (TCP)
 * Datagram client / server (UDP)
-* Secure socket layer (OpenSSL)
+* Secure socket layer (SSL, TLS)
 * Datagrams over TCP stream
-* HTTP client (TLS, Compression)
+* C and C++ implementations
 
 ## Supported operating systems
 
@@ -23,6 +23,7 @@ However, you can also compile it under any other Linux distribution or operating
 ## Build requirements
 
 * C99 compiler
+* C++17 compiler (optional)
 * [Git 2.30+](https://git-scm.com/)
 * [CMake 3.22+](https://cmake.org/)
 * [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) (Windows only)

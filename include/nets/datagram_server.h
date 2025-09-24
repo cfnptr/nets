@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,95 +12,82 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Network datagram server functions. (UDP)
+ */
+
 #pragma once
 #include "nets/socket.h"
 
-/*
- * Datagram server structure. (UDP)
- */
-typedef struct DatagramServer_T DatagramServer_T;
-/*
- * Datagram server instance. (UDP)
- */
-typedef DatagramServer_T* DatagramServer;
+typedef struct DatagramServer_T DatagramServer_T; /**< Datagram server structure. (UDP) */
+typedef DatagramServer_T* DatagramServer;         /**< Datagram server instance. (UDP) */
 
-/*
- * Datagram server receive function.
+/**
+ * @brief Datagram server receive function. (UDP)
  *
- * datagramServer - datagram server instance.
- * remoteAddress - remote address instance.
- * receiveBuffer - receive buffer size.
- * byteCount - received byte count.
+ * @param datagramServer datagram server instance
+ * @param remoteAddress remote client IP address
+ * @param receiveBuffer received data buffer
+ * @param byteCount received byte count
  */
-typedef void(*OnDatagramServerReceive)(
-	DatagramServer datagramServer,
-	SocketAddress remoteAddress,
-	const uint8_t* receiveBuffer,
-	size_t byteCount);
+typedef void(*OnDatagramServerReceive)(DatagramServer datagramServer, 
+	SocketAddress remoteAddress, const uint8_t* receiveBuffer, size_t byteCount);
 
-/*
- * Create a new datagram server (UDP).
- * Returns operation Nets result.
+/**
+ * @brief Creates a new datagram server instance. (UDP)
+ * @return The operation @ref NetsResult code.
  *
- * addressFamily - local socket address family.
- * service - local address service string.
- * bufferSize - data buffer size.
- * onReceive - datagram receive function.
- * handle - receive function argument.
- * datagramServer - pointer to the datagram server.
+ * @param socketFamily local socket IP address family
+ * @param service local IP address service string (port)
+ * @param bufferSize receive data buffer size in bytes
+ * @param[in] onReceive on datagram receive function.
+ * @param[in] handle receive function argument or NULL
+ * @param datagramServer pointer to the datagram server instance
  */
-NetsResult createDatagramServer(
-	AddressFamily addressFamily,
-	const char* service,
-	size_t bufferSize,
-	OnDatagramServerReceive onReceive,
-	void* handle,
-	DatagramServer* datagramServer);
-/*
- * Destroys datagram server instance.
- * datagramServer - datagram server instance or NULL.
+NetsResult createDatagramServer(SocketFamily socketFamily, const char* service, size_t bufferSize, 
+	OnDatagramServerReceive onReceive, void* handle, DatagramServer* datagramServer);
+/**
+ * @brief Destroys datagram server instance. (UDP)
+ * @param datagramServer target datagram server instance or NULL
  */
 void destroyDatagramServer(DatagramServer datagramServer);
 
-/*
- * Returns datagram server data buffer size.
- * datagramServer - datagram server instance.
+/***********************************************************************************************************************
+ * @brief Returns datagram server receive buffer size in bytes.
+ * @param datagramServer target datagram server instance
  */
 size_t getDatagramServerBufferSize(DatagramServer datagramServer);
-/*
- * Returns datagram server receive function.
- * datagramServer - datagram server instance.
+/**
+ * @brief Returns datagram server receive function.
+ * @param datagramServer target datagram server instance
  */
 OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer datagramServer);
-/*
- * Returns datagram server handle.
- * datagramServer - datagram server instance.
+/**
+ * @brief Returns datagram server handle.
+ * @param datagramServer target datagram server instance
  */
 void* getDatagramServerHandle(DatagramServer datagramServer);
-/*
- * Returns datagram server socket.
- * datagramServer - datagram server instance.
+/**
+ * @brief Returns datagram server socket instance.
+ * @param datagramServer target datagram server instance
  */
 Socket getDatagramServerSocket(DatagramServer datagramServer);
-/*
- * Receive buffered datagrams.
- * Returns operation Nets result.
- *
- * datagramServer - datagram server instance.
+/**
+ * @brief Receives pending datagram messages.
+ * @return The operation @ref NetsResult code.
+ * @param datagramServer target datagram server instance
  */
 NetsResult updateDatagramServer(DatagramServer datagramServer);
 
-/*
- * Send message to the specified address.
- * Returns operation Nets result.
+/**
+ * @brief Sends datagram message to the specified remote IP address.
+ * @return The operation @ref NetsResult code.
  *
- * datagramServer - datagram server instance.
- * sendBuffer - datagram send buffer.
- * byteCount - send byte count.
- * remoteAddress - destination socket address.
+ * @param datagramServer target datagram server instance
+ * @param[in] sendBuffer message send buffer
+ * @param byteCount message byte count to send
+ * @param remoteAddress destination remote socket IP address
  */
-NetsResult datagramServerSend(
-	DatagramServer datagramServer,
-	const void* sendBuffer,
-	size_t byteCount,
-	SocketAddress remoteAddress);
+NetsResult datagramServerSend(DatagramServer datagramServer, 
+	const void* sendBuffer, size_t byteCount, SocketAddress remoteAddress);

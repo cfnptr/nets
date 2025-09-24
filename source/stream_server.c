@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,48 +25,37 @@ struct StreamSession_T
 struct StreamServer_T
 {
 	size_t sessionBufferSize;
-	size_t dataBufferSize;
+	size_t receiveBufferSize;
 	double timeoutTime;
 	OnStreamSessionCreate onCreate;
 	OnStreamSessionDestroy onDestroy;
 	OnStreamSessionReceive onReceive;
 	OnStreamSessionUpdate onUpdate;
 	void* handle;
-	uint8_t* dataBuffer;
+	uint8_t* receiveBuffer;
 	StreamSession* sessionBuffer;
 	size_t sessionCount;
 	Socket acceptSocket;
 };
 
-NetsResult createStreamServer(
-	AddressFamily addressFamily,
-	const char* service,
-	size_t sessionBufferSize,
-	size_t connectionQueueSize,
-	size_t dataBufferSize,
-	double timeoutTime,
-	OnStreamSessionCreate onCreate,
-	OnStreamSessionDestroy onDestroy,
-	OnStreamSessionReceive onReceive,
-	OnStreamSessionUpdate onUpdate,
-	void* handle,
-	SslContext sslContext,
-	StreamServer* streamServer)
+//**********************************************************************************************************************
+NetsResult createStreamServer(SocketFamily socketFamily, const char* service, size_t sessionBufferSize,
+	size_t connectionQueueSize, size_t receiveBufferSize, double timeoutTime, OnStreamSessionCreate onCreate,
+	OnStreamSessionDestroy onDestroy, OnStreamSessionReceive onReceive, OnStreamSessionUpdate onUpdate,
+	void* handle, SslContext sslContext, StreamServer* streamServer)
 {
-	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(socketFamily < SOCKET_FAMILY_COUNT);
 	assert(service);
 	assert(sessionBufferSize > 0);
 	assert(connectionQueueSize > 0);
-	assert(dataBufferSize > 0);
+	assert(receiveBufferSize > 0);
 	assert(timeoutTime > 0.0);
 	assert(onCreate);
 	assert(onDestroy);
 	assert(onReceive);
 	assert(streamServer);
 
-	StreamServer streamServerInstance = calloc(
-		1, sizeof(StreamServer_T));
-
+	StreamServer streamServerInstance = calloc(1, sizeof(StreamServer_T));
 	if (!streamServerInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
@@ -77,21 +66,17 @@ NetsResult createStreamServer(
 	streamServerInstance->onUpdate = onUpdate;
 	streamServerInstance->handle = handle;
 
-	uint8_t* dataBuffer = malloc(
-		dataBufferSize * sizeof(uint8_t));
-
-	if (!dataBuffer)
+	uint8_t* receiveBuffer = malloc(receiveBufferSize * sizeof(uint8_t));
+	if (!receiveBuffer)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
-	streamServerInstance->dataBuffer = dataBuffer;
-	streamServerInstance->dataBufferSize = dataBufferSize;
+	streamServerInstance->receiveBuffer = receiveBuffer;
+	streamServerInstance->receiveBufferSize = receiveBufferSize;
 
-	StreamSession* sessionBuffer = malloc(
-		sessionBufferSize * sizeof(StreamSession));
-
+	StreamSession* sessionBuffer = malloc(sessionBufferSize * sizeof(StreamSession));
 	if (!sessionBuffer)
 	{
 		destroyStreamServer(streamServerInstance);
@@ -103,13 +88,8 @@ NetsResult createStreamServer(
 	streamServerInstance->sessionCount = 0;
 
 	SocketAddress socketAddress;
-
-	NetsResult netsResult = createSocketAddress(
-		addressFamily == IP_V4_ADDRESS_FAMILY ?
-			ANY_IP_ADDRESS_V4 : ANY_IP_ADDRESS_V6,
-		service,
-		&socketAddress);
-
+	NetsResult netsResult = createSocketAddress(socketFamily == IP_V4_SOCKET_FAMILY ?
+		ANY_IP_ADDRESS_V4 : ANY_IP_ADDRESS_V6, service, &socketAddress);
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyStreamServer(streamServerInstance);
@@ -117,16 +97,8 @@ NetsResult createStreamServer(
 	}
 
 	Socket acceptSocket;
-
-	netsResult = createSocket(
-		STREAM_SOCKET_TYPE,
-		addressFamily,
-		socketAddress,
-		false,
-		false,
-		sslContext,
-		&acceptSocket);
-
+	netsResult = createSocket(STREAM_SOCKET_TYPE, socketFamily, 
+		socketAddress, false, false, sslContext, &acceptSocket);
 	destroySocketAddress(socketAddress);
 
 	if (netsResult != SUCCESS_NETS_RESULT)
@@ -137,10 +109,7 @@ NetsResult createStreamServer(
 
 	streamServerInstance->acceptSocket = acceptSocket;
 
-	netsResult = listenSocket(
-		acceptSocket,
-		connectionQueueSize);
-
+	netsResult = listenSocket(acceptSocket, connectionQueueSize);
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyStreamServer(streamServerInstance);
@@ -171,27 +140,27 @@ void destroyStreamServer(StreamServer streamServer)
 	}
 
 	Socket socket = streamServer->acceptSocket;
-
 	if (socket)
 	{
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
 	}
 
-	free(streamServer->dataBuffer);
+	free(streamServer->receiveBuffer);
 	free(sessionBuffer);
 	free(streamServer);
 }
 
+//**********************************************************************************************************************
 size_t getStreamServerSessionBufferSize(StreamServer streamServer)
 {
 	assert(streamServer);
 	return streamServer->sessionBufferSize;
 }
-size_t getStreamServerDataBufferSize(StreamServer streamServer)
+size_t getStreamServerReceiveBufferSize(StreamServer streamServer)
 {
 	assert(streamServer);
-	return streamServer->dataBufferSize;
+	return streamServer->receiveBufferSize;
 }
 OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer)
 {
@@ -223,10 +192,10 @@ void* getStreamServerHandle(StreamServer streamServer)
 	assert(streamServer);
 	return streamServer->handle;
 }
-uint8_t* getStreamServerDataBuffer(StreamServer streamServer)
+uint8_t* getStreamServerReceiveBuffer(StreamServer streamServer)
 {
 	assert(streamServer);
-	return streamServer->dataBuffer;
+	return streamServer->receiveBuffer;
 }
 Socket getStreamServerSocket(StreamServer streamServer)
 {
@@ -249,17 +218,16 @@ void* getStreamSessionHandle(StreamSession streamSession)
 	return streamSession->handle;
 }
 
+//**********************************************************************************************************************
 inline static void destroyStreamSession(StreamSession streamSession)
 {
 	if (!streamSession)
 		return;
 
 	Socket receiveSocket = streamSession->receiveSocket;
-
 	if (receiveSocket)
 	{
-		shutdownSocket(receiveSocket,
-			RECEIVE_SEND_SOCKET_SHUTDOWN);
+		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
 	}
 
@@ -272,8 +240,8 @@ bool updateStreamServer(StreamServer streamServer)
 	StreamSession* sessionBuffer = streamServer->sessionBuffer;
 	size_t sessionBufferSize = streamServer->sessionBufferSize;
 	size_t sessionCount = streamServer->sessionCount;
-	uint8_t* dataBuffer = streamServer->dataBuffer;
-	size_t dataBufferSize = streamServer->dataBufferSize;
+	uint8_t* receiveBuffer = streamServer->receiveBuffer;
+	size_t receiveBufferSize = streamServer->receiveBufferSize;
 	double timeoutTime = streamServer->timeoutTime;
 	OnStreamSessionCreate onCreate = streamServer->onCreate;
 	OnStreamSessionDestroy onDestroy = streamServer->onDestroy;
@@ -282,7 +250,6 @@ bool updateStreamServer(StreamServer streamServer)
 	Socket serverSocket = streamServer->acceptSocket;
 	bool isServerSocketSsl = getSocketSslContext(serverSocket) != NULL;
 	double currentTime = getCurrentClock();
-
 	bool isUpdated = false;
 
 	for (size_t i = 0; i < sessionCount; i++)
@@ -292,7 +259,6 @@ bool updateStreamServer(StreamServer streamServer)
 		double lastUpdateTime = streamSession->lastUpdateTime;
 
 		NetsResult netsResult;
-
 		if (lastUpdateTime < 0.0)
 		{
 			if (lastUpdateTime + currentTime > timeoutTime)
@@ -302,7 +268,6 @@ bool updateStreamServer(StreamServer streamServer)
 			}
 
 			netsResult = acceptSslSocket(receiveSocket);
-
 			if (netsResult == IN_PROGRESS_NETS_RESULT)
 				continue;
 			if (netsResult != SUCCESS_NETS_RESULT)
@@ -321,19 +286,10 @@ bool updateStreamServer(StreamServer streamServer)
 		}
 
 		size_t byteCount;
-
-		netsResult = socketReceive(
-			receiveSocket,
-			dataBuffer,
-			dataBufferSize,
-			&byteCount);
-
+		netsResult = socketReceive(receiveSocket, receiveBuffer, receiveBufferSize, &byteCount);
 		if (netsResult == IN_PROGRESS_NETS_RESULT)
 		{
-			netsResult = onUpdate(
-				streamServer,
-				streamSession);
-
+			netsResult = onUpdate(streamServer, streamSession);
 			if (netsResult != SUCCESS_NETS_RESULT)
 				goto DESTROY_SESSION;
 			continue;
@@ -342,19 +298,11 @@ bool updateStreamServer(StreamServer streamServer)
 		if (netsResult != SUCCESS_NETS_RESULT)
 			goto DESTROY_SESSION;
 
-		netsResult = onReceive(
-			streamServer,
-			streamSession,
-			dataBuffer,
-			byteCount);
-
+		netsResult = onReceive(streamServer, streamSession, receiveBuffer, byteCount);
 		if (netsResult != SUCCESS_NETS_RESULT)
 			goto DESTROY_SESSION;
 
-		netsResult = onUpdate(
-			streamServer,
-			streamSession);
-
+		netsResult = onUpdate(streamServer, streamSession);
 		if (netsResult != SUCCESS_NETS_RESULT)
 			goto DESTROY_SESSION;
 
@@ -369,7 +317,8 @@ bool updateStreamServer(StreamServer streamServer)
 		for (size_t j = i + 1; j < sessionCount; j++)
 			sessionBuffer[j - 1] = sessionBuffer[j];
 
-		if (i > 0) i--;
+		if (i > 0)
+			i--;
 		sessionCount--;
 		isUpdated = true;
 	}
@@ -383,11 +332,7 @@ bool updateStreamServer(StreamServer streamServer)
 		}
 
 		Socket acceptedSocket;
-
-		NetsResult netsResult = acceptSocket(
-			serverSocket,
-			&acceptedSocket);
-
+		NetsResult netsResult = acceptSocket(serverSocket, &acceptedSocket);
 		if (netsResult != SUCCESS_NETS_RESULT)
 		{
 			streamServer->sessionCount = sessionCount;
@@ -396,20 +341,14 @@ bool updateStreamServer(StreamServer streamServer)
 
 		isUpdated = true;
 
-		StreamSession streamSession = calloc(
-			1, sizeof(StreamSession_T));
-
+		StreamSession streamSession = calloc(1, sizeof(StreamSession_T));
 		if (!streamSession)
 			continue;
 
 		streamSession->receiveSocket = acceptedSocket;
 
 		SocketAddress socketAddress;
-
-		netsResult = createAnySocketAddress(
-			IP_V6_ADDRESS_FAMILY,
-			&socketAddress);
-
+		netsResult = createAnySocketAddress(IP_V6_SOCKET_FAMILY, &socketAddress);
 		if (netsResult != SUCCESS_NETS_RESULT)
 		{
 			destroyStreamSession(streamSession);
@@ -418,10 +357,7 @@ bool updateStreamServer(StreamServer streamServer)
 
 		streamSession->socketAddress = socketAddress;
 
-		bool result = getSocketRemoteAddress(
-			acceptedSocket,
-			socketAddress);
-
+		bool result = getSocketRemoteAddress(acceptedSocket, socketAddress);
 		if (!result)
 		{
 			destroyStreamSession(streamSession);
@@ -429,50 +365,29 @@ bool updateStreamServer(StreamServer streamServer)
 		}
 
 		void* session;
-
-		result = onCreate(
-			streamServer,
-			streamSession,
-			&session);
-
+		result = onCreate(streamServer, streamSession, &session);
 		if (!result)
 		{
 			destroyStreamSession(streamSession);
 			continue;
 		}
 
-		streamSession->lastUpdateTime =
-			isServerSocketSsl ? -currentTime : currentTime;
+		streamSession->lastUpdateTime = isServerSocketSsl ? -currentTime : currentTime;
 		streamSession->handle = session;
 		sessionBuffer[sessionCount++] = streamSession;
 	}
 }
 
-NetsResult streamSessionSend(
-	StreamSession streamSession,
-	const void* sendBuffer,
-	size_t byteCount)
+//**********************************************************************************************************************
+NetsResult streamSessionSend(StreamSession streamSession, const void* sendBuffer, size_t byteCount)
 {
 	assert(streamSession);
-	assert(sendBuffer);
-	assert(byteCount > 0);
-
-	return socketSend(
-		streamSession->receiveSocket,
-		sendBuffer,
-		byteCount);
+	return socketSend(streamSession->receiveSocket, sendBuffer, byteCount);
 }
-NetsResult streamSessionSendMessage(
-	StreamSession streamSession,
-	StreamMessage streamMessage)
+NetsResult streamSessionSendMessage(StreamSession streamSession, StreamMessage streamMessage)
 {
 	assert(streamSession);
-	assert(streamMessage.buffer);
 	assert(streamMessage.size > 0);
 	assert(streamMessage.size == streamMessage.offset);
-
-	return socketSend(
-		streamSession->receiveSocket,
-		streamMessage.buffer,
-		streamMessage.size);
+	return socketSend(streamSession->receiveSocket, streamMessage.buffer, streamMessage.size);
 }

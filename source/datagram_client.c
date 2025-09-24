@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,30 +23,23 @@ struct DatagramClient_T
 	Socket socket;
 };
 
-NetsResult createDatagramClient(
-	SocketAddress remoteAddress,
-	size_t bufferSize,
-	OnDatagramClientReceive onReceive,
-	void* handle,
-	DatagramClient* datagramClient)
+//**********************************************************************************************************************
+NetsResult createDatagramClient(SocketAddress remoteAddress, size_t bufferSize,
+	OnDatagramClientReceive onReceive, void* handle, DatagramClient* datagramClient)
 {
 	assert(remoteAddress);
 	assert(bufferSize > 0);
 	assert(onReceive);
 	assert(datagramClient);
 
-	DatagramClient datagramClientInstance = calloc(
-		1, sizeof(DatagramClient_T));
-
+	DatagramClient datagramClientInstance = calloc(1, sizeof(DatagramClient_T));
 	if (!datagramClientInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
 	datagramClientInstance->onReceive = onReceive;
 	datagramClientInstance->handle = handle;
 
-	uint8_t* buffer = malloc(
-		bufferSize * sizeof(uint8_t));
-
+	uint8_t* buffer = malloc(bufferSize * sizeof(uint8_t));
 	if (!buffer)
 	{
 		destroyDatagramClient(datagramClientInstance);
@@ -56,15 +49,10 @@ NetsResult createDatagramClient(
 	datagramClientInstance->buffer = buffer;
 	datagramClientInstance->bufferSize = bufferSize;
 
-	uint8_t addressFamily =
-		getSocketAddressFamily(remoteAddress);
+	uint8_t socketFamily = getSocketAddressFamily(remoteAddress);
 
 	SocketAddress socketAddress;
-
-	NetsResult netsResult = createAnySocketAddress(
-		addressFamily,
-		&socketAddress);
-
+	NetsResult netsResult = createAnySocketAddress(socketFamily, &socketAddress);
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyDatagramClient(datagramClientInstance);
@@ -72,16 +60,7 @@ NetsResult createDatagramClient(
 	}
 
 	Socket socket;
-
-	netsResult = createSocket(
-		DATAGRAM_SOCKET_TYPE,
-		addressFamily,
-		socketAddress,
-		false,
-		false,
-		NULL,
-		&socket);
-
+	netsResult = createSocket(DATAGRAM_SOCKET_TYPE, socketFamily, socketAddress, false, false, NULL, &socket);
 	destroySocketAddress(socketAddress);
 
 	if (netsResult != SUCCESS_NETS_RESULT)
@@ -92,10 +71,7 @@ NetsResult createDatagramClient(
 
 	datagramClientInstance->socket = socket;
 
-	netsResult = connectSocket(
-		socket,
-		remoteAddress);
-
+	netsResult = connectSocket(socket, remoteAddress);
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroyDatagramClient(datagramClientInstance);
@@ -111,7 +87,6 @@ void destroyDatagramClient(DatagramClient datagramClient)
 		return;
 
 	Socket socket = datagramClient->socket;
-
 	if (socket)
 	{
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
@@ -122,6 +97,7 @@ void destroyDatagramClient(DatagramClient datagramClient)
 	free(datagramClient);
 }
 
+//**********************************************************************************************************************
 size_t getDatagramClientBufferSize(DatagramClient datagramClient)
 {
 	assert(datagramClient);
@@ -148,40 +124,24 @@ Socket getDatagramClientSocket(DatagramClient datagramClient)
 	return datagramClient->socket;
 }
 
+//**********************************************************************************************************************
 NetsResult updateDatagramClient(DatagramClient datagramClient)
 {
 	assert(datagramClient);
-
 	uint8_t* receiveBuffer = datagramClient->buffer;
+
 	size_t byteCount;
-
-	NetsResult netsResult = socketReceive(
-		datagramClient->socket,
-		receiveBuffer,
-		datagramClient->bufferSize,
-		&byteCount);
-
+	NetsResult netsResult = socketReceive(datagramClient->socket, 
+		datagramClient->buffer, datagramClient->bufferSize, &byteCount);
 	if (netsResult != SUCCESS_NETS_RESULT)
 		return netsResult;
 
-	datagramClient->onReceive(
-		datagramClient,
-		receiveBuffer,
-		byteCount);
+	datagramClient->onReceive(datagramClient, datagramClient->buffer, byteCount);
 	return SUCCESS_NETS_RESULT;
 }
 
-NetsResult datagramClientSend(
-	DatagramClient datagramClient,
-	const void* sendBuffer,
-	size_t byteCount)
+NetsResult datagramClientSend(DatagramClient datagramClient, const void* sendBuffer, size_t byteCount)
 {
 	assert(datagramClient);
-	assert(sendBuffer);
-	assert(byteCount > 0);
-
-	return socketSend(
-		datagramClient->socket,
-		sendBuffer,
-		byteCount);
+	return socketSend(datagramClient->socket, sendBuffer, byteCount);
 }

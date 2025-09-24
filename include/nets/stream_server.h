@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,207 +12,171 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***********************************************************************************************************************
+ * @file
+ * @brief Network stream server functions. (TCP)
+ */
+
 #pragma once
 #include "nets/socket.h"
 
-/*
- * Stream server structure. (TCP)
- */
-typedef struct StreamServer_T StreamServer_T;
-/*
- * Stream server instance. (TCP)
- */
-typedef StreamServer_T* StreamServer;
+typedef struct StreamServer_T StreamServer_T;   /**< Stream server structure. (TCP) */
+typedef StreamServer_T* StreamServer;           /**< Stream server instance. (TCP) */
+typedef struct StreamSession_T StreamSession_T; /**< Stream server session structure. (TCP) */
+typedef StreamSession_T* StreamSession;         /**< Stream server session instance. (TCP) */
 
-/*
- * Stream server session structure. (TCP)
+/**
+ * @brief Stream session create function. (TCP)
+ * @note Server destroys session on this function false return result.
+ *
+ * @param streamServer stream server instance
+ * @param streamSession a new accepted stream session instance
+ * @param[out] handle pointer to the custom session handle
  */
-typedef struct StreamSession_T StreamSession_T;
-/*
- * Stream server session instance. (TCP)
+typedef bool(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession streamSession, void** handle);
+/**
+ * @brief Stream session destroy function. (TCP)
+ *
+ * @param streamServer stream server instance
+ * @param streamSession stream session instance
+ * @param netsResult session destruction reason
  */
-typedef StreamSession_T* StreamSession;
+typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession streamSession, NetsResult netsResult);
+/**
+ * @brief Stream session receive function. (TCP)
+ * @note Server destroys session on this function failure return result.
+ *
+ * @param streamServer stream server instance
+ * @param streamSession stream session instance
+ * @param[in] receiveBuffer received data buffer
+ * @param byteCount received byte count
+ */
+typedef NetsResult(*OnStreamSessionReceive)(StreamServer streamServer, 
+	StreamSession streamSession, const uint8_t* receiveBuffer, size_t byteCount);
+/**
+ * @brief Stream session update function. (TCP)
+ * @note Server destroys session on this function failure return result.
+ *
+ * @param streamServer stream server instance
+ * @param streamSession stream session instance
+ */
+typedef NetsResult(*OnStreamSessionUpdate)(StreamServer streamServer, StreamSession streamSession);
 
-/*
- * Stream session create function.
- * Destroys socket on false return result.
+/***********************************************************************************************************************
+ * @brief Creates a new stream server instance. (TCP)
+ * @return The operation @ref NetsResult code.
  *
- * streamServer - stream server instance.
- * socket - a new accepted socket instance.
- * address - accepted socket address.
- * handle - pointer to the handle.
+ * @param socketFamily local socket IP address family
+ * @param[in] service local IP address service string (port)
+ * @param sessionBufferSize session buffer size
+ * @param connectionQueueSize pending connections queue size
+ * @param receiveBufferSize receive data buffer size in bytes
+ * @param timeoutTime session timeout time in seconds
+ * @param[in] onCreate on session create function
+ * @param[in] onDestroy onsession destroy function
+ * @param[in] onReceive on session receive function
+ * @param[in] onUpdate on session update function
+ * @param[in] handle receive function argument or NULL
+ * @param sslContext socket SSL context instance or NULL
+ * @param[out] streamServer pointer to the stream server instance
  */
-typedef bool(*OnStreamSessionCreate)(
-	StreamServer streamServer,
-	StreamSession streamSession,
-	void** handle);
-/*
- * Stream session destroy function.
- *
- * streamServer - stream server instance.
- * streamSession - stream session instance.
- * netsResult - destruction reason.
- */
-typedef void(*OnStreamSessionDestroy)(
-	StreamServer streamServer,
-	StreamSession streamSession,
-	NetsResult netsResult);
-/*
- * Stream session receive function
- * Destroys session on failure return result.
- *
- * streamServer - stream server instance.
- * streamSession - stream session instance.
- * receiveBuffer - receive buffer instance.
- * byteCount - received byte count.
- */
-typedef NetsResult(*OnStreamSessionReceive)(
-	StreamServer streamServer,
-	StreamSession streamSession,
-	const uint8_t* receiveBuffer,
-	size_t byteCount);
-/*
- * Stream session update function.
- * Destroys session on failure return result.
- *
- * streamServer - stream server instance.
- * streamSession - stream session instance.
- */
-typedef NetsResult(*OnStreamSessionUpdate)(
-	StreamServer streamServer,
-	StreamSession streamSession);
-
-/*
- * Create a new stream server instance (TCP).
- * Returns operation Nets result.
- *
- * addressFamily - local socket address family.
- * service - local address service string.
- * sessionBufferSize - session receive buffer size.
- * connectionQueueSize - pending connections queue size.
- * dataBufferSize - data buffer size.
- * timeoutTime - session timeout time. (seconds)
- * onCreate - session create function.
- * onDestroy - session destroy function.
- * onReceive - data receive function.
- * onUpdate - session update function.
- * handle - receive function argument.
- * sslContext - SSL context or NULL.
- * streamServer - pointer to the stream server.
- */
-NetsResult createStreamServer(
-	AddressFamily addressFamily,
-	const char* service,
-	size_t sessionBufferSize,
-	size_t connectionQueueSize,
-	size_t dataBufferSize,
-	double timeoutTime,
-	OnStreamSessionCreate onCreate,
-	OnStreamSessionDestroy onDestroy,
-	OnStreamSessionReceive onReceive,
-	OnStreamSessionUpdate onUpdate,
-	void* handle,
-	SslContext sslContext,
-	StreamServer* streamServer);
-/*
- * Destroys stream server instance.
- * streamServer - stream server instance or NULL.
+NetsResult createStreamServer(SocketFamily socketFamily, const char* service, size_t sessionBufferSize,
+	size_t connectionQueueSize, size_t receiveBufferSize, double timeoutTime, OnStreamSessionCreate onCreate,
+	OnStreamSessionDestroy onDestroy, OnStreamSessionReceive onReceive, OnStreamSessionUpdate onUpdate,
+	void* handle, SslContext sslContext, StreamServer* streamServer);
+/**
+ * @brief Destroys stream server instance. (TCP)
+ * @param streamServer target stream server instance or NULL
  */
 void destroyStreamServer(StreamServer streamServer);
 
-/*
- * Returns stream server session buffer size.
- * streamServer - stream server instance.
+/**
+ * @brief Returns stream server session buffer size.
+ * @param streamServer target stream server instance
  */
 size_t getStreamServerSessionBufferSize(StreamServer streamServer);
-/*
- * Returns stream server data buffer size.
- * streamServer - stream server instance.
+/**
+ * @brief Returns stream server receive buffer size in bytes.
+ * @param streamServer target stream server instance
  */
-size_t getStreamServerDataBufferSize(StreamServer streamServer);
-/*
- * Returns stream server create function.
- * streamServer - stream server instance.
+size_t getStreamServerReceiveBufferSize(StreamServer streamServer);
+/**
+ * @brief Returns stream server session create function.
+ * @param streamServer target stream server instance
  */
 OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer);
-/*
- * Returns stream server destroy function.
- * streamServer - stream server instance.
+/**
+ * @brief Returns stream server session destroy function.
+ * @param streamServer target stream server instance
  */
 OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer);
-/*
- * Returns stream server receive function.
- * streamServer - stream server instance.
+/**
+ * @brief Returns stream server session receive function.
+ * @param streamServer target stream server instance
  */
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer);
-/*
- * Returns stream server update function.
- * streamServer - stream server instance.
+/**
+ * @brief Returns stream server session update function.
+ * @param streamServer target stream server instance
  */
 OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer);
-/*
- * Returns stream server session timeout time. (seconds)
- * streamServer - stream server instance.
+/**
+ * @brief Returns stream server session timeout time. (in seconds)
+ * @param streamServer target stream server instance
  */
 double getStreamServerTimeoutTime(StreamServer streamServer);
-/*
- * Returns stream server handle.
- * streamServer - stream server instance.
+/**
+ * @brief Returns stream server handle.
+ * @param streamServer target stream server instance
  */
 void* getStreamServerHandle(StreamServer streamServer);
-/*
- * Returns stream server data buffer.
- * streamServer - stream server instance.
+/**
+ * @brief Returns stream server receive data buffer.
+ * @param streamServer target stream server instance
  */
-uint8_t* getStreamServerDataBuffer(StreamServer streamServer);
-/*
- * Returns stream server socket.
- * streamServer - stream server instance.
+uint8_t* getStreamServerReceiveBuffer(StreamServer streamServer);
+/**
+ * @brief Returns stream server socket instance.
+ * @param streamServer target stream server instance
  */
 Socket getStreamServerSocket(StreamServer streamServer);
-/*
- * Returns stream session socket.
- * streamSession - stream session instance.
+/**
+ * @brief Returns stream session socket instance.
+ * @param streamSession target stream session instance
  */
 Socket getStreamSessionSocket(StreamSession streamSession);
-/*
- * Returns stream session socket address.
- * streamSession - stream session instance.
+/**
+ * @brief Returns stream session remote IP address instance.
+ * @param streamSession target stream session instance
  */
 SocketAddress getStreamSessionAddress(StreamSession streamSession);
-/*
- * Returns stream session handle.
- * streamSession - stream session instance.
+/**
+ * @brief Returns stream session handle.
+ * @param streamSession target stream session instance
  */
 void* getStreamSessionHandle(StreamSession streamSession);
 
-/*
- * Update stream server sessions.
- * Returns true if update actions occurred.
- *
- * streamServer - stream server instance.
+/***********************************************************************************************************************
+ * @brief Updates stream server sessions. (Connections, pending data)
+ * @return True if any update actions occurred, otherwise false.
+ * @param streamServer target stream server instance
  */
 bool updateStreamServer(StreamServer streamServer);
 
-/*
- * Send data to the specified session.
- * Returns operation Nets result.
+/**
+ * @brief Sends stream data to the specified session.
+ * @return The operation @ref NetsResult code.
  *
- * streamSession - stream session instance.
- * sendBuffer - data send buffer.
- * byteCount - send byte count.
+ * @param streamSession target stream session instance
+ * @param[in] sendBuffer data send buffer
+ * @param byteCount data byte count to send
  */
-NetsResult streamSessionSend(
-	StreamSession streamSession,
-	const void* sendBuffer,
-	size_t byteCount);
-/*
- * Send stream message to the specified session.
- * Returns operation Nets result.
+NetsResult streamSessionSend(StreamSession streamSession, const void* sendBuffer, size_t byteCount);
+/**
+ * @brief Sends stream message to the specified session.
+ * @return The operation @ref NetsResult code.
  *
- * streamSession - stream session instance.
- * sendBuffer - send stream message.
+ * @param streamSession target stream session instance
+ * @param streamMessage stream message to send
  */
-NetsResult streamSessionSendMessage(
-	StreamSession streamSession,
-	StreamMessage streamMessage);
+NetsResult streamSessionSendMessage(StreamSession streamSession, StreamMessage streamMessage);

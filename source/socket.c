@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,13 +54,13 @@ struct Socket_T
 	size_t queueSize;
 	SOCKET handle;
 	SocketType type;
-	AddressFamily family;
+	SocketFamily family;
 	bool isBlocking;
-	bool isOnlyIPV6;
-#if NETS_SUPPORT_OPENSSL
+	bool isOnlyIPv6;
+	#if NETS_SUPPORT_OPENSSL
 	SslContext sslContext;
 	SSL* ssl;
-#endif
+	#endif
 };
 struct SocketAddress_T
 {
@@ -71,6 +71,7 @@ struct SslContext_T
 	SSL_CTX* handle;
 };
 
+//**********************************************************************************************************************
 static bool networkInitialized = false;
 
 bool initializeNetwork()
@@ -78,19 +79,16 @@ bool initializeNetwork()
 	if (networkInitialized)
 		return false;
 
-#if _WIN32
-	int result = WSAStartup(
-		MAKEWORD(2,2),
-		&wsaData);
-
+	#if _WIN32
+	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (result != 0)
 		return false;
-#endif
+	#endif
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	SSL_load_error_strings();
 	OpenSSL_add_ssl_algorithms();
-#endif
+	#endif
 
 	networkInitialized = true;
 	return true;
@@ -100,16 +98,15 @@ void terminateNetwork()
 	if(!networkInitialized)
 		return;
 
-#if _WIN32
+	#if _WIN32
 	int result = WSACleanup();
-
 	if (result != 0)
 		abort();
-#endif
+	#endif
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	EVP_cleanup();
-#endif
+	#endif
 
 	networkInitialized = false;
 }
@@ -120,16 +117,17 @@ bool isNetworkInitialized()
 
 void disableSigpipe()
 {
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	signal(SIGPIPE, SIG_IGN);
-#elif _WIN32
+	#elif _WIN32
 	abort();
-#endif
+	#endif
 }
 
+//**********************************************************************************************************************
 inline static NetsResult errorToNetsResult(int error)
 {
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	switch (error)
 	{
 	default:
@@ -179,7 +177,7 @@ inline static NetsResult errorToNetsResult(int error)
 	case EINTR:
 		return INTERRUPTED_NETS_RESULT;
 	}
-#elif _WIN32
+	#elif _WIN32
 	switch (error)
 	{
 	default:
@@ -225,19 +223,19 @@ inline static NetsResult errorToNetsResult(int error)
 	case WSAEINTR:
 		return INTERRUPTED_NETS_RESULT;
 	}
-#endif
+	#endif
 }
 inline static NetsResult lastErrorToNetsResult()
 {
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	return errorToNetsResult(errno);
-#elif _WIN32
+	#elif _WIN32
 	return errorToNetsResult(WSAGetLastError());
-#endif
+	#endif
 }
 inline static NetsResult sslErrorToNetsResult(int error)
 {
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	switch (error)
 	{
 	default:
@@ -254,83 +252,56 @@ inline static NetsResult sslErrorToNetsResult(int error)
 	case SSL_ERROR_SSL:
 		return lastErrorToNetsResult();
 	}
-#else
+	#else
 	abort();
-#endif
+	#endif
 }
 
-inline static NetsResult createSocketHandle(
-	SocketType socketType,
-	AddressFamily addressFamily,
-	SocketAddress socketAddress,
-	bool isBlocking,
-	bool isOnlyIPV6,
-	SOCKET* handle)
+//**********************************************************************************************************************
+inline static NetsResult createSocketHandle(SocketType socketType, SocketFamily socketFamily,
+	SocketAddress socketAddress, bool isBlocking, bool isOnlyIPv6, SOCKET* handle)
 {
 	assert(socketType < SOCKET_TYPE_COUNT);
-	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(socketFamily < SOCKET_FAMILY_COUNT);
 	assert(socketAddress);
 
 	int type, protocol;
-
 	if (socketType == STREAM_SOCKET_TYPE)
 	{
-		type = SOCK_STREAM;
-		protocol = IPPROTO_TCP;
+		type = SOCK_STREAM; protocol = IPPROTO_TCP;
 	}
 	else if (socketType == DATAGRAM_SOCKET_TYPE)
 	{
-		type = SOCK_DGRAM;
-		protocol = IPPROTO_UDP;
+		type = SOCK_DGRAM; protocol = IPPROTO_UDP;
 	}
-	else
-	{
-		abort();
-	}
+	else abort();
 
-	int family;
-	SOCKET_LENGTH length;
-
-	if (addressFamily == IP_V4_ADDRESS_FAMILY)
+	int family; SOCKET_LENGTH length;
+	if (socketFamily == IP_V4_SOCKET_FAMILY)
 	{
-		family = AF_INET;
-		length = sizeof(struct sockaddr_in);
+		family = AF_INET; length = sizeof(struct sockaddr_in);
 	}
-	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
+	else if (socketFamily == IP_V6_SOCKET_FAMILY)
 	{
-		family = AF_INET6;
-		length = sizeof(struct sockaddr_in6);
+		family = AF_INET6; length = sizeof(struct sockaddr_in6);
 	}
-	else
-	{
-		abort();
-	}
+	else abort();
 
-	SOCKET handleInstance = socket(
-		family,
-		type,
-		protocol);
-
+	SOCKET handleInstance = socket(family, type, protocol);
 	if (handleInstance == INVALID_SOCKET)
 		return lastErrorToNetsResult();
 
-	if (addressFamily == IP_V6_ADDRESS_FAMILY)
+	if (socketFamily == IP_V6_SOCKET_FAMILY)
 	{
-#if __linux__ || __APPLE__
-		int onlyV6 = isOnlyIPV6 ? 1 : 0;
+		#if __linux__ || __APPLE__
+		int onlyV6 = isOnlyIPv6 ? 1 : 0;
 		SOCKET_LENGTH v6Length = sizeof(int);
-#elif _WIN32
-		BOOL onlyV6 = isOnlyIPV6 ? TRUE : FALSE;
+		#elif _WIN32
+		BOOL onlyV6 = isOnlyIPv6 ? TRUE : FALSE;
 		SOCKET_LENGTH v6Length = sizeof(BOOL);
-#endif
+		#endif
 
-		int result = setsockopt(
-			handleInstance,
-			IPPROTO_IPV6,
-			IPV6_V6ONLY,
-			(char*)&onlyV6,
-			v6Length);
-
+		int result = setsockopt(handleInstance, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&onlyV6, v6Length);
 		if (result != 0)
 		{
 			closesocket(handleInstance);
@@ -340,30 +311,19 @@ inline static NetsResult createSocketHandle(
 
 	if (!isBlocking)
 	{
-#if __linux__ || __APPLE__
-		int flags = fcntl(
-			handleInstance,
-			F_GETFL,
-			0);
-
+		#if __linux__ || __APPLE__
+		int flags = fcntl(handleInstance, F_GETFL, 0);
 		if (flags == -1)
 		{
 			closesocket(handleInstance);
 			return FAILED_TO_SET_FLAG_NETS_RESULT;
 		}
 
-		int result = fcntl(
-			handleInstance,
-			F_SETFL,
-			flags | O_NONBLOCK);
-#elif _WIN32
+		int result = fcntl(handleInstance, F_SETFL, flags | O_NONBLOCK);
+		#elif _WIN32
 		u_long flags = 1;
-
-		int result = ioctlsocket(
-    		handleInstance,
-    		FIONBIO,
-    		&flags);
-#endif
+		int result = ioctlsocket(handleInstance, FIONBIO, &flags);
+		#endif
 
 		if (result != 0)
 		{
@@ -372,11 +332,7 @@ inline static NetsResult createSocketHandle(
 		}
 	}
 
-	int result = bind(
-		handleInstance,
-		(const struct sockaddr*)&socketAddress->handle,
-		length);
-
+	int result = bind(handleInstance, (const struct sockaddr*)&socketAddress->handle, length);
 	if (result != 0)
 	{
 		closesocket(handleInstance);
@@ -386,55 +342,39 @@ inline static NetsResult createSocketHandle(
 	*handle = handleInstance;
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult createSocket(
-	SocketType socketType,
-	AddressFamily addressFamily,
-	SocketAddress socketAddress,
-	bool isBlocking,
-	bool isOnlyIPV6,
-	SslContext sslContext,
-	Socket* _socket)
-{
-	assert(socketType < SOCKET_TYPE_COUNT);
-	assert(addressFamily < ADDRESS_FAMILY_COUNT);
-	assert(socketAddress);
-	assert(_socket);
 
-	assert(addressFamily == IP_V6_ADDRESS_FAMILY ||
-		(addressFamily == IP_V4_ADDRESS_FAMILY && !isOnlyIPV6));
+//**********************************************************************************************************************
+NetsResult createSocket(SocketType type, SocketFamily family, SocketAddress localAddress, 
+	bool isBlocking, bool isOnlyIPv6, SslContext sslContext, Socket* _socket)
+{
+	assert(type < SOCKET_TYPE_COUNT);
+	assert(family < SOCKET_FAMILY_COUNT);
+	assert(localAddress);
+	assert(_socket);
+	assert(family == IP_V6_SOCKET_FAMILY || (family == IP_V4_SOCKET_FAMILY && !isOnlyIPv6));
+
+	#if NETS_SUPPORT_OPENSSL
+	assert((type != DATAGRAM_SOCKET_TYPE) ||
+		(type == DATAGRAM_SOCKET_TYPE && !sslContext));
+	#else
+	assert(!sslContext);
+	#endif
 
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
-#if NETS_SUPPORT_OPENSSL
-	assert((socketType != DATAGRAM_SOCKET_TYPE) ||
-		(socketType == DATAGRAM_SOCKET_TYPE && !sslContext));
-#else
-	assert(!sslContext);
-#endif
-
-	Socket socketInstance = calloc(
-		1, sizeof(Socket_T));
-
+	Socket socketInstance = calloc(1, sizeof(Socket_T));
 	if (!socketInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
 	socketInstance->queueSize = 0;
-	socketInstance->type = socketType;
-	socketInstance->family = addressFamily;
+	socketInstance->type = type;
+	socketInstance->family = family;
 	socketInstance->isBlocking = isBlocking;
-	socketInstance->isOnlyIPV6 = isOnlyIPV6;
+	socketInstance->isOnlyIPv6 = isOnlyIPv6;
 
 	SOCKET handle;
-
-	NetsResult netsResult = createSocketHandle(
-		socketType,
-		addressFamily,
-		socketAddress,
-		isBlocking,
-		isOnlyIPV6,
-		&handle);
-
+	NetsResult netsResult = createSocketHandle(type, family, localAddress, isBlocking, isOnlyIPv6, &handle);
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
 		destroySocket(socketInstance);
@@ -443,11 +383,10 @@ NetsResult createSocket(
 
 	socketInstance->handle = handle;
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	if (sslContext)
 	{
 		SSL* ssl = SSL_new(sslContext->handle);
-
 		if (!ssl)
 		{
 			destroySocket(socketInstance);
@@ -458,7 +397,6 @@ NetsResult createSocket(
 		socketInstance->ssl = ssl;
 
 		int result = SSL_set_fd(ssl, (int)handle);
-
 		if (result != 1)
 		{
 			destroySocket(socketInstance);
@@ -469,7 +407,7 @@ NetsResult createSocket(
 	{
 		socketInstance->sslContext = NULL;
 	}
-#endif
+	#endif
 
 	*_socket = socketInstance;
 	return SUCCESS_NETS_RESULT;
@@ -481,24 +419,24 @@ void destroySocket(Socket socket)
 
 	assert(networkInitialized);
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 		SSL_free(socket->ssl);
-#endif
+	#endif
 
 	if (socket->handle)
 		closesocket(socket->handle);
-
 	free(socket);
 }
 
+//**********************************************************************************************************************
 SocketType getSocketType(Socket socket)
 {
 	assert(socket);
 	assert(networkInitialized);
 	return socket->type;
 }
-AddressFamily getSocketFamily(Socket socket)
+SocketFamily getSocketFamily(Socket socket)
 {
 	assert(socket);
 	assert(networkInitialized);
@@ -510,139 +448,100 @@ bool isSocketBlocking(Socket socket)
 	assert(networkInitialized);
 	return socket->isBlocking;
 }
-bool isSocketOnlyV6(Socket socket)
+bool isSocketOnlyIPv6(Socket socket)
 {
 	assert(socket);
 	assert(networkInitialized);
-	return socket->isOnlyIPV6;
+	return socket->isOnlyIPv6;
 }
-bool getSocketLocalAddress(
-	Socket socket,
-	SocketAddress socketAddress)
-{
-	assert(socket);
-	assert(socketAddress);
-	assert(networkInitialized);
 
-	struct sockaddr_storage storage;
-
-	memset(&storage, 0,
-		sizeof(struct sockaddr_storage));
-
-	SOCKET_LENGTH length =
-		sizeof(struct sockaddr_storage);
-
-	int result = getsockname(
-		socket->handle,
-		(struct sockaddr*)&storage,
-		&length);
-
-	if (result == 0)
-	{
-		socketAddress->handle = storage;
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-bool getSocketRemoteAddress(
-	Socket socket,
-	SocketAddress socketAddress)
+bool getSocketLocalAddress(Socket socket, SocketAddress socketAddress)
 {
 	assert(socket);
 	assert(socketAddress);
 	assert(networkInitialized);
 
 	struct sockaddr_storage storage;
+	memset(&storage, 0, sizeof(struct sockaddr_storage));
+	SOCKET_LENGTH length = sizeof(struct sockaddr_storage);
 
-	memset(&storage, 0,
-		sizeof(struct sockaddr_storage));
-
-	SOCKET_LENGTH length =
-		sizeof(struct sockaddr_storage);
-
-	int result = getpeername(
-		socket->handle,
-		(struct sockaddr*)&storage,
-		&length);
-
+	int result = getsockname(socket->handle, (struct sockaddr*)&storage, &length);
 	if (result == 0)
 	{
 		socketAddress->handle = storage;
 		return true;
 	}
-	else
-	{
-		return false;
-	}
+	return false;
 }
+bool getSocketRemoteAddress(Socket socket, SocketAddress socketAddress)
+{
+	assert(socket);
+	assert(socketAddress);
+	assert(networkInitialized);
+
+	struct sockaddr_storage storage;
+	memset(&storage, 0, sizeof(struct sockaddr_storage));
+	SOCKET_LENGTH length = sizeof(struct sockaddr_storage);
+
+	int result = getpeername(socket->handle, (struct sockaddr*)&storage, &length);
+	if (result == 0)
+	{
+		socketAddress->handle = storage;
+		return true;
+	}
+	return false;
+}
+
 SslContext getSocketSslContext(Socket socket)
 {
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	assert(socket);
 	assert(networkInitialized);
 	return socket->sslContext;
-#else
+	#else
 	abort();
-#endif
+	#endif
 }
 
-bool isSocketNoDelay(
-	Socket socket)
+//**********************************************************************************************************************
+bool isSocketNoDelay(Socket socket)
 {
 	assert(socket);
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized);
 
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	int value;
-#elif _WIN32
+	#elif _WIN32
 	BOOL value;
-#endif
+	#endif
 
 	SOCKET_LENGTH length;
-
-	int result = getsockopt(
-		socket->handle,
-		IPPROTO_TCP,
-		TCP_NODELAY,
-		(char*)&value,
-		&length);
-
+	int result = getsockopt(socket->handle, IPPROTO_TCP, TCP_NODELAY, (char*)&value, &length);
 	if (result != 0)
 		abort();
 
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	return value != 0;
-#elif _WIN32
+	#elif _WIN32
 	return value != FALSE;
-#endif
+	#endif
 }
-void setSocketNoDelay(
-	Socket socket,
-	bool value)
+void setSocketNoDelay(Socket socket, bool value)
 {
 	assert(socket);
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized);
 
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	int noDelay = value ? 1 : 0;
 	SOCKET_LENGTH length = sizeof(int);
-#elif _WIN32
+	#elif _WIN32
 	BOOL noDelay = value ? TRUE : FALSE;
 	SOCKET_LENGTH length = sizeof(BOOL);
-#endif
+	#endif
 
-	int result = setsockopt(
-		socket->handle,
-		IPPROTO_TCP,
-		TCP_NODELAY,
-		(char*)&noDelay,
-		length);
-
+	int result = setsockopt(socket->handle, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay, length);
 	if (result != 0)
 		abort();
 }
@@ -667,9 +566,8 @@ size_t getSocketQueueSize(Socket socket)
 	return socket->queueSize;
 }
 
-NetsResult listenSocket(
-	Socket socket,
-	size_t queueSize)
+//**********************************************************************************************************************
+NetsResult listenSocket(Socket socket, size_t queueSize)
 {
 	assert(socket);
 	assert(queueSize > 0);
@@ -678,19 +576,14 @@ NetsResult listenSocket(
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized);
 
-	int result = listen(
-		socket->handle,
-		(int)queueSize);
-
+	int result = listen(socket->handle, (int)queueSize);
 	if (result != 0)
 		return lastErrorToNetsResult();
 
 	socket->queueSize = queueSize;
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult acceptSocket(
-	Socket socket,
-	Socket* accepted)
+NetsResult acceptSocket(Socket socket, Socket* accepted)
 {
 	assert(socket);
 	assert(accepted);
@@ -699,13 +592,10 @@ NetsResult acceptSocket(
 	assert(networkInitialized);
 
 	SOCKET handle = accept(socket->handle, NULL, 0);
-
 	if (handle == INVALID_SOCKET)
 		return lastErrorToNetsResult();
 
-	Socket acceptedInstance = calloc(
-		1, sizeof(Socket_T));
-
+	Socket acceptedInstance = calloc(1, sizeof(Socket_T));
 	if (!acceptedInstance)
 	{
 		closesocket(socket->handle);
@@ -716,30 +606,19 @@ NetsResult acceptSocket(
 
 	if (!socket->isBlocking)
 	{
-#if __linux__ || __APPLE__
-		int flags = fcntl(
-			handle,
-			F_GETFL,
-			0);
-
+		#if __linux__ || __APPLE__
+		int flags = fcntl(handle, F_GETFL, 0);
 		if (flags == -1)
 		{
 			destroySocket(acceptedInstance);
 			return FAILED_TO_SET_FLAG_NETS_RESULT;
 		}
 
-		int result = fcntl(
-			handle,
-			F_SETFL,
-			flags | O_NONBLOCK);
-#elif _WIN32
+		int result = fcntl(handle, F_SETFL, flags | O_NONBLOCK);
+		#elif _WIN32
 		u_long flags = 1;
-
-		int result = ioctlsocket(
-			handle,
-			FIONBIO,
-			&flags);
-#endif
+		int result = ioctlsocket(handle, FIONBIO, &flags);
+		#endif
 
 		if (result != 0)
 		{
@@ -748,11 +627,10 @@ NetsResult acceptSocket(
 		}
 	}
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
 		SSL* ssl = SSL_new(socket->sslContext->handle);
-
 		if (!ssl)
 		{
 			destroySocket(acceptedInstance);
@@ -763,7 +641,6 @@ NetsResult acceptSocket(
 		acceptedInstance->ssl = ssl;
 
 		int result = SSL_set_fd(ssl, (int)handle);
-
 		if (result != 1)
 		{
 			destroySocket(acceptedInstance);
@@ -774,26 +651,24 @@ NetsResult acceptSocket(
 	{
 		acceptedInstance->sslContext = NULL;
 	}
-#endif
+	#endif
 
 	acceptedInstance->queueSize = 0;
 	acceptedInstance->type = socket->type;
 	acceptedInstance->isBlocking = socket->isBlocking;
-	acceptedInstance->isOnlyIPV6 = socket->isOnlyIPV6;
-
+	acceptedInstance->isOnlyIPv6 = socket->isOnlyIPv6;
 	*accepted = acceptedInstance;
 	return SUCCESS_NETS_RESULT;
 }
-
 NetsResult acceptSslSocket(Socket socket)
 {
 	assert(socket);
 	assert(networkInitialized);
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	assert(socket->sslContext);
-	int result = SSL_accept(socket->ssl) == 1;
 
+	int result = SSL_accept(socket->ssl) == 1;
 	if (result != 1)
 	{
 		return sslErrorToNetsResult(SSL_get_error(
@@ -801,14 +676,13 @@ NetsResult acceptSslSocket(Socket socket)
 	}
 
 	return SUCCESS_NETS_RESULT;
-#else
+	#else
 	abort();
-#endif
+	#endif
 }
 
-NetsResult connectSocket(
-	Socket socket,
-	SocketAddress remoteAddress)
+//**********************************************************************************************************************
+NetsResult connectSocket(Socket socket, SocketAddress remoteAddress)
 {
 	assert(socket);
 	assert(remoteAddress);
@@ -817,63 +691,42 @@ NetsResult connectSocket(
 	int family = remoteAddress->handle.ss_family;
 
 	SOCKET_LENGTH length;
-
 	if (family == AF_INET)
 		length = sizeof(struct sockaddr_in);
 	else if (family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
-	else
-		abort();
+	else abort();
 
-	int result = connect(
-		socket->handle,
-		(const struct sockaddr*)&remoteAddress->handle,
-		length);
-
+	int result = connect(socket->handle, (const struct sockaddr*)&remoteAddress->handle, length);
 	if (result != 0)
 		return lastErrorToNetsResult();
-
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult connectSslSocket(
-	Socket socket,
-	const char* hostname)
+NetsResult connectSslSocket(Socket socket, const char* hostname)
 {
 	assert(socket);
 	assert(networkInitialized);
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	assert(socket->sslContext);
 
 	if (hostname)
 	{
-		int result = SSL_set_tlsext_host_name(
-			socket->ssl, hostname);
-
+		int result = SSL_set_tlsext_host_name(socket->ssl, hostname);
 		if (result != 1)
-		{
-			return sslErrorToNetsResult(SSL_get_error(
-				socket->ssl, result));
-		}
+			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	}
 
 	int result = SSL_connect(socket->ssl);
-
 	if (result != 1)
-	{
-		return sslErrorToNetsResult(SSL_get_error(
-			socket->ssl, result));
-	}
-
+		return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	return SUCCESS_NETS_RESULT;
-#else
+	#else
 	abort();
-#endif
+	#endif
 }
 
-NetsResult shutdownSocket(
-	Socket socket,
-	SocketShutdown _shutdown)
+NetsResult shutdownSocket(Socket socket, SocketShutdown _shutdown)
 {
 	assert(socket);
 	assert(_shutdown < SOCKET_SHUTDOWN_COUNT);
@@ -881,43 +734,34 @@ NetsResult shutdownSocket(
 
 	int type;
 
-#if __linux__ || __APPLE__
+	#if __linux__ || __APPLE__
 	if (_shutdown == RECEIVE_ONLY_SOCKET_SHUTDOWN)
 		type = SHUT_RD;
 	else if (_shutdown == SEND_ONLY_SOCKET_SHUTDOWN)
 		type = SHUT_WR;
 	else if (_shutdown == RECEIVE_SEND_SOCKET_SHUTDOWN)
 		type = SHUT_RDWR;
-	else
-		abort();
-#elif _WIN32
+	else abort();
+	#elif _WIN32
 	if (_shutdown == RECEIVE_ONLY_SOCKET_SHUTDOWN)
 		type = SD_RECEIVE;
 	else if (_shutdown == SEND_ONLY_SOCKET_SHUTDOWN)
 		type = SD_SEND;
 	else if (_shutdown == RECEIVE_SEND_SOCKET_SHUTDOWN)
 		type = SD_BOTH;
-	else
-		abort();
-#endif
+	else abort();
+	#endif
 
-	// Do not shutdown SSL, due to the bad documentation
+	// Note: Do not shutdown SSL, due to the bad documentation.
 
-	int result = shutdown(
-		socket->handle,
-		type);
-
+	int result = shutdown(socket->handle, type);
 	if (result != 0)
 		return lastErrorToNetsResult();
-
 	return SUCCESS_NETS_RESULT;
 }
 
-NetsResult socketReceive(
-	Socket socket,
-	void* receiveBuffer,
-	size_t bufferSize,
-	size_t* byteCount)
+//**********************************************************************************************************************
+NetsResult socketReceive(Socket socket, void* receiveBuffer, size_t bufferSize, size_t* byteCount)
 {
 	assert(socket);
 	assert(receiveBuffer);
@@ -925,86 +769,54 @@ NetsResult socketReceive(
 	assert(byteCount);
 	assert(networkInitialized);
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
-		int result = SSL_read(
-			socket->ssl,
-			receiveBuffer,
-			(int)bufferSize);
-
+		int result = SSL_read(socket->ssl, receiveBuffer, (int)bufferSize);
 		if (result < 0)
-		{
-			return sslErrorToNetsResult(SSL_get_error(
-				socket->ssl, result));
-		}
+			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 
 		*byteCount = (size_t)result;
 		return SUCCESS_NETS_RESULT;
 	}
-#endif
+	#endif
 
-	int64_t result = recv(
-		socket->handle,
-		(char*)receiveBuffer,
-		(int)bufferSize,
-		0);
-
+	int64_t result = recv(socket->handle, (char*)receiveBuffer, (int)bufferSize, 0);
 	if (result < 0)
 		return lastErrorToNetsResult();
 
 	*byteCount = (size_t)result;
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult socketSend(
-	Socket socket,
-	const void* sendBuffer,
-	size_t byteCount)
+NetsResult socketSend(Socket socket, const void* sendBuffer, size_t byteCount)
 {
 	assert(socket);
 	assert(sendBuffer);
 	assert(networkInitialized);
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
-		int result = SSL_write(
-			socket->ssl,
-			sendBuffer,
-			(int)byteCount);
-
+		int result = SSL_write(socket->ssl, sendBuffer, (int)byteCount);
 		if (result < 0)
-		{
-			return sslErrorToNetsResult(SSL_get_error(
-				socket->ssl, result));
-		}
-
+			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 		if (result != byteCount)
 			return OUT_OF_MEMORY_NETS_RESULT;
-
 		return SUCCESS_NETS_RESULT;
 	}
-#endif
+	#endif
 
-	int64_t result = send(
-		socket->handle,
-		(const char*)sendBuffer,
-		(int)byteCount,
-		0);
-
+	int64_t result = send(socket->handle, (const char*)sendBuffer, (int)byteCount, 0);
 	if (result < 0)
 		return lastErrorToNetsResult();
 	if (result != byteCount)
 		return OUT_OF_MEMORY_NETS_RESULT;
-
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult socketReceiveFrom(
-	Socket socket,
-	SocketAddress remoteAddress,
-	void* receiveBuffer,
-	size_t bufferSize,
-	size_t* byteCount)
+
+//**********************************************************************************************************************
+NetsResult socketReceiveFrom(Socket socket, SocketAddress remoteAddress, 
+	void* receiveBuffer, size_t bufferSize, size_t* byteCount)
 {
 	assert(socket);
 	assert(remoteAddress);
@@ -1013,26 +825,16 @@ NetsResult socketReceiveFrom(
 	assert(byteCount);
 	assert(networkInitialized);
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	assert(!socket->sslContext);
-#endif
+	#endif
 
 	struct sockaddr_storage storage;
+	memset(&storage, 0, sizeof(struct sockaddr_storage));
+	SOCKET_LENGTH length = sizeof(struct sockaddr_storage);
 
-	memset(&storage, 0,
-		sizeof(struct sockaddr_storage));
-
-	SOCKET_LENGTH length =
-		sizeof(struct sockaddr_storage);
-
-	int64_t count = recvfrom(
-		socket->handle,
-		(char*)receiveBuffer,
-		(int)bufferSize,
-		0,
-		(struct sockaddr*)&storage,
-		&length);
-
+	int64_t count = recvfrom(socket->handle, (char*)receiveBuffer, 
+		(int)bufferSize, 0, (struct sockaddr*)&storage, &length);
 	if (count < 0)
 		return lastErrorToNetsResult();
 
@@ -1040,52 +842,37 @@ NetsResult socketReceiveFrom(
 	*byteCount = (size_t)count;
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult socketSendTo(
-	Socket socket,
-	const void* sendBuffer,
-	size_t byteCount,
-	SocketAddress remoteAddress)
+NetsResult socketSendTo(Socket socket, const void* sendBuffer, size_t byteCount, SocketAddress remoteAddress)
 {
 	assert(socket);
 	assert(sendBuffer);
 	assert(remoteAddress);
 	assert(networkInitialized);
 
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	assert(!socket->sslContext);
-#endif
+	#endif
 
 	int family = remoteAddress->handle.ss_family;
 
 	SOCKET_LENGTH length;
-
 	if (family == AF_INET)
 		length = sizeof(struct sockaddr_in);
 	else if (family == AF_INET6)
 		length = sizeof(struct sockaddr_in6);
-	else
-		abort();
+	else abort();
 
-	int64_t result = sendto(
-		socket->handle,
-		(const char*)sendBuffer,
-		(int)byteCount,
-		0,
-		(const struct sockaddr*)&remoteAddress->handle,
-		length);
-
+	int64_t result = sendto(socket->handle, (const char*)sendBuffer, (int)byteCount, 
+		0, (const struct sockaddr*)&remoteAddress->handle, length);
 	if (result < 0)
 		return lastErrorToNetsResult();
 	if (result != byteCount)
 		return OUT_OF_MEMORY_NETS_RESULT;
-
 	return SUCCESS_NETS_RESULT;
 }
 
-NetsResult createSocketAddress(
-	const char* host,
-	const char* service,
-	SocketAddress* socketAddress)
+//**********************************************************************************************************************
+NetsResult createSocketAddress(const char* host, const char* service, SocketAddress* socketAddress)
 {
 	assert(host);
 	assert(service);
@@ -1094,104 +881,65 @@ NetsResult createSocketAddress(
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
-	SocketAddress socketAddressInstance = calloc(
-		1, sizeof(SocketAddress_T));
-
+	SocketAddress socketAddressInstance = calloc(1, sizeof(SocketAddress_T));
 	if (!socketAddressInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
 	struct addrinfo hints;
-
-	memset(&hints, 0,
-		sizeof(struct addrinfo));
-
+	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
 
 	struct addrinfo* addressInfos;
-
-	int result = getaddrinfo(
-		host,
-		service,
-		&hints,
-		&addressInfos);
-
+	int result = getaddrinfo(host, service, &hints, &addressInfos);
 	if (result != 0)
 	{
 		free(socketAddressInstance);
 		return FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT;
 	}
 
-	memcpy(&socketAddressInstance->handle,
-		addressInfos->ai_addr,
-		addressInfos->ai_addrlen);
-
+	memcpy(&socketAddressInstance->handle, addressInfos->ai_addr, addressInfos->ai_addrlen);
 	freeaddrinfo(addressInfos);
 
 	*socketAddress = socketAddressInstance;
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult createAnySocketAddress(
-	AddressFamily addressFamily,
-	SocketAddress* socketAddress)
+NetsResult createAnySocketAddress(SocketFamily family, SocketAddress* socketAddress)
 {
-	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(family < SOCKET_FAMILY_COUNT);
 	assert(socketAddress);
 
-	if (addressFamily == IP_V4_ADDRESS_FAMILY)
-	{
-		return createSocketAddress(
-			ANY_IP_ADDRESS_V4,
-			ANY_IP_ADDRESS_SERVICE,
-			socketAddress);
-	}
-	else if (addressFamily == IP_V6_ADDRESS_FAMILY)
-	{
-		return createSocketAddress(
-			ANY_IP_ADDRESS_V6,
-			ANY_IP_ADDRESS_SERVICE,
-			socketAddress);
-	}
-	else
-	{
-		abort();
-	}
+	if (family == IP_V4_SOCKET_FAMILY)
+		return createSocketAddress(ANY_IP_ADDRESS_V4, ANY_IP_ADDRESS_SERVICE, socketAddress);
+	else if (family == IP_V6_SOCKET_FAMILY)
+		return createSocketAddress(ANY_IP_ADDRESS_V6, ANY_IP_ADDRESS_SERVICE, socketAddress);
+	else abort();
 }
 SocketAddress createSocketAddressCopy(SocketAddress socketAddress)
 {
 	assert(socketAddress);
 
-	SocketAddress socketAddressInstance = malloc(
-		sizeof(SocketAddress_T));
-
+	SocketAddress socketAddressInstance = malloc(sizeof(SocketAddress_T));
 	if (!socketAddressInstance)
 		return NULL;
 
-	memcpy(socketAddressInstance,
-		socketAddress,
-		sizeof(SocketAddress_T));
-
+	memcpy(socketAddressInstance, socketAddress, sizeof(SocketAddress_T));
 	return socketAddressInstance;
 }
 void destroySocketAddress(SocketAddress socketAddress)
 {
 	if (!socketAddress)
 		return;
-
 	assert(networkInitialized);
 	free(socketAddress);
 }
 
-NetsResult resolveSocketAddresses(
-	const char* host,
-	const char* service,
-	AddressFamily family,
-	SocketType type,
-	SocketAddress** socketAddresses,
-	size_t* addressCount)
+//**********************************************************************************************************************
+NetsResult resolveSocketAddresses(const char* host, const char* service, SocketFamily family,
+	SocketType type, SocketAddress** socketAddresses, size_t* addressCount)
 {
 	assert(host);
 	assert(service);
-	assert(family < ADDRESS_FAMILY_COUNT);
+	assert(family < SOCKET_FAMILY_COUNT);
 	assert(type < SOCKET_TYPE_COUNT);
 	assert(socketAddresses);
 	assert(addressCount);
@@ -1200,83 +948,57 @@ NetsResult resolveSocketAddresses(
 		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
 	struct addrinfo hints;
-
-	memset(&hints, 0,
-		sizeof(struct addrinfo));
-
+	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = AI_ADDRCONFIG;
 
-	if (family == IP_V4_ADDRESS_FAMILY)
+	if (family == IP_V4_SOCKET_FAMILY)
 		hints.ai_family = AF_INET;
-	else if (family == IP_V6_ADDRESS_FAMILY)
+	else if (family == IP_V6_SOCKET_FAMILY)
 		hints.ai_family = AF_INET6;
-	else
-		abort();
+	else abort();
 
 	if (type == STREAM_SOCKET_TYPE)
 	{
-		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_protocol = IPPROTO_TCP;
+		hints.ai_socktype = SOCK_STREAM; hints.ai_protocol = IPPROTO_TCP;
 	}
 	else if (type == DATAGRAM_SOCKET_TYPE)
 	{
-		hints.ai_socktype = SOCK_DGRAM;
-		hints.ai_protocol = IPPROTO_UDP;
+		hints.ai_socktype = SOCK_DGRAM; hints.ai_protocol = IPPROTO_UDP;
 	}
-	else
-	{
-		abort();
-	}
+	else abort();
 
 	struct addrinfo* addressInfos;
-
-	int result = getaddrinfo(
-		host,
-		service,
-		&hints,
-		&addressInfos);
-
+	int result = getaddrinfo(host, service, &hints, &addressInfos);
 	if (result != 0)
 		return FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT;
 
-	SocketAddress* addresses = malloc(
-		sizeof(SocketAddress));
-
+	SocketAddress* addresses = malloc(sizeof(SocketAddress));
 	if (!addresses)
 	{
 		freeaddrinfo(addressInfos);
 		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
-	SocketAddress socketAddress = malloc(
-		sizeof(SocketAddress_T));
-
+	SocketAddress socketAddress = malloc(sizeof(SocketAddress_T));
 	if (!socketAddress)
 	{
-		destroyResolvedSocketAddresses(
-			addresses, 0);
+		destroySocketAddresses(addresses, 0);
 		freeaddrinfo(addressInfos);
 		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
 	addresses[0] = socketAddress;
-
-	memcpy(&socketAddress->handle,
-		addressInfos->ai_addr,
-		addressInfos->ai_addrlen);
+	memcpy(&socketAddress->handle, addressInfos->ai_addr, addressInfos->ai_addrlen);
 
 	size_t count = 1;
 	struct addrinfo* nextAddressInfos = addressInfos->ai_next;
 
 	while (nextAddressInfos)
 	{
-		SocketAddress* newAddresses = realloc(addresses,
-			(count + 1) * sizeof(SocketAddress));
-
+		SocketAddress* newAddresses = realloc(addresses, (count + 1) * sizeof(SocketAddress));
 		if (!newAddresses)
 		{
-			destroyResolvedSocketAddresses(
-				addresses, count);
+			destroySocketAddresses(addresses, count);
 			freeaddrinfo(addressInfos);
 			return OUT_OF_MEMORY_NETS_RESULT;
 		}
@@ -1284,20 +1006,15 @@ NetsResult resolveSocketAddresses(
 		addresses = newAddresses;
 
 		socketAddress = malloc(sizeof(SocketAddress_T));
-
 		if (!socketAddress)
 		{
-			destroyResolvedSocketAddresses(
-				addresses, count);
+			destroySocketAddresses(addresses, count);
 			freeaddrinfo(addressInfos);
 			return OUT_OF_MEMORY_NETS_RESULT;
 		}
 
 		addresses[count++] = socketAddress;
-
-		memcpy(&socketAddress->handle,
-			nextAddressInfos->ai_addr,
-			nextAddressInfos->ai_addrlen);
+		memcpy(&socketAddress->handle, nextAddressInfos->ai_addr, nextAddressInfos->ai_addrlen);
 		nextAddressInfos = nextAddressInfos->ai_next;
 	}
 
@@ -1307,59 +1024,36 @@ NetsResult resolveSocketAddresses(
 	*addressCount = count;
 	return SUCCESS_NETS_RESULT;
 }
-void destroyResolvedSocketAddresses(
-	SocketAddress* socketAddresses,
-	size_t addressCount)
+void destroySocketAddresses(SocketAddress* socketAddresses, size_t addressCount)
 {
 	if (!socketAddresses)
 		return;
-
 	for (size_t i = 0; i < addressCount; i++)
 		destroySocketAddress(socketAddresses[i]);
-
 	free(socketAddresses);
 }
 
-void getUrlParts(
-	const char* url,
-	size_t urlLength,
-	size_t* _hostOffset,
-	size_t* _hostLength,
-	size_t* _serviceOffset,
-	size_t* _serviceLength,
-	size_t* _pathOffset)
+//**********************************************************************************************************************
+void getUrlParts(const char* url, size_t urlLength, size_t* _hostOffset, size_t* _hostLength, 
+	size_t* _serviceOffset, size_t* _serviceLength, size_t* _pathOffset)
 {
 	assert(url);
 	assert(urlLength > 0);
-
-	assert((_hostOffset && _hostLength) ||
-		(!_hostOffset && !_hostLength));
-	assert((_serviceOffset && _serviceLength) ||
-		(!_serviceOffset && !_serviceLength));
+	assert((_hostOffset && _hostLength) || (!_hostOffset && !_hostLength));
+	assert((_serviceOffset && _serviceLength) || (!_serviceOffset && !_serviceLength));
 
 	size_t serviceLength = 0, hostOffset = 0, i = 0;
-
 	while (i < urlLength)
 	{
-		const char* pointer = memchr(
-			url + i,
-			':',
-			urlLength - i);
-
+		const char* pointer = memchr(url + i, ':', urlLength - i);
 		if (!pointer)
 			break;
 
 		i = pointer - url;
 
-		if (i + 2 < urlLength &&
-			url[i + 1] == '/' &&
-			url[i + 2] == '/')
+		if (i + 2 < urlLength && url[i + 1] == '/' && url[i + 2] == '/')
 		{
-			pointer = memchr(
-				url + i + 3,
-				'@',
-				urlLength - (i + 3));
-
+			pointer = memchr(url + i + 3, '@', urlLength - (i + 3));
 			if (pointer)
 			{
 				size_t j = pointer - url;
@@ -1371,25 +1065,18 @@ void getUrlParts(
 				serviceLength = i;
 				hostOffset = i + 3;
 			}
-
 			break;
 		}
 
 		i++;
 	}
 
-	size_t portLength = 0, portOffset = 0,
-		hostLength = 0, pathOffset = 0;
-
+	size_t portLength = 0, portOffset = 0, hostLength = 0, pathOffset = 0;
 	i = 0;
 
 	while (i < urlLength)
 	{
-		const char* pointer = memchr(
-			url + i,
-			':',
-			urlLength - i);
-
+		const char* pointer = memchr(url + i, ':', urlLength - i);
 		if (!pointer)
 			break;
 
@@ -1397,14 +1084,8 @@ void getUrlParts(
 
 		if (i + 1 < urlLength && url[i + 1] != '/')
 		{
-			hostLength = i - hostOffset;
-			portOffset = i + 1;
-
-			pointer = memchr(
-				url + portOffset,
-				'/',
-				urlLength - portOffset);
-
+			hostLength = i - hostOffset; portOffset = i + 1;
+			pointer = memchr(url + portOffset, '/', urlLength - portOffset);
 			if (pointer)
 			{
 				size_t j = pointer - url;
@@ -1416,7 +1097,6 @@ void getUrlParts(
 				portLength = urlLength - i;
 				pathOffset = urlLength;
 			}
-
 			break;
 		}
 
@@ -1425,11 +1105,7 @@ void getUrlParts(
 
 	if (pathOffset == 0)
 	{
-		const char* pointer = memchr(
-			url + hostOffset,
-			'/',
-			urlLength - hostOffset);
-
+		const char* pointer = memchr(url + hostOffset, '/', urlLength - hostOffset);
 		if (pointer)
 		{
 			size_t index = pointer - url;
@@ -1445,209 +1121,145 @@ void getUrlParts(
 
 	if (_hostOffset)
 	{
-		*_hostOffset = hostOffset;
-		*_hostLength = hostLength;
+		*_hostOffset = hostOffset; *_hostLength = hostLength;
 	}
 
 	if (portLength != 0)
 	{
-		*_serviceOffset = portOffset;
-		*_serviceLength = portLength;
+		*_serviceOffset = portOffset; *_serviceLength = portLength;
 	}
 	else
 	{
-		*_serviceOffset = 0;
-		*_serviceLength = serviceLength;
+		*_serviceOffset = 0; *_serviceLength = serviceLength;
 	}
 
 	if (_pathOffset)
 		*_pathOffset = pathOffset;
 }
 
-void copySocketAddress(
-	SocketAddress sourceAddress,
-	SocketAddress destinationAddress)
+//**********************************************************************************************************************
+void copySocketAddress(SocketAddress sourceAddress, SocketAddress destinationAddress)
 {
 	assert(sourceAddress);
 	assert(destinationAddress);
-
-	memcpy(&destinationAddress->handle,
-		&sourceAddress->handle,
-		sizeof(struct sockaddr_storage));
+	memcpy(&destinationAddress->handle, &sourceAddress->handle, sizeof(struct sockaddr_storage));
 }
 
-int compareSocketAddress(
-	SocketAddress a,
-	SocketAddress b)
+int compareSocketAddress(SocketAddress a, SocketAddress b)
 {
-	// NOTE: a and b should not be NULL!
+	// Note: a and b should not be NULL!
 	// Skipping here assertions for debug build speed.
 
 	int family = a->handle.ss_family;
-
 	if (family == AF_INET)
-	{
-		return memcmp(
-			&a->handle,
-			&b->handle,
-			sizeof(struct sockaddr_in));
-	}
+		return memcmp(&a->handle, &b->handle, sizeof(struct sockaddr_in));
 	if (family == AF_INET6)
-	{
-		return memcmp(
-			&a->handle,
-			&b->handle,
-			sizeof(struct sockaddr_in6));
-	}
-
+		return memcmp(&a->handle, &b->handle, sizeof(struct sockaddr_in6));
 	abort();
 }
 
-AddressFamily getSocketAddressFamily(
-	SocketAddress socketAddress)
+SocketFamily getSocketAddressFamily(SocketAddress socketAddress)
 {
 	assert(socketAddress);
 	assert(networkInitialized);
 
 	int family = socketAddress->handle.ss_family;
-
 	if (family == AF_INET)
-		return IP_V4_ADDRESS_FAMILY;
+		return IP_V4_SOCKET_FAMILY;
 	if (family == AF_INET6)
-		return IP_V6_ADDRESS_FAMILY;
-
+		return IP_V6_SOCKET_FAMILY;
 	abort();
 }
-size_t getSocketAddressFamilyIpSize(
-	AddressFamily addressFamily)
+size_t getSocketFamilyIpSize(SocketFamily family)
 {
-	assert(addressFamily < ADDRESS_FAMILY_COUNT);
+	assert(family < SOCKET_FAMILY_COUNT);
 	assert(networkInitialized);
 
-	if (addressFamily == IP_V4_ADDRESS_FAMILY)
+	if (family == IP_V4_SOCKET_FAMILY)
 		return sizeof(struct in_addr);
-	if (addressFamily == IP_V6_ADDRESS_FAMILY)
+	if (family == IP_V6_SOCKET_FAMILY)
 		return sizeof(struct in6_addr);
-
 	abort();
 }
-size_t getSocketAddressIpSize(
-	SocketAddress socketAddress)
+size_t getSocketAddressIpSize(SocketAddress socketAddress)
 {
 	assert(socketAddress);
 	assert(networkInitialized);
 
 	int family = socketAddress->handle.ss_family;
-
 	if (family == AF_INET)
 		return sizeof(struct in_addr);
 	if (family == AF_INET6)
 		return sizeof(struct in6_addr);
-
 	abort();
 }
 
-const uint8_t* getSocketAddressIp(
-	SocketAddress socketAddress)
+//**********************************************************************************************************************
+const uint8_t* getSocketAddressIP(SocketAddress socketAddress)
 {
 	assert(socketAddress);
 	assert(networkInitialized);
 
 	int family = socketAddress->handle.ss_family;
-
 	if (family == AF_INET)
-	{
-		return (const uint8_t*)&((struct sockaddr_in*)
-			&socketAddress->handle)->sin_addr;
-	}
+		return (const uint8_t*)&((struct sockaddr_in*)&socketAddress->handle)->sin_addr;
 	if (family == AF_INET6)
-	{
-		return (const uint8_t*)&((struct sockaddr_in6*)
-			&socketAddress->handle)->sin6_addr;
-	}
-
+		return (const uint8_t*)&((struct sockaddr_in6*)&socketAddress->handle)->sin6_addr;
 	abort();
 }
-void setSocketAddressIp(
-	SocketAddress socketAddress,
-	const uint8_t* ip)
+void setSocketAddressIP(SocketAddress socketAddress, const uint8_t* ip)
 {
 	assert(socketAddress);
 	assert(ip);
 	assert(networkInitialized);
 
 	int family = socketAddress->handle.ss_family;
-
 	if (family == AF_INET)
-	{
-		memcpy(&((struct sockaddr_in*)&socketAddress->handle)->sin_addr,
-			ip, sizeof(struct in_addr));
-	}
+		memcpy(&((struct sockaddr_in*)&socketAddress->handle)->sin_addr, ip, sizeof(struct in_addr));
 	else if (family == AF_INET6)
-	{
-		memcpy(&((struct sockaddr_in6*)&socketAddress->handle)->sin6_addr,
-			ip, sizeof(struct in6_addr));
-	}
-	else
-	{
-		abort();
-	}
+		memcpy(&((struct sockaddr_in6*)&socketAddress->handle)->sin6_addr, ip, sizeof(struct in6_addr));
+	else abort();
 }
 
-uint16_t getSocketAddressPort(
-	SocketAddress socketAddress)
+uint16_t getSocketAddressPort(SocketAddress socketAddress)
 {
 	assert(socketAddress);
 	assert(networkInitialized);
 
 	int family = socketAddress->handle.ss_family;
-
 	if (family == AF_INET)
 	{
-		struct sockaddr_in* address4 =
-			(struct sockaddr_in*)&socketAddress->handle;
+		struct sockaddr_in* address4 = (struct sockaddr_in*)&socketAddress->handle;
 		return ntohs(address4->sin_port);
 	}
 	if (family == AF_INET6)
 	{
-		struct sockaddr_in6* address6 =
-			(struct sockaddr_in6*)&socketAddress->handle;
+		struct sockaddr_in6* address6 = (struct sockaddr_in6*)&socketAddress->handle;
 		return ntohs(address6->sin6_port);
 	}
-
 	abort();
 }
-void setSocketAddressPort(
-	SocketAddress socketAddress,
-	uint16_t port)
+void setSocketAddressPort(SocketAddress socketAddress, uint16_t port)
 {
 	assert(socketAddress);
 	assert(networkInitialized);
 
 	int family = socketAddress->handle.ss_family;
-
 	if (family == AF_INET)
 	{
-		struct sockaddr_in* address4 =
-			(struct sockaddr_in*)&socketAddress->handle;
+		struct sockaddr_in* address4 = (struct sockaddr_in*)&socketAddress->handle;
 		address4->sin_port = htons(port);
 	}
 	else if (family == AF_INET6)
 	{
-		struct sockaddr_in6* address6 =
-			(struct sockaddr_in6*)&socketAddress->handle;
+		struct sockaddr_in6* address6 = (struct sockaddr_in6*)&socketAddress->handle;
 		address6->sin6_port = htons(port);
 	}
-	else
-	{
-		abort();
-	}
+	else abort();
 }
 
-bool getSocketAddressHost(
-	SocketAddress socketAddress,
-	char* host,
-	size_t length)
+//**********************************************************************************************************************
+bool getSocketAddressHost(SocketAddress socketAddress, char* host, size_t length)
 {
 	assert(socketAddress);
 	assert(host);
@@ -1655,20 +1267,10 @@ bool getSocketAddressHost(
 	assert(networkInitialized);
 
 	int flags = NI_NUMERICHOST;
-
-	return getnameinfo(
-		(const struct sockaddr*)&socketAddress->handle,
-		sizeof(struct sockaddr_storage),
-		host,
-		(SOCKET_LENGTH)length,
-		NULL,
-		0,
-		flags) == 0;
+	return getnameinfo((const struct sockaddr*)&socketAddress->handle, 
+		sizeof(struct sockaddr_storage), host, (SOCKET_LENGTH)length, NULL, 0, flags) == 0;
 }
-bool getSocketAddressService(
-	SocketAddress socketAddress,
-	char* service,
-	size_t length)
+bool getSocketAddressService(SocketAddress socketAddress, char* service, size_t length)
 {
 	assert(socketAddress);
 	assert(service);
@@ -1676,22 +1278,10 @@ bool getSocketAddressService(
 	assert(networkInitialized);
 
 	int flags = NI_NUMERICSERV;
-
-	return getnameinfo(
-		(const struct sockaddr*)&socketAddress->handle,
-		sizeof(struct sockaddr_storage),
-		NULL,
-		0,
-		service,
-		(SOCKET_LENGTH)length,
-		flags) == 0;
+	return getnameinfo((const struct sockaddr*)&socketAddress->handle,
+		sizeof(struct sockaddr_storage), NULL, 0, service, (SOCKET_LENGTH)length, flags) == 0;
 }
-bool getSocketAddressHostService(
-	SocketAddress socketAddress,
-	char* host,
-	size_t hostLength,
-	char* service,
-	size_t serviceLength)
+bool getSocketAddressHostService(SocketAddress socketAddress, char* host, size_t hostLength, char* service, size_t serviceLength)
 {
 	assert(socketAddress);
 	assert(host);
@@ -1701,53 +1291,39 @@ bool getSocketAddressHostService(
 	assert(networkInitialized);
 
 	int flags = NI_NUMERICHOST | NI_NUMERICSERV;
-
-	return getnameinfo(
-		(const struct sockaddr*)&socketAddress->handle,
-		sizeof(struct sockaddr_storage),
-		host,
-		(SOCKET_LENGTH)hostLength,
-		service,
-		(SOCKET_LENGTH)serviceLength,
-		flags) == 0;
+	return getnameinfo((const struct sockaddr*)&socketAddress->handle, sizeof(struct sockaddr_storage), 
+		host, (SOCKET_LENGTH)hostLength, service, (SOCKET_LENGTH)serviceLength, flags) == 0;
 }
 
-NetsResult createPublicSslContext(
-	SecurityProtocol securityProtocol,
-	const char* certificateFilePath,
-	const char* certificatesDirectory,
-	SslContext* sslContext)
+//**********************************************************************************************************************
+NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certificateFilePath,
+	const char* certificatesDirectory, SslContext* sslContext)
 {
-#if NETS_SUPPORT_OPENSSL
-	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
+	#if NETS_SUPPORT_OPENSSL
+	assert(sslProtocol < SSL_PROTOCOL_COUNT);
 	assert(sslContext);
 
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
-	SslContext sslContextInstance = calloc(
-		1, sizeof(SslContext_T));
-
+	SslContext sslContextInstance = calloc(1, sizeof(SslContext_T));
 	if (!sslContextInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
 	SSL_CTX* handle;
-
-	switch (securityProtocol)
+	switch (sslProtocol)
 	{
-	default:
-		abort();
 	case TLS_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
 		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
-#if NETS_SUPPORT_DEPRECATED_SSL
+		#if NETS_SUPPORT_DEPRECATED_SSL
 		handle = SSL_CTX_new(TLSv1_2_method());
 		break;
-#else
+		#else
 		abort();
-#endif
-
+		#endif
+	default: abort();
 	}
 
 	if (!handle)
@@ -1759,18 +1335,10 @@ NetsResult createPublicSslContext(
 	sslContextInstance->handle = handle;
 
 	int result;
-
 	if (certificateFilePath || certificatesDirectory)
-	{
-		result = SSL_CTX_load_verify_locations(
-			handle,
-			certificateFilePath,
-			certificatesDirectory);
-	}
+		result = SSL_CTX_load_verify_locations(handle, certificateFilePath, certificatesDirectory);
 	else
-	{
 		result = SSL_CTX_set_default_verify_paths(handle);
-	}
 
 	if (result != 1)
 	{
@@ -1780,19 +1348,17 @@ NetsResult createPublicSslContext(
 
 	*sslContext = sslContextInstance;
 	return SUCCESS_NETS_RESULT;
-#else
+	#else
 	return NO_OPENSSL_SUPPORT_NETS_RESULT;
-#endif
+	#endif
 }
-NetsResult createPrivateSslContext(
-	SecurityProtocol securityProtocol,
-	const char* certificateFilePath,
-	const char* privateKeyFilePath,
-	bool certificateChain,
-	SslContext* sslContext)
+
+//**********************************************************************************************************************
+NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certificateFilePath,
+	const char* privateKeyFilePath, bool certificateChain, SslContext* sslContext)
 {
-#if NETS_SUPPORT_OPENSSL
-	assert(securityProtocol < SECURITY_PROTOCOL_COUNT);
+	#if NETS_SUPPORT_OPENSSL
+	assert(sslProtocol < SSL_PROTOCOL_COUNT);
 	assert(certificateFilePath);
 	assert(privateKeyFilePath);
 	assert(sslContext);
@@ -1800,28 +1366,24 @@ NetsResult createPrivateSslContext(
 	if (!networkInitialized)
 		return NETWORK_IS_NOT_INITIALIZED_NETS_RESULT;
 
-	SslContext sslContextInstance = calloc(
-		1, sizeof(SslContext_T));
-
+	SslContext sslContextInstance = calloc(1, sizeof(SslContext_T));
 	if (!sslContextInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
 	SSL_CTX* handle;
-
-	switch (securityProtocol)
+	switch (sslProtocol)
 	{
-	default:
-		abort();
 	case TLS_SECURITY_PROTOCOL:
 		handle = SSL_CTX_new(TLS_method());
 		break;
 	case TLS_1_2_SECURITY_PROTOCOL:
-#if NETS_SUPPORT_DEPRECATED_SSL
+		#if NETS_SUPPORT_DEPRECATED_SSL
 		handle = SSL_CTX_new(TLSv1_2_method());
 		break;
-#else
+		#else
 		abort();
-#endif
+		#endif
+	default: abort();
 	}
 
 	if (!handle)
@@ -1833,20 +1395,10 @@ NetsResult createPrivateSslContext(
 	sslContextInstance->handle = handle;
 
 	int result;
-
 	if (certificateChain)
-	{
-		result = SSL_CTX_use_certificate_chain_file(
-			handle,
-			certificateFilePath);
-	}
+		result = SSL_CTX_use_certificate_chain_file(handle, certificateFilePath);
 	else
-	{
-		result = SSL_CTX_use_certificate_file(
-			handle,
-			certificateFilePath,
-			SSL_FILETYPE_PEM);
-	}
+		result = SSL_CTX_use_certificate_file(handle, certificateFilePath, SSL_FILETYPE_PEM);
 
 	if (result != 1)
 	{
@@ -1854,11 +1406,7 @@ NetsResult createPrivateSslContext(
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
-	result = SSL_CTX_use_PrivateKey_file(
-		handle,
-		privateKeyFilePath,
-		SSL_FILETYPE_PEM);
-
+	result = SSL_CTX_use_PrivateKey_file(handle, privateKeyFilePath, SSL_FILETYPE_PEM);
 	if (result != 1)
 	{
 		destroySslContext(sslContextInstance);
@@ -1866,7 +1414,6 @@ NetsResult createPrivateSslContext(
 	}
 
 	result = SSL_CTX_check_private_key(handle);
-
 	if (result != 1)
 	{
 		destroySslContext(sslContextInstance);
@@ -1875,67 +1422,50 @@ NetsResult createPrivateSslContext(
 
 	*sslContext = sslContextInstance;
 	return SUCCESS_NETS_RESULT;
-#else
+	#else
 	return NO_OPENSSL_SUPPORT_NETS_RESULT;
-#endif
+	#endif
 }
 
+//**********************************************************************************************************************
 void destroySslContext(SslContext sslContext)
 {
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	if (!sslContext)
 		return;
 
 	assert(networkInitialized);
-
 	SSL_CTX_free(sslContext->handle);
 	free(sslContext);
-#else
+	#else
 	abort();
-#endif
+	#endif
 }
 
-SecurityProtocol getSslContextSecurityProtocol(SslContext sslContext)
+SslProtocol getSslContextProtocol(SslContext sslContext)
 {
-#if NETS_SUPPORT_OPENSSL
+	#if NETS_SUPPORT_OPENSSL
 	assert(sslContext);
 	assert(networkInitialized);
 
-	const SSL_METHOD* method =
-		SSL_CTX_get_ssl_method(sslContext->handle);
-
+	const SSL_METHOD* method = SSL_CTX_get_ssl_method(sslContext->handle);
 	if (method == TLS_method())
 		return TLS_SECURITY_PROTOCOL;
 
-#if NETS_SUPPORT_DEPRECATED_SSL
+	#if NETS_SUPPORT_DEPRECATED_SSL
 	if (method == TLSv1_2_method())
 		return TLS_1_2_SECURITY_PROTOCOL;
-#endif
+	#endif
+
+	#endif
 
 	abort();
-#else
-	abort();
-#endif
 }
 
-NetsResult sHandleStreamMessage(
-	const uint8_t* receiveBuffer,
-	size_t byteCount,
-	uint8_t* messageBuffer,
-	size_t messageBufferSize,
-	size_t* messageByteCount,
-	uint8_t messageLengthSize,
-	NetsResult(*receiveFunction)(
-		const uint8_t*, size_t, void*),
-	void* functionHandle)
+NetsResult sHandleStreamMessage(const uint8_t* receiveBuffer, size_t byteCount, 
+	uint8_t* messageBuffer, size_t messageBufferSize, size_t* messageByteCount, uint8_t messageLengthSize, 
+	NetsResult(*receiveFunction)(const uint8_t*, size_t, void*), void* functionHandle)
 {
-	return handleStreamMessage(
-		receiveBuffer,
-		byteCount,
-		messageBuffer,
-		messageBufferSize,
-		messageByteCount,
-		messageLengthSize,
-		receiveFunction,
-		functionHandle);
+	return handleStreamMessage(receiveBuffer, byteCount, messageBuffer, messageBufferSize, 
+		messageByteCount, messageLengthSize, receiveFunction, functionHandle);
 }
