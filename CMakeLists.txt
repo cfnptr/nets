@@ -85,8 +85,8 @@ if(NETS_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND NETS_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
-set(NETS_SOURCES source/datagram_client.c source/datagram_server.c 
-	source/socket.c source/stream_client.c source/stream_server.c)
+set(NETS_SOURCES source/datagram-client.c source/datagram-server.c 
+	source/socket.c source/stream-client.c source/stream-server.c)
 
 add_library(nets-static STATIC ${NETS_SOURCES})
 target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES})

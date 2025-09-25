@@ -492,6 +492,11 @@ bool getSocketRemoteAddress(Socket socket, SocketAddress socketAddress)
 	return false;
 }
 
+void* getSocketHandle(Socket socket)
+{
+	assert(socket);
+	return (void*)(size_t)socket->handle;
+}
 SslContext getSocketSslContext(Socket socket)
 {
 	#if NETS_SUPPORT_OPENSSL
@@ -499,7 +504,7 @@ SslContext getSocketSslContext(Socket socket)
 	assert(networkInitialized);
 	return socket->sslContext;
 	#else
-	abort();
+	return NULL;
 	#endif
 }
 
@@ -670,11 +675,7 @@ NetsResult acceptSslSocket(Socket socket)
 
 	int result = SSL_accept(socket->ssl) == 1;
 	if (result != 1)
-	{
-		return sslErrorToNetsResult(SSL_get_error(
-			socket->ssl, result));
-	}
-
+		return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	return SUCCESS_NETS_RESULT;
 	#else
 	abort();
@@ -1452,11 +1453,10 @@ SslProtocol getSslContextProtocol(SslContext sslContext)
 	if (method == TLS_method())
 		return TLS_SECURITY_PROTOCOL;
 
-	#if NETS_SUPPORT_DEPRECATED_SSL
-	if (method == TLSv1_2_method())
-		return TLS_1_2_SECURITY_PROTOCOL;
-	#endif
-
+		#if NETS_SUPPORT_DEPRECATED_SSL
+		if (method == TLSv1_2_method())
+			return TLS_1_2_SECURITY_PROTOCOL;
+		#endif
 	#endif
 
 	abort();

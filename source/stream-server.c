@@ -1,0 +1,519 @@
+// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "nets/stream-server.h"
+#include "mpmt/thread.h"
+#include "mpio/os.h"
+
+#if __linux__
+#include <unistd.h>
+#include <sys/epoll.h>
+#define EVENT_POOL int
+#elif __APPLE__
+#include <sys/event.h>
+#define EVENT_POOL int
+#elif _WIN32
+#define EVENT_POOL int
+#else
+#error Unknown operating system
+#endif
+
+struct StreamSession_T
+{
+	Socket receiveSocket;
+	SocketAddress remoteAddress;
+	void* handle;
+	double lastUpdateTime;
+};
+struct StreamServer_T
+{
+	Thread receiveThread;
+	size_t sessionBufferSize;
+	size_t receiveBufferSize;
+	double timeoutTime;
+	OnStreamSessionCreate onCreate;
+	OnStreamSessionDestroy onDestroy;
+	OnStreamSessionReceive onReceive;
+	void* handle;
+	uint8_t* receiveBuffer;
+	StreamSession* sessionBuffer;
+	size_t sessionCount;
+	Socket acceptSocket;
+	EVENT_POOL eventPool;
+	volatile bool isRunning;
+};
+
+//**********************************************************************************************************************
+inline static void destroyStreamSession(StreamSession streamSession)
+{
+	if (!streamSession)
+		return;
+
+	Socket receiveSocket = streamSession->receiveSocket;
+	if (receiveSocket)
+	{
+		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(receiveSocket);
+	}
+
+	destroySocketAddress(streamSession->remoteAddress);
+	free(streamSession);
+}
+inline static bool acceptStreamSession(StreamServer streamServer, 
+	Socket acceptedSocket, StreamSession* _streamSession, bool useSsl)
+{
+	StreamSession streamSession = calloc(1, sizeof(StreamSession_T));
+	if (!streamSession)
+		return false;
+	streamSession->receiveSocket = acceptedSocket;
+
+	SocketAddress remoteAddress;
+	if (createAnySocketAddress(IP_V6_SOCKET_FAMILY, &remoteAddress) != SUCCESS_NETS_RESULT)
+	{
+		destroyStreamSession(streamSession);
+		return false;
+	}
+	streamSession->remoteAddress = remoteAddress;
+
+	if (!getSocketRemoteAddress(acceptedSocket, remoteAddress))
+	{
+		destroyStreamSession(streamSession);
+		return false;
+	}
+
+	void* sessionHandle;
+	if (!streamServer->onCreate(streamServer, streamSession, &sessionHandle))
+	{
+		destroyStreamSession(streamSession);
+		*_streamSession = NULL;
+		return true;
+	}
+
+	streamSession->handle = sessionHandle;
+	streamSession->lastUpdateTime = getCurrentClock();
+	if (useSsl) streamSession->lastUpdateTime = -streamSession->lastUpdateTime;
+	streamServer->sessionBuffer[streamServer->sessionCount++] = streamSession;
+	*_streamSession = streamSession;
+	return true;
+}
+
+//**********************************************************************************************************************
+inline static void disconnectStreamSession(StreamServer streamServer, 
+	StreamSession streamSession, NetsResult reason)
+{
+	streamServer->onDestroy(streamServer, streamSession, reason);
+	destroyStreamSession(streamSession);
+
+	StreamSession* sessionBuffer = streamServer->sessionBuffer;
+	size_t sessionCount = streamServer->sessionCount;
+	for (size_t i = 1; i < sessionCount; i++)
+		sessionBuffer[i - 1] = sessionBuffer[i];
+	streamServer->sessionCount--;
+}
+inline static void processStreamSession(StreamServer streamServer, StreamSession streamSession)
+{
+	Socket receiveSocket = streamSession->receiveSocket;
+	double lastUpdateTime = streamSession->lastUpdateTime;
+	double currentTime = getCurrentClock();
+
+	if (lastUpdateTime < 0.0)
+	{
+		if (lastUpdateTime + currentTime > streamServer->timeoutTime)
+		{
+			disconnectStreamSession(streamServer, streamSession, TIMED_OUT_NETS_RESULT);
+			return;
+		}
+
+		NetsResult netsResult = acceptSslSocket(receiveSocket);
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
+			return;
+
+		if (netsResult != SUCCESS_NETS_RESULT)
+		{
+			disconnectStreamSession(streamServer, streamSession, netsResult);
+			return;
+		}
+		streamSession->lastUpdateTime = currentTime;
+	}
+	else
+	{
+		if (currentTime - lastUpdateTime > streamServer->timeoutTime)
+		{
+			disconnectStreamSession(streamServer, streamSession, TIMED_OUT_NETS_RESULT);
+			return;
+		}
+	}
+
+	OnStreamSessionReceive onReceive = streamServer->onReceive;
+	uint8_t* receiveBuffer = streamServer->receiveBuffer;
+	size_t receiveBufferSize = streamServer->receiveBufferSize;
+	size_t byteCount;
+
+	while (true)
+	{
+		NetsResult netsResult = socketReceive(receiveSocket, receiveBuffer, receiveBufferSize, &byteCount);
+		if (netsResult != IN_PROGRESS_NETS_RESULT)
+		{
+			disconnectStreamSession(streamServer, streamSession, netsResult);
+			return;
+		}
+
+		netsResult = onReceive(streamServer, streamSession, receiveBuffer, byteCount);
+
+		if (byteCount == 0)
+			netsResult = CONNECTION_IS_CLOSED_NETS_RESULT;
+		if (netsResult != SUCCESS_NETS_RESULT)
+		{
+			disconnectStreamSession(streamServer, streamSession, netsResult);
+			return;
+		}
+	}
+
+	streamSession->lastUpdateTime = currentTime;
+}
+
+//**********************************************************************************************************************
+inline static void streamServerReceive(void* argument)
+{
+	setThreadName("RECV");
+	setThreadForegroundPriority();
+
+	#if __linux__ || __APPLE__
+	disableSigpipe();
+	#endif
+
+	StreamServer streamServer = (StreamServer)argument;
+	Socket serverSocket = streamServer->acceptSocket;
+	EVENT_POOL eventPool = streamServer->eventPool;
+	bool useSsl = getSocketSslContext(serverSocket) != NULL;
+
+	#if __linux__
+	struct epoll_event event, events[64];
+	#elif __APPLE__
+	struct kevent event, events[64],
+	#endif
+
+	Socket acceptedSocket; StreamSession streamSession;
+	while (streamServer->isRunning)
+	{
+		#if __linux__
+		int eventCount = epoll_wait(eventPool, events, 64, -1);
+		#elif __APPLE__
+		int eventCount = kevent(eventPool, NULL, 0, events, 64, NULL);
+		#endif
+
+		if (eventCount == -1)
+		{
+			streamServer->isRunning = false;
+			return;
+		}
+
+		for (int i = 0; i < eventCount; i++)
+		{
+			#if __linux__
+			void* eventData = events[i].data.ptr;
+			#elif __APPLE__
+			void* eventData = events[i].udata;
+			#endif
+
+			if (eventData == streamServer)
+			{
+				while (streamServer->isRunning)
+				{
+					NetsResult netsResult = acceptSocket(serverSocket, &acceptedSocket);
+					if (netsResult == IN_PROGRESS_NETS_RESULT)
+						break;
+
+					if (netsResult != SUCCESS_NETS_RESULT || !acceptStreamSession(
+						streamServer, acceptedSocket, &streamSession, useSsl))
+					{
+						continue;
+					}
+
+					if (!streamSession)
+						continue;
+
+					int socketHandle = (int)(size_t)getSocketHandle(acceptedSocket);
+					#if __linux__
+					event.events = EPOLLIN | EPOLLET;
+					event.data.ptr = streamSession;
+					int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event);
+					#elif __APPLE__
+					EV_SET(event, socketHandle, EVFILT_READ, EV_ADD, 0, 0, streamSession);
+					int eventResult = kevent(kq, event, 1, NULL, 0, NULL);
+					#endif
+
+					if (eventResult == -1)
+					{
+						streamServer->isRunning = false;
+						return;
+					}
+				}
+			}
+			#if __APPLE__
+			else if (events[i].flags & EV_EOF)
+			{
+				disconnectStreamSession(streamServer, (StreamSession)eventData, CONNECTION_IS_CLOSED_NETS_RESULT);
+			}
+			#endif
+			else
+			{
+				processStreamSession(streamServer, (StreamSession)eventData);
+			}
+		}
+	}
+}
+
+//**********************************************************************************************************************
+NetsResult createStreamServer(SocketFamily socketFamily, const char* service, 
+	size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, double timeoutTime, 
+	OnStreamSessionCreate onCreate, OnStreamSessionDestroy onDestroy, OnStreamSessionReceive onReceive, 
+	void* handle, SslContext sslContext, StreamServer* streamServer)
+{
+	assert(socketFamily < SOCKET_FAMILY_COUNT);
+	assert(service);
+	assert(sessionBufferSize > 0);
+	assert(connectionQueueSize > 0);
+	assert(receiveBufferSize > 0);
+	assert(timeoutTime > 0.0);
+	assert(onCreate);
+	assert(onDestroy);
+	assert(onReceive);
+	assert(streamServer);
+
+	StreamServer streamServerInstance = calloc(1, sizeof(StreamServer_T));
+	if (!streamServerInstance)
+		return OUT_OF_MEMORY_NETS_RESULT;
+
+	streamServerInstance->timeoutTime = timeoutTime;
+	streamServerInstance->onCreate = onCreate;
+	streamServerInstance->onDestroy = onDestroy;
+	streamServerInstance->onReceive = onReceive;
+	streamServerInstance->handle = handle;
+
+	uint8_t* receiveBuffer = malloc(receiveBufferSize * sizeof(uint8_t));
+	if (!receiveBuffer)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+
+	streamServerInstance->receiveBuffer = receiveBuffer;
+	streamServerInstance->receiveBufferSize = receiveBufferSize;
+
+	StreamSession* sessionBuffer = malloc(sessionBufferSize * sizeof(StreamSession));
+	if (!sessionBuffer)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+
+	streamServerInstance->sessionBufferSize = sessionBufferSize;
+	streamServerInstance->sessionBuffer = sessionBuffer;
+	streamServerInstance->sessionCount = 0;
+
+	SocketAddress socketAddress;
+	NetsResult netsResult = createSocketAddress(socketFamily == IP_V4_SOCKET_FAMILY ?
+		ANY_IP_ADDRESS_V4 : ANY_IP_ADDRESS_V6, service, &socketAddress);
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroyStreamServer(streamServerInstance);
+		return netsResult;
+	}
+
+	Socket acceptSocket;
+	netsResult = createSocket(STREAM_SOCKET_TYPE, socketFamily, 
+		socketAddress, false, false, sslContext, &acceptSocket);
+	destroySocketAddress(socketAddress);
+
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroyStreamServer(streamServerInstance);
+		return netsResult;
+	}
+
+	streamServerInstance->acceptSocket = acceptSocket;
+
+	netsResult = listenSocket(acceptSocket, connectionQueueSize);
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroyStreamServer(streamServerInstance);
+		return netsResult;
+	}
+
+	#if __linux__
+	EVENT_POOL eventPool = epoll_create1(0);
+	#elif __APPLE__
+	EVENT_POOL eventPool = kqueue();
+	#endif
+
+	if (eventPool == -1)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	streamServerInstance->eventPool = eventPool;
+
+	int socketHandle = (int)(size_t)getSocketHandle(acceptSocket);
+	#if __linux__
+	struct epoll_event event;
+	event.events = EPOLLIN;
+	event.data.ptr = streamServerInstance;
+	int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event);
+	#elif __APPLE__
+	struct kevent event;
+	EV_SET(&event, socketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, streamServerInstance);
+	int eventResult = kevent(eventPool, &event, 1, NULL, 0, NULL);
+	#elif _WIN32
+	abort(); // TODO:
+	#endif
+
+	if (eventResult == -1)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+
+	streamServerInstance->isRunning = true;
+	Thread receiveThread = createThread(streamServerReceive, streamServerInstance);
+	if (receiveThread == NULL)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+	streamServerInstance->receiveThread = receiveThread;
+
+	*streamServer = streamServerInstance;
+	return SUCCESS_NETS_RESULT;
+}
+void destroyStreamServer(StreamServer streamServer)
+{
+	if (!streamServer)
+		return;
+
+	if (streamServer->acceptSocket)
+	{
+		// TODO: wakeup epoll_wait.
+	}
+
+	if (streamServer->receiveThread)
+	{
+		streamServer->isRunning = false;
+		joinThread(streamServer->receiveThread);
+		destroyThread(streamServer->receiveThread);
+	}
+
+	StreamSession* sessionBuffer = streamServer->sessionBuffer;
+	size_t sessionCount = streamServer->sessionCount;
+	OnStreamSessionDestroy onDestroy = streamServer->onDestroy;
+
+	for (size_t i = 0; i < sessionCount; i++)
+	{
+		StreamSession streamSession = sessionBuffer[i];
+		Socket receiveSocket = streamSession->receiveSocket;
+		onDestroy(streamServer, streamSession, CONNECTION_IS_CLOSED_NETS_RESULT);
+		destroySocketAddress(streamSession->remoteAddress);
+		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(receiveSocket);
+		free(streamSession);
+	}
+
+	if (streamServer->eventPool)
+	{
+		#if __linux__ || __APPLE__
+		close(streamServer->eventPool);
+		#endif
+	}
+
+	destroySocket(streamServer->acceptSocket);
+	free(streamServer->receiveBuffer);
+	free(sessionBuffer);
+	free(streamServer);
+}
+
+//**********************************************************************************************************************
+size_t getStreamServerSessionBufferSize(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->sessionBufferSize;
+}
+size_t getStreamServerReceiveBufferSize(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->receiveBufferSize;
+}
+OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->onCreate;
+}
+OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->onDestroy;
+}
+OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->onReceive;
+}
+double getStreamServerTimeoutTime(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->timeoutTime;
+}
+void* getStreamServerHandle(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->handle;
+}
+uint8_t* getStreamServerReceiveBuffer(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->receiveBuffer;
+}
+Socket getStreamServerSocket(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->acceptSocket;
+}
+Socket getStreamSessionSocket(StreamSession streamSession)
+{
+	assert(streamSession);
+	return streamSession->receiveSocket;
+}
+SocketAddress getStreamSessionRemoteAddress(StreamSession streamSession)
+{
+	assert(streamSession);
+	return streamSession->remoteAddress;
+}
+void* getStreamSessionHandle(StreamSession streamSession)
+{
+	assert(streamSession);
+	return streamSession->handle;
+}
+
+//**********************************************************************************************************************
+NetsResult streamSessionSend(StreamSession streamSession, const void* sendBuffer, size_t byteCount)
+{
+	assert(streamSession);
+	return socketSend(streamSession->receiveSocket, sendBuffer, byteCount);
+}
+NetsResult streamSessionSendMessage(StreamSession streamSession, StreamMessage streamMessage)
+{
+	assert(streamSession);
+	assert(streamMessage.size > 0);
+	assert(streamMessage.size == streamMessage.offset);
+	return socketSend(streamSession->receiveSocket, streamMessage.buffer, streamMessage.size);
+}

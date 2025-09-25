@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nets/stream_client.h"
+#include "nets/stream-client.h"
 #include "mpmt/thread.h"
 #include "mpio/os.h"
 

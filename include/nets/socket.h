@@ -174,6 +174,11 @@ bool getSocketLocalAddress(Socket socket, SocketAddress socketAddress);
 bool getSocketRemoteAddress(Socket socket, SocketAddress socketAddress);
 
 /**
+ * @brief Returns socket internal handle.
+ * @param socket target socket instance
+ */
+void* getSocketHandle(Socket socket);
+/**
  * @brief Returns socket SSL context instance.
  * @param socket target socket instance
  */
@@ -219,6 +224,7 @@ NetsResult listenSocket(Socket socket, size_t queueSize);
 
 /**
  * @brief Accepts a new socket connection.
+ * @note You should destroy accepted socket instance manually!
  * @return The operation @ref NetsResult code.
  *
  * @param socket target socket instance
@@ -227,6 +233,7 @@ NetsResult listenSocket(Socket socket, size_t queueSize);
 NetsResult acceptSocket(Socket socket, Socket* accepted);
 /**
  * @brief Accepts socket SSL connection.
+ 
  * @return The operation @ref NetsResult code.
  * @param socket target socket instance
  */
@@ -316,7 +323,7 @@ NetsResult createSocketAddress(const char* host, const char* service, SocketAddr
  * @brief Creates a new any socket IP address instance.
  * @return The operation @ref NetsResult code.
  *
- * @param socketFamily socket IP address family type
+ * @param family socket IP address family type
  * @param[out] socketAddress pointer to the socket address instance
  */
 NetsResult createAnySocketAddress(SocketFamily family, SocketAddress* socketAddress);

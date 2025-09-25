@@ -39,9 +39,9 @@ typedef bool(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession st
  *
  * @param streamServer stream server instance
  * @param streamSession stream session instance
- * @param netsResult session destruction reason
+ * @param reason session destruction reason
  */
-typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession streamSession, NetsResult netsResult);
+typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession streamSession, NetsResult reason);
 /**
  * @brief Stream session receive function. (TCP)
  * @note Server destroys session on this function failure return result.
@@ -53,14 +53,6 @@ typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession s
  */
 typedef NetsResult(*OnStreamSessionReceive)(StreamServer streamServer, 
 	StreamSession streamSession, const uint8_t* receiveBuffer, size_t byteCount);
-/**
- * @brief Stream session update function. (TCP)
- * @note Server destroys session on this function failure return result.
- *
- * @param streamServer stream server instance
- * @param streamSession stream session instance
- */
-typedef NetsResult(*OnStreamSessionUpdate)(StreamServer streamServer, StreamSession streamSession);
 
 /***********************************************************************************************************************
  * @brief Creates a new stream server instance. (TCP)
@@ -73,16 +65,15 @@ typedef NetsResult(*OnStreamSessionUpdate)(StreamServer streamServer, StreamSess
  * @param receiveBufferSize receive data buffer size in bytes
  * @param timeoutTime session timeout time in seconds
  * @param[in] onCreate on session create function
- * @param[in] onDestroy onsession destroy function
+ * @param[in] onDestroy on session destroy function
  * @param[in] onReceive on session receive function
- * @param[in] onUpdate on session update function
  * @param[in] handle receive function argument or NULL
  * @param sslContext socket SSL context instance or NULL
  * @param[out] streamServer pointer to the stream server instance
  */
-NetsResult createStreamServer(SocketFamily socketFamily, const char* service, size_t sessionBufferSize,
-	size_t connectionQueueSize, size_t receiveBufferSize, double timeoutTime, OnStreamSessionCreate onCreate,
-	OnStreamSessionDestroy onDestroy, OnStreamSessionReceive onReceive, OnStreamSessionUpdate onUpdate,
+NetsResult createStreamServer(SocketFamily socketFamily, const char* service, 
+	size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, double timeoutTime, 
+	OnStreamSessionCreate onCreate, OnStreamSessionDestroy onDestroy, OnStreamSessionReceive onReceive, 
 	void* handle, SslContext sslContext, StreamServer* streamServer);
 /**
  * @brief Destroys stream server instance. (TCP)
@@ -116,11 +107,6 @@ OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer);
  */
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer);
 /**
- * @brief Returns stream server session update function.
- * @param streamServer target stream server instance
- */
-OnStreamSessionUpdate getStreamServerOnUpdate(StreamServer streamServer);
-/**
  * @brief Returns stream server session timeout time. (in seconds)
  * @param streamServer target stream server instance
  */
@@ -149,19 +135,12 @@ Socket getStreamSessionSocket(StreamSession streamSession);
  * @brief Returns stream session remote IP address instance.
  * @param streamSession target stream session instance
  */
-SocketAddress getStreamSessionAddress(StreamSession streamSession);
+SocketAddress getStreamSessionRemoteAddress(StreamSession streamSession);
 /**
  * @brief Returns stream session handle.
  * @param streamSession target stream session instance
  */
 void* getStreamSessionHandle(StreamSession streamSession);
-
-/***********************************************************************************************************************
- * @brief Updates stream server sessions. (Connections, pending data)
- * @return True if any update actions occurred, otherwise false.
- * @param streamServer target stream server instance
- */
-bool updateStreamServer(StreamServer streamServer);
 
 /**
  * @brief Sends stream data to the specified session.

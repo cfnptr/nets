@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nets/datagram_server.h"
-#include "nets/datagram_client.h"
+#include "nets/datagram-server.h"
+#include "nets/datagram-client.h"
 
 #include "mpmt/thread.h"
 #include <stdio.h>

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nets/datagram_client.h"
+#include "nets/datagram-client.h"
 
 struct DatagramClient_T
 {

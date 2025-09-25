@@ -14,7 +14,7 @@
 
 /***********************************************************************************************************************
  * @file
- * @brief Network socket.
+ * @brief Network socket functions.
  * @details See the @ref socket.h
  */
 
@@ -31,72 +31,31 @@ namespace nets
 {
 
 /**
- * @brief Socket IP address instance handle.
+ * @brief Socket IP address instance view.
  * @details See the @ref socket.h
  */
-struct SocketAddress final
+struct SocketAddressView
 {
-private:
+protected:
 	SocketAddress_T* instance = nullptr;
 public:
-	SocketAddress(const SocketAddress&) = delete;
-	SocketAddress(SocketAddress&& r) noexcept : instance(std::exchange(r.instance, nullptr)) { }
-
-	SocketAddress& operator=(SocketAddress&) = delete;
-	SocketAddress& operator=(SocketAddress&& r) noexcept
-	{
-		instance = std::exchange(r.instance, nullptr);
-		return *this;
-	}
-
-	/*******************************************************************************************************************
-	 * @brief Creates a new any socket IP address instance.
-	 * @details See the @ref createSocketAnyAddress().
-	 * @param family socket IP address family type
-	 * @throw Error with a @ref NetsResult string on failure.
-	 */
-	SocketAddress(SocketFamily family = IP_V6_SOCKET_FAMILY)
-	{
-		auto result = createAnySocketAddress(family, &instance);
-		if (result != SUCCESS_NETS_RESULT)
-			throw Error(netsResultToString(result));
-	}
 	/**
-	 * @brief Creates a new socket IP address instance.
-	 * @details See the @ref createSocketAddress().
-	 *
-	 * @param[in] host socket IP address host name string
-	 * @param[in] service socket IP address service name string (port)
-	 * 
-	 * @throw Error with a @ref NetsResult string on failure.
+	 * @brief Creates a new socket IP address view.
+	 * @param[in] instance target socket instance
 	 */
-	SocketAddress(const char* host, const char* service)
-	{
-		auto result = createSocketAddress(host, service, &instance);
-		if (result != SUCCESS_NETS_RESULT)
-			throw Error(netsResultToString(result));
-	}
-
+	SocketAddressView(SocketAddress_T* instance) : instance(instance) { }
 	/**
 	 * @brief Destroys socket IP address instance.
 	 * @details See the @ref destroySocketAddress().
 	 */
-	~SocketAddress() { destroySocketAddress(instance); }
-
-	/**
-	 * @brief Create a new socket IP address copy instance.
-	 * @details See the @ref createSocketAddressCopy().
-	 */
-	SocketAddress createCopy() const noexcept
+	void destroy() noexcept
 	{
-		SocketAddress socketAddress;
-		socketAddress.instance = createSocketAddressCopy(instance);
-		if (!socketAddress.instance) abort();
-		return socketAddress;
+		destroySocketAddress(instance);
+		instance = nullptr;
 	}
 
-	/*******************************************************************************************************************
-	 * @brief Returns socket IP address handle instance.
+	/**
+	 * @brief Returns socket IP address view instance.
 	 */
 	SocketAddress_T* getInstance() const noexcept { return instance; }
 	/**
@@ -110,7 +69,7 @@ public:
 	 */
 	size_t getIpSize() const noexcept { return getSocketAddressIpSize(instance); }
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns socket IP address byte array.
 	 * @details See the @ref getSocketAddressIP().
 	 */
@@ -183,7 +142,7 @@ public:
 	 * @param[out] addressCount pointer to the socket address count
 	 */
 	static NetsResult resolve(const char* host, const char* service, SocketFamily family,
-		SocketType type, SocketAddress*& socketAddresses, size_t& addressCount) noexcept
+		SocketType type, SocketAddressView*& socketAddresses, size_t& addressCount) noexcept
 	{
 		return resolveSocketAddresses(host, service, family,
 			type, (SocketAddress_T***)&socketAddresses, &addressCount);
@@ -195,7 +154,7 @@ public:
 	 * @param[in] socketAddresses socket IP address array
 	 * @param addressCount socket address count
 	 */
-	static void destroy(SocketAddress* socketAddresses, size_t addressCount) noexcept
+	static void destroy(SocketAddressView* socketAddresses, size_t addressCount) noexcept
 	{
 		destroySocketAddresses((SocketAddress_T**)socketAddresses, addressCount);
 	}
@@ -204,10 +163,10 @@ public:
 	 * @brief Copies source socket IP address to the destination.
 	 * @details See the @ref copySocketAddress().
 	 *
-	 * @param[in] sourceAddress source socket address instance
-	 * @param[in] destinationAddress destination socket address instance
+	 * @param sourceAddress source socket address instance
+	 * @param destinationAddress destination socket address instance
 	 */
-	static void copy(const SocketAddress& sourceAddress, const SocketAddress& destinationAddress) noexcept
+	static void copy(SocketAddressView sourceAddress, SocketAddressView destinationAddress) noexcept
 	{
 		copySocketAddress(sourceAddress.instance, destinationAddress.instance);
 	}
@@ -218,24 +177,123 @@ public:
 	 * @param[in] a first socket address instance
 	 * @param[in] b second socket address instance
 	 */
-	static int compare(const SocketAddress& a, const SocketAddress& b) noexcept
+	static int compare(SocketAddressView a, SocketAddressView b) noexcept
 	{
 		return compareSocketAddress(a.instance, b.instance);
 	}
 };
 
 /***********************************************************************************************************************
+ * @brief Socket IP address instance handle.
+ * @details See the @ref socket.h
+ */
+struct SocketAddress final : public SocketAddressView
+{
+	SocketAddress(const SocketAddress&) = delete;
+	SocketAddress(SocketAddress&& r) noexcept : SocketAddressView(nullptr)
+	{
+		instance = std::exchange(r.instance, nullptr);
+	}
+	SocketAddress& operator=(SocketAddress&) = delete;
+	SocketAddress& operator=(SocketAddress&& r) noexcept
+	{
+		instance = std::exchange(r.instance, nullptr);
+		return *this;
+	}
+
+	/**
+	 * @brief Creates a new any socket IP address instance.
+	 * @details See the @ref createAnySocketAddress().
+	 * @param family socket IP address family type
+	 * @throw Error with a @ref NetsResult string on failure.
+	 */
+	SocketAddress(SocketFamily family = IP_V6_SOCKET_FAMILY) : SocketAddressView(nullptr)
+	{
+		auto result = createAnySocketAddress(family, &instance);
+		if (result != SUCCESS_NETS_RESULT)
+			throw Error(netsResultToString(result));
+	}
+	/**
+	 * @brief Creates a new socket IP address instance.
+	 * @details See the @ref createSocketAddress().
+	 *
+	 * @param[in] host socket IP address host name string
+	 * @param[in] service socket IP address service name string (port)
+	 * 
+	 * @throw Error with a @ref NetsResult string on failure.
+	 */
+	SocketAddress(const char* host, const char* service) : SocketAddressView(nullptr)
+	{
+		auto result = createSocketAddress(host, service, &instance);
+		if (result != SUCCESS_NETS_RESULT)
+			throw Error(netsResultToString(result));
+	}
+
+	/**
+	 * @brief Destroys socket IP address instance.
+	 * @details See the @ref destroySocketAddress().
+	 */
+	~SocketAddress() { destroySocketAddress(instance); }
+
+	/**
+	 * @brief Create a new socket IP address copy instance.
+	 * @details See the @ref createSocketAddressCopy().
+	 */
+	SocketAddress createCopy() const noexcept
+	{
+		SocketAddress socketAddress;
+		socketAddress.instance = createSocketAddressCopy(instance);
+		if (!socketAddress.instance) abort();
+		return socketAddress;
+	}
+};
+
+/***********************************************************************************************************************
+ * @brief Secure socket layer (SSL) context instance view.
+ * @details See the @ref socket.h
+ */
+struct SslContextView
+{
+protected:
+	SslContext_T* instance = nullptr;
+public:
+	/**
+	 * @brief Creates a new socket SSL context view.
+	 * @param[in] instance target socket instance
+	 */
+	SslContextView(SslContext_T* instance) : instance(instance) { }
+	/**
+	 * @brief Destroys socket SSL context instance.
+	 * @details See the @ref destroySslContext().
+	 */
+	void destroy() noexcept
+	{
+		destroySslContext(instance);
+		instance = nullptr;
+	}
+
+	/**
+	 * @brief Returns socket SSL context view instance.
+	 */
+	SslContext_T* getInstance() const noexcept { return instance; }
+	/**
+	 * @brief Returns socket SSL context security protocol type.
+	 * @details See the @ref getSslContextProtocol().
+	 */
+	SslProtocol getProtocol() const noexcept { return getSslContextProtocol(instance); }
+};
+
+/***********************************************************************************************************************
  * @brief Secure socket layer (SSL) context instance handle.
  * @details See the @ref socket.h
  */
-struct SslContext final
+struct SslContext final : public SslContextView
 {
-private:
-	SslContext_T* instance = nullptr;
-public:
 	SslContext(const SslContext&) = delete;
-	SslContext(SslContext&& r) noexcept : instance(std::exchange(r.instance, nullptr)) { }
-
+	SslContext(SslContext&& r) noexcept : SslContextView(nullptr)
+	{
+		instance = std::exchange(r.instance, nullptr);
+	}
 	SslContext& operator=(SslContext&) = delete;
 	SslContext& operator=(SslContext&& r) noexcept
 	{
@@ -253,8 +311,8 @@ public:
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
-	SslContext(SslProtocol sslProtocol = TLS_SECURITY_PROTOCOL, 
-		const char* certificateFilePath = nullptr, const char* certificatesDirectory = nullptr)
+	SslContext(SslProtocol sslProtocol = TLS_SECURITY_PROTOCOL, const char* certificateFilePath = nullptr, 
+		const char* certificatesDirectory = nullptr) : SslContextView(nullptr)
 	{
 		auto result = createPublicSslContext(sslProtocol, certificateFilePath, certificatesDirectory, &instance);
 		if (result != SUCCESS_NETS_RESULT)
@@ -272,7 +330,7 @@ public:
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
 	SslContext(SslProtocol sslProtocol, const char* certificateFilePath, 
-		const char* privateKeyFilePath, bool certificateChain = false)
+		const char* privateKeyFilePath, bool certificateChain = false) : SslContextView(nullptr)
 	{
 		auto result = createPrivateSslContext(sslProtocol, certificateFilePath, 
 			privateKeyFilePath, certificateChain, &instance);
@@ -285,55 +343,22 @@ public:
 	 * @details See the @ref destroySslContext().
 	 */
 	~SslContext() { destroySslContext(instance); }
-
-	/**
-	 * @brief Returns socket SSL context handle instance.
-	 */
-	SslContext_T* getInstance() const noexcept { return instance; }
-	/**
-	 * @brief Returns socket SSL context security protocol type.
-	 * @details See the @ref getSslContextProtocol().
-	 */
-	SslProtocol getProtocol() const noexcept { return getSslContextProtocol(instance); }
 };
 
 /***********************************************************************************************************************
- * @brief Network socket instance handle.
+ * @brief Network socket instance view.
  * @details See the @ref socket.h
  */
-struct Socket final
+struct SocketView
 {
-private:
+protected:
 	Socket_T* instance = nullptr;
 public:
 	/**
-	 * @brief Creates a new network socket handle.
-	 * @param[in] socket target socket instance
+	 * @brief Creates a new network socket view.
+	 * @param[in] instance target socket instance
 	 */
-	Socket(Socket_T* instance) : instance(instance) { }
-
-	/**
-	 * @brief Creates a new network socket instance.
-	 * @details See the @ref createSocket().
-	 *
-	 * @param type socket communication protocol type
-	 * @param family internet protocol address family
-	 * @param[in] localAddress socket local bind address instance
-	 * @param isBlocking create socket in blocking mode
-	 * @param isOnlyIPv6 create socket in IPv6 only mode
-	 * @param[in] sslContext socket SSL context instance or nullptr
-	 * 
-	 * @throw Error with a @ref NetsResult string on failure.
-	 */
-	Socket(SocketType type, SocketFamily family, const SocketAddress& localAddress, 
-		bool isBlocking = true, bool isOnlyIPv6 = false, SslContext* sslContext = nullptr)
-	{
-		auto sslContextInstance = sslContext ? sslContext->getInstance() : nullptr;
-		auto result = createSocket(type, family, localAddress.getInstance(), 
-			isBlocking, isOnlyIPv6, sslContextInstance, &instance);
-		if (result != SUCCESS_NETS_RESULT)
-			throw Error(netsResultToString(result));
-	}
+	SocketView(Socket_T* instance) : instance(instance) { }
 	/**
 	 * @brief Destroys network socket instance.
 	 * @details See the @ref destroySocket().
@@ -345,7 +370,7 @@ public:
 	}
 
 	/*******************************************************************************************************************
-	 * @brief Returns socket SSL context handle instance.
+	 * @brief Returns socket SSL context view instance.
 	 */
 	Socket_T* getInstance() const noexcept { return instance; }
 	/**
@@ -375,7 +400,7 @@ public:
 	 * @throw Error with a result string on failure.
 	 * @param[out] socketAddress socket IP address instance
 	 */
-	void getLocalAddress(SocketAddress& socketAddress) const
+	void getLocalAddress(SocketAddressView socketAddress) const
 	{
 		if (!getSocketLocalAddress(instance, socketAddress.getInstance()))
 			throw Error("Failed to get socket local address");
@@ -386,7 +411,7 @@ public:
 	 * @throw Error with a result string on failure.
 	 * @param[out] socketAddress socket IP address instance
 	 */
-	void getRemoteAddress(SocketAddress& socketAddress) const
+	void getRemoteAddress(SocketAddressView socketAddress) const
 	{
 		if (!getSocketRemoteAddress(instance, socketAddress.getInstance()))
 			throw Error("Failed to get socket remote address");
@@ -396,7 +421,12 @@ public:
 	 * @brief Returns socket SSL context instance.
 	 * @details See the @ref getSocketSslContext().
 	 */
-	SslContext_T* getSslContext() const noexcept { return getSocketSslContext(instance); }
+	SslContextView getSslContext() const noexcept { return SslContextView(getSocketSslContext(instance)); }
+	/**
+	 * @brief Returns socket internal handle.
+	 * @details See the @ref getSocketHandle().
+	 */
+	void* getHandle() const noexcept { return getSocketHandle(instance); }
 
 	/**
 	 * @brief Returns true if stream socket sends without caching.
@@ -427,20 +457,21 @@ public:
 	 * @return The operation @ref NetsResult code.
 	 * @param queueSize pending connections queue size
 	 */
-	NetsResult listen(size_t queueSize = 128) noexcept { return listenSocket(instance, queueSize); }
+	NetsResult listen(size_t queueSize = 256) noexcept { return listenSocket(instance, queueSize); }
 
 	/**
 	 * @brief Accepts a new socket connection.
+	 * @note You should destroy accepted socket instance manually!
 	 * @details See the @ref acceptSocket().
 	 * @return The operation @ref NetsResult code.
 	 * @param[out] accepted pointer to the accepted socket
 	 */
-	NetsResult accept(Socket& accepted) noexcept
+	NetsResult accept(SocketView& accepted) noexcept
 	{
 		Socket_T* acceptedSocket;
 		auto result = acceptSocket(instance, &acceptedSocket);
 		if (result == SUCCESS_NETS_RESULT)
-			accepted = Socket(acceptedSocket);
+			accepted = SocketView(acceptedSocket);
 		return result;
 	}
 	/**
@@ -454,9 +485,9 @@ public:
 	 * @brief Connects socket to the specified remote address.
 	 * @details See the @ref connectSocket().
 	 * @return The operation @ref NetsResult code.
-	 * @param[in] remoteAddress remote socket IP address instance
+	 * @param remoteAddress remote socket IP address instance
 	 */
-	NetsResult connect(const SocketAddress& remoteAddress) noexcept
+	NetsResult connect(SocketAddressView remoteAddress) noexcept
 	{
 		return connectSocket(instance, remoteAddress.getInstance());
 	}
@@ -519,7 +550,7 @@ public:
 	template<class T>
 	NetsResult send(const T& sendData) { return socketSend(instance, &sendData, sizeof(T)); }
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Receives pending data from the remote socket.
 	 * @details See the @ref socketReceiveFrom().
 	 * @return The operation @ref NetsResult code.
@@ -529,7 +560,7 @@ public:
 	 * @param bufferSize data receive buffer size in bytes
 	 * @param[out] byteCount pointer to the received byte count
 	 */
-	NetsResult receiveFrom(SocketAddress& remoteAddress, 
+	NetsResult receiveFrom(SocketAddressView remoteAddress, 
 		void* receiveBuffer, size_t bufferSize, size_t& byteCount) noexcept
 	{
 		return socketReceiveFrom(instance, remoteAddress.getInstance(), receiveBuffer, bufferSize, &byteCount);
@@ -541,9 +572,9 @@ public:
 	 *
 	 * @param[in] sendBuffer data send buffer
 	 * @param byteCount data byte count to send
-	 * @param[in] remoteAddress destination remote socket IP address
+	 * @param remoteAddress destination remote socket IP address
 	 */
-	NetsResult sendTo(const void* sendBuffer, size_t byteCount, const SocketAddress& remoteAddress) noexcept
+	NetsResult sendTo(const void* sendBuffer, size_t byteCount, SocketAddressView remoteAddress) noexcept
 	{
 		return socketSendTo(instance, sendBuffer, byteCount, remoteAddress.getInstance());
 	}
@@ -555,13 +586,59 @@ public:
 	 * @tparam T type of the send data
 	 * @param[in] sendData data to send
 	 * @param byteCount data byte count to send
-	 * @param[in] remoteAddress destination remote socket IP address
+	 * @param remoteAddress destination remote socket IP address
 	 */
 	template<class T>
-	NetsResult sendTo(const T& sendData, const SocketAddress& remoteAddress) noexcept
+	NetsResult sendTo(const T& sendData, SocketAddressView remoteAddress) noexcept
 	{
 		return socketSendTo(instance, &sendData, sizeof(T), remoteAddress.getInstance());
 	}
+};
+
+/***********************************************************************************************************************
+ * @brief Network socket instance handle.
+ * @details See the @ref socket.h
+ */
+struct Socket final : public SocketView
+{
+	Socket(const Socket&) = delete;
+	Socket(Socket&& r) noexcept : SocketView(nullptr)
+	{
+		instance = std::exchange(r.instance, nullptr);
+	}
+	Socket& operator=(Socket&) = delete;
+	Socket& operator=(Socket&& r) noexcept
+	{
+		instance = std::exchange(r.instance, nullptr);
+		return *this;
+	}
+
+	/**
+	 * @brief Creates a new network socket instance.
+	 * @details See the @ref createSocket().
+	 *
+	 * @param type socket communication protocol type
+	 * @param family internet protocol address family
+	 * @param localAddress socket local bind address instance
+	 * @param isBlocking create socket in blocking mode
+	 * @param isOnlyIPv6 create socket in IPv6 only mode
+	 * @param sslContext socket SSL context instance or nullptr
+	 * 
+	 * @throw Error with a @ref NetsResult string on failure.
+	 */
+	Socket(SocketType type, SocketFamily family, SocketAddressView localAddress, bool isBlocking = true, 
+		bool isOnlyIPv6 = false, SslContextView sslContext = SslContextView(nullptr)) : SocketView(nullptr)
+	{
+		auto result = createSocket(type, family, localAddress.getInstance(), 
+			isBlocking, isOnlyIPv6, sslContext.getInstance(), &instance);
+		if (result != SUCCESS_NETS_RESULT)
+			throw Error(netsResultToString(result));
+	}
+	/**
+	 * @brief Destroys network socket instance.
+	 * @details See the @ref destroySocket().
+	 */
+	~Socket() { destroySocket(instance); }
 };
 
 } // nets

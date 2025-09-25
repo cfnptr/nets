@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nets/datagram_server.h"
+#include "nets/datagram-server.h"
 
 struct DatagramServer_T
 {
@@ -59,7 +59,6 @@ NetsResult createDatagramServer(SocketFamily socketFamily, const char* service, 
 		destroyDatagramServer(datagramServerInstance);
 		return netsResult;
 	}
-
 	datagramServerInstance->address = socketAddress;
 
 	Socket socket;
