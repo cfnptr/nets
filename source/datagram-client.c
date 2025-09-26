@@ -86,9 +86,9 @@ void destroyDatagramClient(DatagramClient datagramClient)
 	if (!datagramClient)
 		return;
 
-	Socket socket = datagramClient->socket;
-	if (socket)
+	if (datagramClient->socket)
 	{
+		Socket socket = datagramClient->socket;
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
 	}

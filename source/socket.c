@@ -80,14 +80,8 @@ bool initializeNetwork()
 		return false;
 
 	#if _WIN32
-	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (result != 0)
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
 		return false;
-	#endif
-
-	#if NETS_SUPPORT_OPENSSL
-	SSL_load_error_strings();
-	OpenSSL_add_ssl_algorithms();
 	#endif
 
 	networkInitialized = true;
@@ -99,13 +93,8 @@ void terminateNetwork()
 		return;
 
 	#if _WIN32
-	int result = WSACleanup();
-	if (result != 0)
-		abort();
-	#endif
-
-	#if NETS_SUPPORT_OPENSSL
-	EVP_cleanup();
+	if (WSACleanup() != 0)
+		abort(); // Note: network subsystem failure.
 	#endif
 
 	networkInitialized = false;
@@ -120,7 +109,7 @@ void disableSigpipe()
 	#if __linux__ || __APPLE__
 	signal(SIGPIPE, SIG_IGN);
 	#elif _WIN32
-	abort();
+	abort(); // Note: not supported on Windows.
 	#endif
 }
 
@@ -253,7 +242,7 @@ inline static NetsResult sslErrorToNetsResult(int error)
 		return lastErrorToNetsResult();
 	}
 	#else
-	abort();
+	return NO_OPENSSL_SUPPORT_NETS_RESULT;
 	#endif
 }
 
@@ -301,8 +290,7 @@ inline static NetsResult createSocketHandle(SocketType socketType, SocketFamily 
 		SOCKET_LENGTH v6Length = sizeof(BOOL);
 		#endif
 
-		int result = setsockopt(handleInstance, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&onlyV6, v6Length);
-		if (result != 0)
+		if (setsockopt(handleInstance, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&onlyV6, v6Length) != 0)
 		{
 			closesocket(handleInstance);
 			return lastErrorToNetsResult();
@@ -332,8 +320,7 @@ inline static NetsResult createSocketHandle(SocketType socketType, SocketFamily 
 		}
 	}
 
-	int result = bind(handleInstance, (const struct sockaddr*)&socketAddress->handle, length);
-	if (result != 0)
+	if (bind(handleInstance, (const struct sockaddr*)&socketAddress->handle, length) != 0)
 	{
 		closesocket(handleInstance);
 		return lastErrorToNetsResult();
@@ -396,8 +383,7 @@ NetsResult createSocket(SocketType type, SocketFamily family, SocketAddress loca
 		socketInstance->sslContext = sslContext;
 		socketInstance->ssl = ssl;
 
-		int result = SSL_set_fd(ssl, (int)handle);
-		if (result != 1)
+		if (SSL_set_fd(ssl, (int)handle) != 1)
 		{
 			destroySocket(socketInstance);
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
@@ -465,8 +451,7 @@ bool getSocketLocalAddress(Socket socket, SocketAddress socketAddress)
 	memset(&storage, 0, sizeof(struct sockaddr_storage));
 	SOCKET_LENGTH length = sizeof(struct sockaddr_storage);
 
-	int result = getsockname(socket->handle, (struct sockaddr*)&storage, &length);
-	if (result == 0)
+	if (getsockname(socket->handle, (struct sockaddr*)&storage, &length) == 0)
 	{
 		socketAddress->handle = storage;
 		return true;
@@ -483,8 +468,7 @@ bool getSocketRemoteAddress(Socket socket, SocketAddress socketAddress)
 	memset(&storage, 0, sizeof(struct sockaddr_storage));
 	SOCKET_LENGTH length = sizeof(struct sockaddr_storage);
 
-	int result = getpeername(socket->handle, (struct sockaddr*)&storage, &length);
-	if (result == 0)
+	if (getpeername(socket->handle, (struct sockaddr*)&storage, &length) == 0)
 	{
 		socketAddress->handle = storage;
 		return true;
@@ -522,9 +506,8 @@ bool isSocketNoDelay(Socket socket)
 	#endif
 
 	SOCKET_LENGTH length;
-	int result = getsockopt(socket->handle, IPPROTO_TCP, TCP_NODELAY, (char*)&value, &length);
-	if (result != 0)
-		abort();
+	if (getsockopt(socket->handle, IPPROTO_TCP, TCP_NODELAY, (char*)&value, &length) != 0)
+		abort(); // Note: invalid socket data or memory.
 
 	#if __linux__ || __APPLE__
 	return value != 0;
@@ -546,9 +529,8 @@ void setSocketNoDelay(Socket socket, bool value)
 	SOCKET_LENGTH length = sizeof(BOOL);
 	#endif
 
-	int result = setsockopt(socket->handle, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay, length);
-	if (result != 0)
-		abort();
+	if (setsockopt(socket->handle, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay, length) != 0)
+		abort(); // Note: invalid socket data or memory.
 }
 
 bool isSocketListening(Socket socket)
@@ -581,8 +563,7 @@ NetsResult listenSocket(Socket socket, size_t queueSize)
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized);
 
-	int result = listen(socket->handle, (int)queueSize);
-	if (result != 0)
+	if (listen(socket->handle, (int)queueSize) != 0)
 		return lastErrorToNetsResult();
 
 	socket->queueSize = queueSize;
@@ -645,8 +626,7 @@ NetsResult acceptSocket(Socket socket, Socket* accepted)
 		acceptedInstance->sslContext = socket->sslContext;
 		acceptedInstance->ssl = ssl;
 
-		int result = SSL_set_fd(ssl, (int)handle);
-		if (result != 1)
+		if (SSL_set_fd(ssl, (int)handle) != 1)
 		{
 			destroySocket(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
@@ -678,7 +658,7 @@ NetsResult acceptSslSocket(Socket socket)
 		return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	return SUCCESS_NETS_RESULT;
 	#else
-	abort();
+	return NO_OPENSSL_SUPPORT_NETS_RESULT;
 	#endif
 }
 
@@ -698,8 +678,7 @@ NetsResult connectSocket(Socket socket, SocketAddress remoteAddress)
 		length = sizeof(struct sockaddr_in6);
 	else abort();
 
-	int result = connect(socket->handle, (const struct sockaddr*)&remoteAddress->handle, length);
-	if (result != 0)
+	if (connect(socket->handle, (const struct sockaddr*)&remoteAddress->handle, length) != 0)
 		return lastErrorToNetsResult();
 	return SUCCESS_NETS_RESULT;
 }
@@ -723,7 +702,7 @@ NetsResult connectSslSocket(Socket socket, const char* hostname)
 		return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	return SUCCESS_NETS_RESULT;
 	#else
-	abort();
+	return NO_OPENSSL_SUPPORT_NETS_RESULT;
 	#endif
 }
 
@@ -755,8 +734,7 @@ NetsResult shutdownSocket(Socket socket, SocketShutdown _shutdown)
 
 	// Note: Do not shutdown SSL, due to the bad documentation.
 
-	int result = shutdown(socket->handle, type);
-	if (result != 0)
+	if (shutdown(socket->handle, type) != 0)
 		return lastErrorToNetsResult();
 	return SUCCESS_NETS_RESULT;
 }
@@ -891,8 +869,7 @@ NetsResult createSocketAddress(const char* host, const char* service, SocketAddr
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
 
 	struct addrinfo* addressInfos;
-	int result = getaddrinfo(host, service, &hints, &addressInfos);
-	if (result != 0)
+	if (getaddrinfo(host, service, &hints, &addressInfos) != 0)
 	{
 		free(socketAddressInstance);
 		return FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT;
@@ -911,7 +888,7 @@ NetsResult createAnySocketAddress(SocketFamily family, SocketAddress* socketAddr
 
 	if (family == IP_V4_SOCKET_FAMILY)
 		return createSocketAddress(ANY_IP_ADDRESS_V4, ANY_IP_ADDRESS_SERVICE, socketAddress);
-	else if (family == IP_V6_SOCKET_FAMILY)
+	if (family == IP_V6_SOCKET_FAMILY)
 		return createSocketAddress(ANY_IP_ADDRESS_V6, ANY_IP_ADDRESS_SERVICE, socketAddress);
 	else abort();
 }
@@ -969,8 +946,7 @@ NetsResult resolveSocketAddresses(const char* host, const char* service, SocketF
 	else abort();
 
 	struct addrinfo* addressInfos;
-	int result = getaddrinfo(host, service, &hints, &addressInfos);
-	if (result != 0)
+	if (getaddrinfo(host, service, &hints, &addressInfos) != 0)
 		return FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT;
 
 	SocketAddress* addresses = malloc(sizeof(SocketAddress));
@@ -1322,7 +1298,7 @@ NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certifica
 		handle = SSL_CTX_new(TLSv1_2_method());
 		break;
 		#else
-		abort();
+		abort(); // Note: TLS 1.2 support is deprecated!
 		#endif
 	default: abort();
 	}
@@ -1382,7 +1358,7 @@ NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certific
 		handle = SSL_CTX_new(TLSv1_2_method());
 		break;
 		#else
-		abort();
+		abort(); // Note: TLS 1.2 support is deprecated!
 		#endif
 	default: abort();
 	}
@@ -1407,15 +1383,12 @@ NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certific
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
-	result = SSL_CTX_use_PrivateKey_file(handle, privateKeyFilePath, SSL_FILETYPE_PEM);
-	if (result != 1)
+	if (SSL_CTX_use_PrivateKey_file(handle, privateKeyFilePath, SSL_FILETYPE_PEM) != 1)
 	{
 		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
-
-	result = SSL_CTX_check_private_key(handle);
-	if (result != 1)
+	if (SSL_CTX_check_private_key(handle) != 1)
 	{
 		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
@@ -1439,7 +1412,7 @@ void destroySslContext(SslContext sslContext)
 	SSL_CTX_free(sslContext->handle);
 	free(sslContext);
 	#else
-	abort();
+	abort(); // Note: OpenSSL support is disabled.
 	#endif
 }
 
@@ -1452,14 +1425,12 @@ SslProtocol getSslContextProtocol(SslContext sslContext)
 	const SSL_METHOD* method = SSL_CTX_get_ssl_method(sslContext->handle);
 	if (method == TLS_method())
 		return TLS_SECURITY_PROTOCOL;
-
-		#if NETS_SUPPORT_DEPRECATED_SSL
-		if (method == TLSv1_2_method())
-			return TLS_1_2_SECURITY_PROTOCOL;
-		#endif
-	#endif
-
+	if (method == TLSv1_2_method())
+		return TLS_1_2_SECURITY_PROTOCOL;
 	abort();
+	#else
+	abort(); // Note: OpenSSL support is disabled.
+	#endif
 }
 
 NetsResult sHandleStreamMessage(const uint8_t* receiveBuffer, size_t byteCount, 

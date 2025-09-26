@@ -27,7 +27,8 @@ typedef StreamSession_T* StreamSession;         /**< Stream server session insta
 
 /**
  * @brief Stream session create function. (TCP)
- * @note Server destroys session on this function false return result.
+ * @details Server destroys session on this function false return result.
+ * @warning This function is called asynchronously from the receive thread!
  *
  * @param streamServer stream server instance
  * @param streamSession a new accepted stream session instance
@@ -36,6 +37,7 @@ typedef StreamSession_T* StreamSession;         /**< Stream server session insta
 typedef bool(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession streamSession, void** handle);
 /**
  * @brief Stream session destroy function. (TCP)
+ * @warning This function is called asynchronously from the receive thread!
  *
  * @param streamServer stream server instance
  * @param streamSession stream session instance
@@ -44,7 +46,8 @@ typedef bool(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession st
 typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession streamSession, NetsResult reason);
 /**
  * @brief Stream session receive function. (TCP)
- * @note Server destroys session on this function failure return result.
+ * @details Server destroys session on this function failure return result.
+ * @warning This function is called asynchronously from the receive thread!
  *
  * @param streamServer stream server instance
  * @param streamSession stream session instance

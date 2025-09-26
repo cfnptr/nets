@@ -93,7 +93,7 @@ target_link_libraries(nets-static PUBLIC ${NETS_LINK_LIBRARIES})
 target_include_directories(nets-static PUBLIC ${NETS_INCLUDE_DIRECTORIES})
 
 if(NETS_BUILD_EXAMPLES)
-	add_executable(nets-datagram-example examples/datagram_example.c)
+	add_executable(nets-datagram-example examples/datagram-example.c)
 	target_link_libraries(nets-datagram-example PRIVATE nets-static)
 	target_include_directories(nets-datagram-example PRIVATE
 		${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include)

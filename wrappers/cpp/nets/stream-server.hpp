@@ -78,7 +78,7 @@ inline static NetsResult _onStreamSessionReceive(StreamServer_T* streamServer,
  * @brief Stream server instance handle. (TCP)
  * @details See the @ref stream-server.h
  */
-struct IStreamServer
+class IStreamServer
 {
 protected:
 	StreamServer_T* instance = nullptr;
@@ -94,6 +94,10 @@ public:
 	}
 
 	/**
+	 * @brief Creates a new empty stream server instance. (TCP)
+	 */
+	IStreamServer() = default;
+	/**
 	 * @brief Creates a new stream server instance. (TCP)
 	 * @details See the @ref createStreamServer().
 	 *
@@ -107,8 +111,9 @@ public:
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
-	IStreamServer(SocketFamily socketFamily, const char* service, size_t sessionBufferSize, size_t connectionQueueSize, 
-		size_t receiveBufferSize, double timeoutTime, SslContextView sslContext = SslContextView(nullptr))
+	IStreamServer(SocketFamily socketFamily, const char* service, size_t sessionBufferSize = 512, 
+		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX, double timeoutTime = 5.0, 
+		SslContextView sslContext = SslContextView(nullptr))
 	{
 		auto result = createStreamServer(socketFamily, service, sessionBufferSize, connectionQueueSize, 
 			receiveBufferSize, timeoutTime, _onStreamSessionCreate, _onStreamSessionDestroy,
@@ -124,7 +129,8 @@ public:
 
 	/**
 	 * @brief Stream session create function. (TCP)
-	 * @note Server destroys session on this function false return result.
+	 * @details Server destroys session on this function false return result.
+	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param streamSession a new accepted stream session instance
 	 * @param[out] handle pointer to the custom session handle
@@ -132,6 +138,7 @@ public:
 	virtual bool onSessionCreate(StreamSessionView streamSession, void*& handle) = 0;
 	/**
 	 * @brief Stream session destroy function. (TCP)
+	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param streamSession stream session instance
 	 * @param reason session destruction reason
@@ -139,7 +146,8 @@ public:
 	virtual void onSessionDestroy(StreamSessionView streamSession, NetsResult reason) = 0;
 	/**
 	 * @brief Stream session receive function. (TCP)
-	 * @note Server destroys session on this function failure return result.
+	 * @details Server destroys session on this function failure return result.
+	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param streamSession stream session instance
 	 * @param[in] receiveBuffer received data buffer

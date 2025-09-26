@@ -19,12 +19,10 @@
 #if __linux__
 #include <unistd.h>
 #include <sys/epoll.h>
-#define EVENT_POOL int
+#include <sys/eventfd.h>
 #elif __APPLE__
 #include <sys/event.h>
-#define EVENT_POOL int
 #elif _WIN32
-#define EVENT_POOL int
 #else
 #error Unknown operating system
 #endif
@@ -48,9 +46,16 @@ struct StreamServer_T
 	void* handle;
 	uint8_t* receiveBuffer;
 	StreamSession* sessionBuffer;
+	StreamSession* disconnectBuffer;
 	size_t sessionCount;
+	size_t disconnectCount;
 	Socket acceptSocket;
-	EVENT_POOL eventPool;
+	#if __linux__ || __APPLE__
+	int eventPool;
+	#endif
+	#if __linux__
+	int wakeupEvent;
+	#endif
 	volatile bool isRunning;
 };
 
@@ -60,9 +65,9 @@ inline static void destroyStreamSession(StreamSession streamSession)
 	if (!streamSession)
 		return;
 
-	Socket receiveSocket = streamSession->receiveSocket;
-	if (receiveSocket)
+	if (streamSession->receiveSocket)
 	{
+		Socket receiveSocket = streamSession->receiveSocket;
 		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
 	}
@@ -73,6 +78,13 @@ inline static void destroyStreamSession(StreamSession streamSession)
 inline static bool acceptStreamSession(StreamServer streamServer, 
 	Socket acceptedSocket, StreamSession* _streamSession, bool useSsl)
 {
+	if (streamServer->sessionCount >= streamServer->sessionBufferSize)
+	{
+		shutdownSocket(acceptedSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(acceptedSocket);
+		return false;
+	}
+
 	StreamSession streamSession = calloc(1, sizeof(StreamSession_T));
 	if (!streamSession)
 		return false;
@@ -92,42 +104,87 @@ inline static bool acceptStreamSession(StreamServer streamServer,
 		return false;
 	}
 
-	void* sessionHandle;
+	void* sessionHandle = NULL;
 	if (!streamServer->onCreate(streamServer, streamSession, &sessionHandle))
 	{
 		destroyStreamSession(streamSession);
-		*_streamSession = NULL;
-		return true;
+		return false;
 	}
 
 	streamSession->handle = sessionHandle;
 	streamSession->lastUpdateTime = getCurrentClock();
-	if (useSsl) streamSession->lastUpdateTime = -streamSession->lastUpdateTime;
+
+	#if NETS_SUPPORT_OPENSSL
+	if (useSsl) // Note: indicates if we should also establish SSL connection.
+		streamSession->lastUpdateTime = -streamSession->lastUpdateTime;
+	#endif
+
 	streamServer->sessionBuffer[streamServer->sessionCount++] = streamSession;
 	*_streamSession = streamSession;
 	return true;
 }
 
 //**********************************************************************************************************************
-inline static void disconnectStreamSession(StreamServer streamServer, 
-	StreamSession streamSession, NetsResult reason)
+inline static void disconnectStreamSession(StreamServer streamServer, StreamSession streamSession, NetsResult reason)
 {
-	streamServer->onDestroy(streamServer, streamSession, reason);
-	destroyStreamSession(streamSession);
+	if (!streamSession->receiveSocket) // Note: stream session is already disconnected.
+		return;
 
+	streamServer->onDestroy(streamServer, streamSession, reason);
+
+	Socket receiveSocket = streamSession->receiveSocket;
+	shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+	destroySocket(receiveSocket);
+	streamSession->receiveSocket = NULL;
+
+	streamServer->disconnectBuffer[streamServer->disconnectCount++] = streamSession;
+}
+inline static void disconnectStreamSessions(StreamServer streamServer)
+{
+	if (streamServer->disconnectCount == 0)
+		return;
+
+	StreamSession* disconnectBuffer = streamServer->disconnectBuffer;
+	size_t disconnectCount = streamServer->disconnectCount;
 	StreamSession* sessionBuffer = streamServer->sessionBuffer;
 	size_t sessionCount = streamServer->sessionCount;
-	for (size_t i = 1; i < sessionCount; i++)
-		sessionBuffer[i - 1] = sessionBuffer[i];
-	streamServer->sessionCount--;
+
+	for (size_t i = 0; i < disconnectCount; i++)
+	{
+		StreamSession streamSession = disconnectBuffer[i];
+		bool isFound = false;
+
+		for (size_t j = 0; j < sessionCount; j++) // TODO: maybe use instead sorted session array?
+		{
+			if (streamSession != sessionBuffer[j])
+				continue;
+			for (size_t k = j + 1; k < sessionCount; k++)
+				sessionBuffer[k - 1] = sessionBuffer[k];
+			isFound = true;
+			break;
+		}
+
+		if (!isFound)
+			abort(); // Note: Memory corruption detected!
+		destroyStreamSession(streamSession);
+	}
+
+	streamServer->sessionCount -= disconnectCount;
+	streamServer->disconnectCount = 0;
 }
+
+//**********************************************************************************************************************
 inline static void processStreamSession(StreamServer streamServer, StreamSession streamSession)
 {
 	Socket receiveSocket = streamSession->receiveSocket;
+	if (!receiveSocket) // Note: stream session is disconnected.
+		return;
+
 	double lastUpdateTime = streamSession->lastUpdateTime;
 	double currentTime = getCurrentClock();
 
-	if (lastUpdateTime < 0.0)
+	#if NETS_SUPPORT_OPENSSL
+	if (lastUpdateTime < 0.0) // Note: we should first establish SSL connection.
 	{
 		if (lastUpdateTime + currentTime > streamServer->timeoutTime)
 		{
@@ -147,6 +204,7 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 		streamSession->lastUpdateTime = currentTime;
 	}
 	else
+	#endif
 	{
 		if (currentTime - lastUpdateTime > streamServer->timeoutTime)
 		{
@@ -160,27 +218,32 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 	size_t receiveBufferSize = streamServer->receiveBufferSize;
 	size_t byteCount;
 
-	while (true)
+	while (streamServer->isRunning)
 	{
 		NetsResult netsResult = socketReceive(receiveSocket, receiveBuffer, receiveBufferSize, &byteCount);
-		if (netsResult != IN_PROGRESS_NETS_RESULT)
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
+		{
+			streamSession->lastUpdateTime = currentTime;
+			return;
+		}
+		if (netsResult != SUCCESS_NETS_RESULT)
 		{
 			disconnectStreamSession(streamServer, streamSession, netsResult);
 			return;
 		}
+		if (byteCount == 0)
+		{
+			disconnectStreamSession(streamServer, streamSession, CONNECTION_IS_CLOSED_NETS_RESULT);
+			return;
+		}
 
 		netsResult = onReceive(streamServer, streamSession, receiveBuffer, byteCount);
-
-		if (byteCount == 0)
-			netsResult = CONNECTION_IS_CLOSED_NETS_RESULT;
 		if (netsResult != SUCCESS_NETS_RESULT)
 		{
 			disconnectStreamSession(streamServer, streamSession, netsResult);
 			return;
 		}
 	}
-
-	streamSession->lastUpdateTime = currentTime;
 }
 
 //**********************************************************************************************************************
@@ -189,22 +252,26 @@ inline static void streamServerReceive(void* argument)
 	setThreadName("RECV");
 	setThreadForegroundPriority();
 
-	#if __linux__ || __APPLE__
-	disableSigpipe();
-	#endif
-
 	StreamServer streamServer = (StreamServer)argument;
 	Socket serverSocket = streamServer->acceptSocket;
-	EVENT_POOL eventPool = streamServer->eventPool;
-	bool useSsl = getSocketSslContext(serverSocket) != NULL;
+	Socket acceptedSocket; StreamSession streamSession;
 
+	#if NETS_SUPPORT_OPENSSL
+	bool useSsl = getSocketSslContext(serverSocket) != NULL;
+	#else
+	const bool useSsl = false;
+	#endif
+
+	#if __linux__ || __APPLE__
+	disableSigpipe();
+
+	int eventPool = streamServer->eventPool;
 	#if __linux__
 	struct epoll_event event, events[64];
 	#elif __APPLE__
 	struct kevent event, events[64],
 	#endif
 
-	Socket acceptedSocket; StreamSession streamSession;
 	while (streamServer->isRunning)
 	{
 		#if __linux__
@@ -234,32 +301,33 @@ inline static void streamServerReceive(void* argument)
 					NetsResult netsResult = acceptSocket(serverSocket, &acceptedSocket);
 					if (netsResult == IN_PROGRESS_NETS_RESULT)
 						break;
-
-					if (netsResult != SUCCESS_NETS_RESULT || !acceptStreamSession(
-						streamServer, acceptedSocket, &streamSession, useSsl))
-					{
+					if (netsResult != SUCCESS_NETS_RESULT)
 						continue;
-					}
-
-					if (!streamSession)
+					if (!acceptStreamSession(streamServer, acceptedSocket, &streamSession, useSsl))
 						continue;
 
 					int socketHandle = (int)(size_t)getSocketHandle(acceptedSocket);
+
 					#if __linux__
 					event.events = EPOLLIN | EPOLLET;
 					event.data.ptr = streamSession;
 					int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event);
 					#elif __APPLE__
 					EV_SET(event, socketHandle, EVFILT_READ, EV_ADD, 0, 0, streamSession);
-					int eventResult = kevent(kq, event, 1, NULL, 0, NULL);
+					int eventResult = kevent(eventPool, event, 1, NULL, 0, NULL);
 					#endif
 
 					if (eventResult == -1)
 					{
-						streamServer->isRunning = false;
-						return;
+						disconnectStreamSession(streamServer, streamSession, OUT_OF_MEMORY_NETS_RESULT);
+						continue;
 					}
 				}
+			}
+			else if (eventData == NULL)
+			{
+				streamServer->isRunning = false;
+				return;
 			}
 			#if __APPLE__
 			else if (events[i].flags & EV_EOF)
@@ -272,7 +340,32 @@ inline static void streamServerReceive(void* argument)
 				processStreamSession(streamServer, (StreamSession)eventData);
 			}
 		}
+
+		disconnectStreamSessions(streamServer);
 	}
+	#elif _WIN32
+	while (streamServer->isRunning)
+	{
+		while (streamServer->isRunning)
+		{
+			NetsResult netsResult = acceptSocket(serverSocket, &acceptedSocket);
+			if (netsResult == IN_PROGRESS_NETS_RESULT)
+				break;
+			if (netsResult != SUCCESS_NETS_RESULT)
+				continue;
+			if (!acceptStreamSession(streamServer, acceptedSocket, &streamSession, useSsl))
+				continue;
+		}
+		
+		StreamSession* sessionBuffer = streamServer->sessionBuffer;
+		size_t sessionCount = streamServer->sessionCount;
+		for (size_t i = 0; i < sessionCount; i++)
+			processStreamSession(streamServer, sessionBuffer[i]);
+
+		disconnectStreamSessions(streamServer);
+		sleepThread(0.001f); // TODO: suboptimal, use IOCP or RIO instead on Windows.
+	}
+	#endif
 }
 
 //**********************************************************************************************************************
@@ -323,6 +416,16 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 	streamServerInstance->sessionBuffer = sessionBuffer;
 	streamServerInstance->sessionCount = 0;
 
+	StreamSession* disconnectBuffer = malloc(sessionBufferSize * sizeof(StreamSession));
+	if (!disconnectBuffer)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+
+	streamServerInstance->disconnectBuffer = disconnectBuffer;
+	streamServerInstance->disconnectCount = 0;
+
 	SocketAddress socketAddress;
 	NetsResult netsResult = createSocketAddress(socketFamily == IP_V4_SOCKET_FAMILY ?
 		ANY_IP_ADDRESS_V4 : ANY_IP_ADDRESS_V6, service, &socketAddress);
@@ -353,30 +456,44 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 	}
 
 	#if __linux__
-	EVENT_POOL eventPool = epoll_create1(0);
+	int eventPool = epoll_create1(0);
+	int wakeupEvent = eventfd(0, EFD_NONBLOCK);
 	#elif __APPLE__
-	EVENT_POOL eventPool = kqueue();
+	int eventPool = kqueue();
 	#endif
 
-	if (eventPool == -1)
+	streamServerInstance->eventPool = eventPool;
+	streamServerInstance->wakeupEvent = wakeupEvent;
+
+	if (eventPool == -1 || wakeupEvent == -1)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
-	streamServerInstance->eventPool = eventPool;
 
 	int socketHandle = (int)(size_t)getSocketHandle(acceptSocket);
+
 	#if __linux__
 	struct epoll_event event;
 	event.events = EPOLLIN;
+	event.data.ptr = NULL;
+
+	int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, wakeupEvent, &event);
+	if (eventResult == -1)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+
 	event.data.ptr = streamServerInstance;
-	int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event);
+	eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event);
 	#elif __APPLE__
-	struct kevent event;
-	EV_SET(&event, socketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, streamServerInstance);
-	int eventResult = kevent(eventPool, &event, 1, NULL, 0, NULL);
+	struct kevent events[2];
+	EV_SET(&events[0], 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, NULL);
+	EV_SET(&events[1], socketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, streamServerInstance);
+	int eventResult = kevent(eventPool, events, 2, NULL, 0, NULL);
 	#elif _WIN32
-	abort(); // TODO:
+	// TODO: implement.
 	#endif
 
 	if (eventResult == -1)
@@ -402,14 +519,24 @@ void destroyStreamServer(StreamServer streamServer)
 	if (!streamServer)
 		return;
 
-	if (streamServer->acceptSocket)
-	{
-		// TODO: wakeup epoll_wait.
-	}
-
 	if (streamServer->receiveThread)
 	{
 		streamServer->isRunning = false;
+
+		#if __linux__ || __APPLE__
+		if (streamServer->wakeupEvent > 0)
+		{
+			#if __linux__
+			uint64_t wakeupData = 1;
+			write(streamServer->wakeupEvent, &wakeupData, sizeof(uint64_t));
+			#elif __APPLE__
+			struct kevent event;
+			EV_SET(&event, 1, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
+			kevent(streamServer->eventPool, &event, 1, NULL, 0, NULL);
+			#endif
+		}
+		#endif
+
 		joinThread(streamServer->receiveThread);
 		destroyThread(streamServer->receiveThread);
 	}
@@ -429,15 +556,18 @@ void destroyStreamServer(StreamServer streamServer)
 		free(streamSession);
 	}
 
-	if (streamServer->eventPool)
-	{
-		#if __linux__ || __APPLE__
+	#if __linux__
+	if (streamServer->wakeupEvent > 0)
+		close(streamServer->wakeupEvent);
+	#endif
+	#if __linux__ || __APPLE__
+	if (streamServer->eventPool > 0)
 		close(streamServer->eventPool);
-		#endif
-	}
+	#endif
 
 	destroySocket(streamServer->acceptSocket);
 	free(streamServer->receiveBuffer);
+	free(streamServer->disconnectBuffer);
 	free(sessionBuffer);
 	free(streamServer);
 }

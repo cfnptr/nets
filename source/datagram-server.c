@@ -78,9 +78,9 @@ void destroyDatagramServer(DatagramServer datagramServer)
 	if (!datagramServer)
 		return;
 
-	Socket socket = datagramServer->socket;
-	if (socket)
+	if (datagramServer->socket)
 	{
+		Socket socket = datagramServer->socket;
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
 	}
