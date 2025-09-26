@@ -1435,7 +1435,7 @@ SslProtocol getSslContextProtocol(SslContext sslContext)
 
 NetsResult sHandleStreamMessage(const uint8_t* receiveBuffer, size_t byteCount, 
 	uint8_t* messageBuffer, size_t messageBufferSize, size_t* messageByteCount, uint8_t messageLengthSize, 
-	NetsResult(*receiveFunction)(const uint8_t*, size_t, void*), void* functionHandle)
+	NetsResult(*receiveFunction)(StreamMessage, void*), void* functionHandle)
 {
 	return handleStreamMessage(receiveBuffer, byteCount, messageBuffer, messageBufferSize, 
 		messageByteCount, messageLengthSize, receiveFunction, functionHandle);

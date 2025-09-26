@@ -24,6 +24,7 @@
 #pragma once
 #include "nets/defines.h"
 
+#include <limits.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -510,15 +511,15 @@ SslProtocol getSslContextProtocol(SslContext sslContext);
  * @param[in] receiveBuffer received message buffer
  * @param byteCount message received byte count
  * @param[in,out] messageBuffer intermediate message buffer
- * @param messageBufferSize intermediate message buffer size
+ * @param messageBufferSize intermediate message buffer size in bytes (including messageLengthSize)
  * @param[in,out] messageByteCount pointer to the message buffer byte count
- * @param messageLengthSize message length header size
+ * @param messageLengthSize message length header size in bytes (1, 2, 4 or 8)
  * @param[in] receiveFunction pointer to the receive function
  * @param[in] functionHandle receive function handle or NULL
  */
 inline static NetsResult handleStreamMessage(const uint8_t* receiveBuffer, size_t byteCount, 
 	uint8_t* messageBuffer, size_t messageBufferSize, size_t* messageByteCount, uint8_t messageLengthSize, 
-	NetsResult(*receiveFunction)(const uint8_t*, size_t, void*), void* functionHandle)
+	NetsResult(*receiveFunction)(StreamMessage, void*), void* functionHandle)
 {
 	assert(receiveBuffer);
 	assert(messageBuffer);
@@ -531,6 +532,9 @@ inline static NetsResult handleStreamMessage(const uint8_t* receiveBuffer, size_
 
 	if (byteCount == 0) // Check instead of assert for safety
 		return CONNECTION_IS_CLOSED_NETS_RESULT;
+
+	StreamMessage streamMessage;
+	streamMessage.offset = 0;
 
 	size_t _messageByteCount = *messageByteCount;
 	size_t pointer = 0;
@@ -554,7 +558,6 @@ inline static NetsResult handleStreamMessage(const uint8_t* receiveBuffer, size_
 			_messageByteCount += messageSizePart;
 		}
 
-		
 		uint64_t messageSize; // Decode received message size
 		if (messageLengthSize == sizeof(uint8_t))
 		{
@@ -593,17 +596,16 @@ inline static NetsResult handleStreamMessage(const uint8_t* receiveBuffer, size_
 		if (neededPartSize > byteCount - pointer) 
 		{
 			size_t messagePartSize = byteCount - pointer;
-			memcpy(messageBuffer + _messageByteCount,
-				receiveBuffer + pointer, messagePartSize * sizeof(uint8_t));
+			memcpy(messageBuffer + _messageByteCount, receiveBuffer + pointer, messagePartSize * sizeof(uint8_t));
 			*messageByteCount = _messageByteCount + messagePartSize;
 			return SUCCESS_NETS_RESULT; // Received not full message
 		}
 
-		memcpy(messageBuffer + _messageByteCount,
-			receiveBuffer + pointer, neededPartSize * sizeof(uint8_t));
-
-		NetsResult netsResult = receiveFunction(messageBuffer + 
-			messageLengthSize, messageSize, functionHandle);
+		memcpy(messageBuffer + _messageByteCount, receiveBuffer + pointer, neededPartSize * sizeof(uint8_t));
+		streamMessage.buffer = messageBuffer + messageLengthSize;
+		streamMessage.size = messageSize;
+		
+		NetsResult netsResult = receiveFunction(streamMessage, functionHandle);
 		if (netsResult != SUCCESS_NETS_RESULT)
 			return netsResult;
 
@@ -611,15 +613,12 @@ inline static NetsResult handleStreamMessage(const uint8_t* receiveBuffer, size_
 		pointer += neededPartSize;
 	}
 
-	
 	while (pointer < byteCount) // Continue until all received data handled
 	{
 		if (messageLengthSize > byteCount - pointer)
 		{
 			size_t messageSizePart = byteCount - pointer;
-
-			memcpy(messageBuffer, receiveBuffer + pointer,
-				messageSizePart * sizeof(uint8_t));
+			memcpy(messageBuffer, receiveBuffer + pointer, messageSizePart * sizeof(uint8_t));
 			*messageByteCount += messageSizePart;
 			return SUCCESS_NETS_RESULT; // Received not full message size
 		}
@@ -661,19 +660,17 @@ inline static NetsResult handleStreamMessage(const uint8_t* receiveBuffer, size_
 		if (messageSize > (byteCount - pointer) - messageLengthSize)
 		{
 			size_t messagePartSize = byteCount - pointer;
-
-			memcpy(messageBuffer, receiveBuffer + pointer,
-				messagePartSize * sizeof(uint8_t));
+			memcpy(messageBuffer, receiveBuffer + pointer, messagePartSize * sizeof(uint8_t));
 			*messageByteCount += messagePartSize;
 			return SUCCESS_NETS_RESULT; // Received not full message
 		}
 
-		// Handle received message data
-		NetsResult netsResult = receiveFunction(receiveBuffer + pointer + 
-			messageLengthSize, messageSize, functionHandle);
+		streamMessage.buffer = receiveBuffer + (pointer + messageLengthSize);
+		streamMessage.size = messageSize;
+
+		NetsResult netsResult = receiveFunction(streamMessage, functionHandle);
 		if (netsResult != SUCCESS_NETS_RESULT)
 			return netsResult;
-
 		pointer += messageLengthSize + messageSize;
 	}
 
@@ -683,4 +680,4 @@ inline static NetsResult handleStreamMessage(const uint8_t* receiveBuffer, size_
 // For library symbols
 NetsResult sHandleStreamMessage(const uint8_t* receiveBuffer, size_t byteCount, uint8_t* messageBuffer,
 	size_t messageBufferSize, size_t* messageByteCount, uint8_t messageLengthSize,
-	NetsResult(*receiveFunction)(const uint8_t*, size_t, void*), void* functionHandle);
+	NetsResult(*receiveFunction)(StreamMessage, void*), void* functionHandle);

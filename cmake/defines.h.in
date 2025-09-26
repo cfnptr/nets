@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #define __NETS__
 
@@ -147,7 +148,7 @@ inline static const char* netsResultToString(NetsResult result)
  */
 typedef struct StreamMessage
 {
-	uint8_t* buffer;
+	const uint8_t* buffer;
 	size_t size;
 	size_t offset;
 } StreamMessage;
@@ -210,4 +211,22 @@ inline static StreamMessage createStreamMessage(uint8_t* buffer, size_t messageS
 	else abort();
 
 	return streamMessage;
+}
+
+/**
+ * @brief Reads data from the stream message.
+ * @return True if no more data to read, otherwise false.
+ *
+ * @param[in,out] streamMessage target stream message
+ * @param[out] data pointer to the message data
+ * @param size message byte count to read
+ */
+inline static bool readStreamMessage(StreamMessage* streamMessage, const uint8_t** data, size_t size)
+{
+	if (streamMessage->offset + size > streamMessage->size)
+		return true;
+
+	*data = streamMessage->buffer + streamMessage->offset;
+	streamMessage->offset += size;
+	return false;
 }

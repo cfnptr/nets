@@ -153,7 +153,7 @@ public:
 	 * @param[in] receiveBuffer received data buffer
 	 * @param byteCount received byte count
 	 */
-	virtual NetsResult onSessionReceive(StreamSessionView streamSession, const uint8_t* receiveBuffer, size_t byteCount);
+	virtual NetsResult onStreamReceive(StreamSessionView streamSession, const uint8_t* receiveBuffer, size_t byteCount);
 
 	/*******************************************************************************************************************
 	 * @brief Returns stream server handle instance.
@@ -201,7 +201,7 @@ inline static NetsResult _onStreamSessionReceive(StreamServer_T* streamServer,
 	StreamSession_T* streamSession, const uint8_t* receiveBuffer, size_t byteCount)
 {
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
-	return server->onSessionReceive(StreamSessionView(streamSession), receiveBuffer, byteCount);
+	return server->onStreamReceive(StreamSessionView(streamSession), receiveBuffer, byteCount);
 }
 
 } // nets

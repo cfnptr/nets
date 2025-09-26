@@ -65,9 +65,9 @@ void destroyStreamClient(StreamClient streamClient)
 	if (!streamClient)
 		return;
 
-	Socket socket = streamClient->socket;
-	if (socket)
+	if (streamClient->socket)
 	{
+		Socket socket = streamClient->socket;
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
 	}
@@ -334,9 +334,9 @@ void disconnectStreamClient(StreamClient streamClient)
 {
 	assert(streamClient);
 
-	Socket socket = streamClient->socket;
-	if (socket)
+	if (streamClient->socket)
 	{
+		Socket socket = streamClient->socket;
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
 		streamClient->socket = NULL;

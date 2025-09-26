@@ -313,8 +313,8 @@ inline static void streamServerReceive(void* argument)
 					event.data.ptr = streamSession;
 					int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event);
 					#elif __APPLE__
-					EV_SET(event, socketHandle, EVFILT_READ, EV_ADD, 0, 0, streamSession);
-					int eventResult = kevent(eventPool, event, 1, NULL, 0, NULL);
+					EV_SET(&event, socketHandle, EVFILT_READ, EV_ADD, 0, 0, streamSession);
+					int eventResult = kevent(eventPool, &event, 1, NULL, 0, NULL);
 					#endif
 
 					if (eventResult == -1)
@@ -456,20 +456,25 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 	}
 
 	#if __linux__
-	int eventPool = epoll_create1(0);
 	int wakeupEvent = eventfd(0, EFD_NONBLOCK);
-	#elif __APPLE__
-	int eventPool = kqueue();
-	#endif
-
-	streamServerInstance->eventPool = eventPool;
-	streamServerInstance->wakeupEvent = wakeupEvent;
-
-	if (eventPool == -1 || wakeupEvent == -1)
+	if (wakeupEvent == -1)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
+	streamServerInstance->wakeupEvent = wakeupEvent;
+
+	int eventPool = epoll_create1(0);
+	#elif __APPLE__
+	int eventPool = kqueue();
+	#endif
+
+	if (eventPool == -1)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	streamServerInstance->eventPool = eventPool;
 
 	int socketHandle = (int)(size_t)getSocketHandle(acceptSocket);
 
@@ -528,7 +533,8 @@ void destroyStreamServer(StreamServer streamServer)
 		{
 			#if __linux__
 			uint64_t wakeupData = 1;
-			write(streamServer->wakeupEvent, &wakeupData, sizeof(uint64_t));
+			ssize_t result = write(streamServer->wakeupEvent, &wakeupData, sizeof(uint64_t));
+			assert(result == sizeof(uint64_t));
 			#elif __APPLE__
 			struct kevent event;
 			EV_SET(&event, 1, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
