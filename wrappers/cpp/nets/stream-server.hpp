@@ -103,7 +103,7 @@ public:
 	 *
 	 * @param socketFamily local socket IP address family
 	 * @param[in] service local IP address service string (port)
-	 * @param sessionBufferSize session buffer size
+	 * @param sessionBufferSize maximum stream session count
 	 * @param connectionQueueSize pending connections queue size
 	 * @param receiveBufferSize receive data buffer size in bytes
 	 * @param timeoutTime session timeout time in seconds
@@ -112,7 +112,7 @@ public:
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
 	IStreamServer(SocketFamily socketFamily, const char* service, size_t sessionBufferSize = 512, 
-		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX, double timeoutTime = 5.0, 
+		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 1, double timeoutTime = 5.0, 
 		SslContextView sslContext = SslContextView(nullptr))
 	{
 		auto result = createStreamServer(socketFamily, service, sessionBufferSize, connectionQueueSize, 
@@ -153,7 +153,8 @@ public:
 	 * @param[in] receiveBuffer received data buffer
 	 * @param byteCount received byte count
 	 */
-	virtual NetsResult onStreamReceive(StreamSessionView streamSession, const uint8_t* receiveBuffer, size_t byteCount);
+	virtual NetsResult onStreamReceive(StreamSessionView streamSession, 
+		const uint8_t* receiveBuffer, size_t byteCount) = 0;
 
 	/*******************************************************************************************************************
 	 * @brief Returns stream server handle instance.
@@ -184,6 +185,11 @@ public:
 	 * @details See the @ref getStreamServerSocket().
 	 */
 	SocketView getSocket() const noexcept { return SocketView(getStreamServerSocket(instance)); }
+	/**
+	 * @brief Returns true if stream server is running.
+	 * @details See the @ref getStreamServerSocket().
+	 */
+	bool isRunning() const noexcept { return isStreamServerRunning(instance); }
 };
 
 inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession, void** handle)

@@ -269,7 +269,7 @@ inline static void streamServerReceive(void* argument)
 	#if __linux__
 	struct epoll_event event, events[64];
 	#elif __APPLE__
-	struct kevent event, events[64],
+	struct kevent event, events[64];
 	#endif
 
 	while (streamServer->isRunning)
@@ -376,6 +376,7 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 {
 	assert(socketFamily < SOCKET_FAMILY_COUNT);
 	assert(service);
+	assert(strlen(service) > 0);
 	assert(sessionBufferSize > 0);
 	assert(connectionQueueSize > 0);
 	assert(receiveBufferSize > 0);
@@ -623,6 +624,11 @@ Socket getStreamServerSocket(StreamServer streamServer)
 {
 	assert(streamServer);
 	return streamServer->acceptSocket;
+}
+bool isStreamServerRunning(StreamServer streamServer)
+{
+	assert(streamServer);
+	return streamServer->isRunning;
 }
 Socket getStreamSessionSocket(StreamSession streamSession)
 {

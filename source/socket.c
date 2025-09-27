@@ -692,6 +692,9 @@ NetsResult connectSslSocket(Socket socket, const char* hostname)
 
 	if (hostname)
 	{
+		assert(strlen(hostname) > 0);
+		assert(strlen(hostname) <= UINT8_MAX);
+
 		int result = SSL_set_tlsext_host_name(socket->ssl, hostname);
 		if (result != 1)
 			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
@@ -854,7 +857,9 @@ NetsResult socketSendTo(Socket socket, const void* sendBuffer, size_t byteCount,
 NetsResult createSocketAddress(const char* host, const char* service, SocketAddress* socketAddress)
 {
 	assert(host);
+	assert(strlen(host) > 0);
 	assert(service);
+	assert(strlen(service) > 0);
 	assert(socketAddress);
 
 	if (!networkInitialized)
@@ -916,7 +921,9 @@ NetsResult resolveSocketAddresses(const char* host, const char* service, SocketF
 	SocketType type, SocketAddress** socketAddresses, size_t* addressCount)
 {
 	assert(host);
+	assert(strlen(host) > 0);
 	assert(service);
+	assert(strlen(service) > 0);
 	assert(family < SOCKET_FAMILY_COUNT);
 	assert(type < SOCKET_TYPE_COUNT);
 	assert(socketAddresses);
@@ -1313,9 +1320,15 @@ NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certifica
 
 	int result;
 	if (certificateFilePath || certificatesDirectory)
+	{
+		if (certificateFilePath)
+			assert(strlen(certificateFilePath) > 0);
 		result = SSL_CTX_load_verify_locations(handle, certificateFilePath, certificatesDirectory);
+	}
 	else
+	{
 		result = SSL_CTX_set_default_verify_paths(handle);
+	}
 
 	if (result != 1)
 	{
@@ -1337,7 +1350,9 @@ NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certific
 	#if NETS_SUPPORT_OPENSSL
 	assert(sslProtocol < SSL_PROTOCOL_COUNT);
 	assert(certificateFilePath);
+	assert(strlen(certificateFilePath) > 0);
 	assert(privateKeyFilePath);
+	assert(strlen(privateKeyFilePath) > 0);
 	assert(sslContext);
 
 	if (!networkInitialized)

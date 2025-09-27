@@ -130,6 +130,11 @@ uint8_t* getStreamServerReceiveBuffer(StreamServer streamServer);
  */
 Socket getStreamServerSocket(StreamServer streamServer);
 /**
+ * @brief Returns true if stream server is running.
+ * @param streamServer target stream server instance
+ */
+bool isStreamServerRunning(StreamServer streamServer);
+/**
  * @brief Returns stream session socket instance.
  * @param streamSession target stream session instance
  */

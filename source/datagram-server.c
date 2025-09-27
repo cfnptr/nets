@@ -30,6 +30,7 @@ NetsResult createDatagramServer(SocketFamily socketFamily, const char* service, 
 {
 	assert(socketFamily < SOCKET_FAMILY_COUNT);
 	assert(service);
+	assert(strlen(service) > 0);
 	assert(bufferSize > 0);
 	assert(onReceive);
 	assert(datagramServer);
