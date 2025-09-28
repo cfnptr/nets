@@ -104,15 +104,6 @@ bool isNetworkInitialized()
 	return networkInitialized;
 }
 
-void disableSigpipe()
-{
-	#if __linux__ || __APPLE__
-	signal(SIGPIPE, SIG_IGN);
-	#elif _WIN32
-	abort(); // Note: not supported on Windows.
-	#endif
-}
-
 //**********************************************************************************************************************
 inline static NetsResult errorToNetsResult(int error)
 {
@@ -788,7 +779,13 @@ NetsResult socketSend(Socket socket, const void* sendBuffer, size_t byteCount)
 	}
 	#endif
 
-	int64_t result = send(socket->handle, (const char*)sendBuffer, (int)byteCount, 0);
+	#if __linux__ || __APPLE__
+	const int flags = MSG_NOSIGNAL;
+	#else
+	const int flags = 0;
+	#endif
+
+	int64_t result = send(socket->handle, (const char*)sendBuffer, (int)byteCount, flags);
 	if (result < 0)
 		return lastErrorToNetsResult();
 	if (result != byteCount)
@@ -844,8 +841,14 @@ NetsResult socketSendTo(Socket socket, const void* sendBuffer, size_t byteCount,
 		length = sizeof(struct sockaddr_in6);
 	else abort();
 
+	#if __linux__ || __APPLE__
+	const int flags = MSG_NOSIGNAL;
+	#else
+	const int flags = 0;
+	#endif
+
 	int64_t result = sendto(socket->handle, (const char*)sendBuffer, (int)byteCount, 
-		0, (const struct sockaddr*)&remoteAddress->handle, length);
+		flags, (const struct sockaddr*)&remoteAddress->handle, length);
 	if (result < 0)
 		return lastErrorToNetsResult();
 	if (result != byteCount)

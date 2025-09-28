@@ -58,10 +58,6 @@ static void onServerReceive(DatagramServer server, SocketAddress address, const 
 }
 static void serverHandler(void* argument)
 {
-	#if __linux__ || __APPLE__
-	disableSigpipe();
-	#endif
-
 	Server* server = (Server*)argument;
 	while (server->isRunning)
 	{
@@ -131,10 +127,6 @@ static void onClientReceive(DatagramClient client, const uint8_t* buffer, size_t
 }
 static void clientHandler(void* argument)
 {
-	#if __linux__ || __APPLE__
-	disableSigpipe();
-	#endif
-
 	Client* client = (Client*)argument;
 	while (client->isRunning)
 	{

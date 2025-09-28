@@ -108,11 +108,6 @@ void terminateNetwork();
 bool isNetworkInitialized();
 
 /**
- * @brief Disables SIGPIPE signal generation. (Linux only)
- */
-void disableSigpipe();
-
-/**
  * @brief Creates a new network socket instance.
  * @details Creates, initializes, and binds a new endpoint for network communication.
  * 

@@ -15,9 +15,9 @@
 #include "nets/stream-server.h"
 #include "mpmt/thread.h"
 #include "mpio/os.h"
+#include <unistd.h>
 
 #if __linux__
-#include <unistd.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #elif __APPLE__
@@ -263,8 +263,6 @@ inline static void streamServerReceive(void* argument)
 	#endif
 
 	#if __linux__ || __APPLE__
-	disableSigpipe();
-
 	int eventPool = streamServer->eventPool;
 	#if __linux__
 	struct epoll_event event, events[64];
@@ -529,19 +527,14 @@ void destroyStreamServer(StreamServer streamServer)
 	{
 		streamServer->isRunning = false;
 
-		#if __linux__ || __APPLE__
-		if (streamServer->wakeupEvent > 0)
-		{
-			#if __linux__
-			uint64_t wakeupData = 1;
-			ssize_t result = write(streamServer->wakeupEvent, &wakeupData, sizeof(uint64_t));
-			assert(result == sizeof(uint64_t));
-			#elif __APPLE__
-			struct kevent event;
-			EV_SET(&event, 1, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
-			kevent(streamServer->eventPool, &event, 1, NULL, 0, NULL);
-			#endif
-		}
+		#if __linux__
+		uint64_t wakeupData = 1;
+		ssize_t result = write(streamServer->wakeupEvent, &wakeupData, sizeof(uint64_t));
+		assert(result == sizeof(uint64_t));
+		#elif __APPLE__
+		struct kevent event;
+		EV_SET(&event, 1, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
+		kevent(streamServer->eventPool, &event, 1, NULL, 0, NULL);
 		#endif
 
 		joinThread(streamServer->receiveThread);
