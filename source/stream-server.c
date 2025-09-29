@@ -469,12 +469,14 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 	int eventPool = kqueue();
 	#endif
 
+	#if __linux__ || __APPLE__
 	if (eventPool == -1)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
 	streamServerInstance->eventPool = eventPool;
+	#endif
 
 	int socketHandle = (int)(size_t)getSocketHandle(acceptSocket);
 
@@ -501,11 +503,13 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 	// TODO: implement.
 	#endif
 
+	#if __linux__ || __APPLE__
 	if (eventResult == -1)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
+	#endif
 
 	streamServerInstance->isRunning = true;
 	Thread receiveThread = createThread(streamServerReceive, streamServerInstance);
