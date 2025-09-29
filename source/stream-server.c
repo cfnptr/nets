@@ -15,12 +15,13 @@
 #include "nets/stream-server.h"
 #include "mpmt/thread.h"
 #include "mpio/os.h"
-#include <unistd.h>
 
 #if __linux__
+#include <unistd.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #elif __APPLE__
+#include <unistd.h>
 #include <sys/event.h>
 #elif _WIN32
 #else
@@ -125,7 +126,7 @@ inline static bool acceptStreamSession(StreamServer streamServer,
 }
 
 //**********************************************************************************************************************
-inline static void disconnectStreamSession(StreamServer streamServer, StreamSession streamSession, NetsResult reason)
+inline static void disconnectStreamSession(StreamServer streamServer, StreamSession streamSession, int reason)
 {
 	if (!streamSession->receiveSocket) // Note: stream session is already disconnected.
 		return;
@@ -237,10 +238,10 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 			return;
 		}
 
-		netsResult = onReceive(streamServer, streamSession, receiveBuffer, byteCount);
-		if (netsResult != SUCCESS_NETS_RESULT)
+		int result = onReceive(streamServer, streamSession, receiveBuffer, byteCount);
+		if (result != SUCCESS_NETS_RESULT)
 		{
-			disconnectStreamSession(streamServer, streamSession, netsResult);
+			disconnectStreamSession(streamServer, streamSession, result);
 			return;
 		}
 	}
@@ -322,7 +323,7 @@ inline static void streamServerReceive(void* argument)
 					}
 				}
 			}
-			else if (eventData == NULL)
+			else if (eventData == NULL) // Note: server has been stoped.
 			{
 				streamServer->isRunning = false;
 				return;
@@ -623,6 +624,11 @@ bool isStreamServerRunning(StreamServer streamServer)
 	assert(streamServer);
 	return streamServer->isRunning;
 }
+bool isStreamServerSecure(StreamServer streamServer)
+{
+	assert(streamServer);
+	return getSocketSslContext(streamServer->acceptSocket) != NULL;
+}
 Socket getStreamSessionSocket(StreamSession streamSession)
 {
 	assert(streamSession);
@@ -648,7 +654,6 @@ NetsResult streamSessionSend(StreamSession streamSession, const void* sendBuffer
 NetsResult streamSessionSendMessage(StreamSession streamSession, StreamMessage streamMessage)
 {
 	assert(streamSession);
-	assert(streamMessage.size > 0);
-	assert(streamMessage.size == streamMessage.offset);
+	assert(validateStreamMessage(streamMessage));
 	return socketSend(streamSession->receiveSocket, streamMessage.buffer, streamMessage.size);
 }

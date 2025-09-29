@@ -21,6 +21,7 @@
 #pragma once
 #include "nets/error.hpp"
 #include <utility>
+#include <cstring>
 
 extern "C"
 {
@@ -43,7 +44,7 @@ public:
 	 * @brief Creates a new socket IP address view.
 	 * @param[in] instance target socket instance
 	 */
-	SocketAddressView(SocketAddress_T* instance) : instance(instance) { }
+	SocketAddressView(SocketAddress_T* instance) noexcept : instance(instance) { }
 	/**
 	 * @brief Destroys socket IP address instance.
 	 * @details See the @ref destroySocketAddress().
@@ -54,7 +55,7 @@ public:
 		instance = nullptr;
 	}
 
-	/**
+	/*******************************************************************************************************************
 	 * @brief Returns socket IP address view instance.
 	 */
 	SocketAddress_T* getInstance() const noexcept { return instance; }
@@ -69,7 +70,7 @@ public:
 	 */
 	size_t getIpSize() const noexcept { return getSocketAddressIpSize(instance); }
 
-	/*******************************************************************************************************************
+	/**
 	 * @brief Returns socket IP address byte array.
 	 * @details See the @ref getSocketAddressIP().
 	 */
@@ -93,45 +94,84 @@ public:
 	 */
 	void setPort(uint16_t port) noexcept { setSocketAddressPort(instance, port); }
 
-	/**
-	 * @brief Resolves socket IP address host name. (Blocking call)
+	/*******************************************************************************************************************
+	 * @brief Returns socket IP address numeric host name.
 	 * @details See the @ref getSocketAddressHost().
-	 * @warning This may be a slow running operation!
 	 * @return True on success, otherwise false.
 	 *
 	 * @param[out] host pointer to the host name string
-	 * @param length host name string length
+	 * @param length host name string length (including null terminator)
 	 */
-	bool getHost(char* host, size_t length) noexcept { return getSocketAddressHost(instance, host, length); }
+	void getHost(char* host, size_t length) noexcept { getSocketAddressHost(instance, host, length); }
 	/**
-	 * @brief Resolves socket IP address service name. (Blocking call)
-	 * @details See the @ref getSocketAddressService().
-	 * @warning This may be a slow running operation!
+	 * @brief Returns socket IP address numeric host name.
+	 * @details See the @ref getSocketAddressHost().
 	 * @return True on success, otherwise false.
-	 *
-	 * @param[out] service pointer to the service name string
-	 * @param length service name string length
+	 * @param[out] host target host name string
 	 */
-	bool getService(char* service, size_t length) noexcept { return getSocketAddressService(instance, service, length); }
-	/**
-	 * @brief Resolves socket IP address host and service name. (Blocking call!)
-	 * @details See the @ref getSocketAddressHostService().
-	 * @warning This may be a slow running operation!
-	 * @return True on success, otherwise false.
-	 *
-	 * @param[out] host pointer to the host name string
-	 * @param hostLength host name string length
-	 * @param[out] service pointer to the service name string
-	 * @param serviceLength service name string length
-	 */
-	bool getHostService(char* host, size_t hostLength, char* service, size_t serviceLength) noexcept
+	void getHost(std::string& host)
 	{
-		return getSocketAddressHostService(instance, host, hostLength, service, serviceLength);
+		host.resize(MAX_NUMERIC_HOST_LENGTH);
+		getSocketAddressHost(instance, host.data(), MAX_NUMERIC_HOST_LENGTH);
+		host.resize(strlen(host.c_str()));
+	}
+
+	/**
+	 * @brief Returns socket IP address numeric service name.
+	 * @details See the @ref getSocketAddressService().
+	 * @return True on success, otherwise false.
+	 *
+	 * @param[out] service pointer to the service name string
+	 * @param length service name string length (including null terminator)
+	 */
+	void getService(char* service, size_t length) noexcept { getSocketAddressService(instance, service, length); }
+	/**
+	 * @brief Returns socket IP address numeric service name.
+	 * @details See the @ref getSocketAddressService().
+	 * @return True on success, otherwise false.
+	 * @param[out] service target service name string
+	 */
+	void getService(std::string& service)
+	{
+		service.resize(MAX_NUMERIC_SERVICE_LENGTH);
+		getSocketAddressService(instance, service.data(), MAX_NUMERIC_SERVICE_LENGTH);
+		service.resize(strlen(service.c_str()));
+	}
+
+	/**
+	 * @brief Returns socket IP address numeric host and service name.
+	 * @details See the @ref getSocketAddressHostService().
+	 * @return True on success, otherwise false.
+	 *
+	 * @param[out] host pointer to the host name string
+	 * @param hostLength host name string length (including null terminator)
+	 * @param[out] service pointer to the service name string
+	 * @param serviceLength service name string length (including null terminator)
+	 */
+	void getHostService(char* host, size_t hostLength, char* service, size_t serviceLength) noexcept
+	{
+		getSocketAddressHostService(instance, host, hostLength, service, serviceLength);
+	}
+	/**
+	 * @brief Returns socket IP address numeric host and service name.
+	 * @details See the @ref getSocketAddressHostService().
+	 * @return True on success, otherwise false.
+	 *
+	 * @param[out] host target host name string
+	 * @param[out] service target service name string
+	 */
+	void getHostService(std::string& host, std::string& service)
+	{
+		host.resize(MAX_NUMERIC_HOST_LENGTH); service.resize(MAX_NUMERIC_SERVICE_LENGTH);
+		getSocketAddressHostService(instance, host.data(), MAX_NUMERIC_HOST_LENGTH, 
+			service.data(), MAX_NUMERIC_SERVICE_LENGTH);
+		host.resize(strlen(host.c_str())); service.resize(strlen(service.c_str()));
 	}
 
 	/*******************************************************************************************************************
-	 * @brief Resolves a new socket IP address array.
+	 * @brief Resolves a new socket IP address array. (Blocking call)
 	 * @details See the @ref resolveSocketAddresses().
+	 * @warning This may be a slow running operation!
 	 * @return The operation @ref NetsResult code.
 	 *
 	 * @param[in] host socket IP address host name string
@@ -261,7 +301,7 @@ public:
 	 * @brief Creates a new socket SSL context view.
 	 * @param[in] instance target socket instance
 	 */
-	SslContextView(SslContext_T* instance) : instance(instance) { }
+	SslContextView(SslContext_T* instance) noexcept : instance(instance) { }
 	/**
 	 * @brief Destroys socket SSL context instance.
 	 * @details See the @ref destroySslContext().
@@ -358,7 +398,7 @@ public:
 	 * @brief Creates a new network socket view.
 	 * @param[in] instance target socket instance
 	 */
-	SocketView(Socket_T* instance) : instance(instance) { }
+	SocketView(Socket_T* instance) noexcept : instance(instance) { }
 	/**
 	 * @brief Destroys network socket instance.
 	 * @details See the @ref destroySocket().

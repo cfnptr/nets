@@ -25,7 +25,6 @@
 #include "nets/defines.h"
 
 #include <limits.h>
-#include <string.h>
 #include <stdbool.h>
 
 #define ANY_IP_ADDRESS_V4 "0.0.0.0"        /**< Internet Protocol v4 any address. */
@@ -34,8 +33,8 @@
 #define LOOPBACK_IP_ADDRESS_V6 "::1"       /**< Internet protocol v6 loopback address. */
 #define LOCALHOST_HOSTNAME "localhost"     /**< Current computer IP address. */
 #define ANY_IP_ADDRESS_SERVICE "0"         /**< System-allocated, dynamic port. */
-#define MAX_NUMERIC_HOST_LENGTH 46         /**< Maximum numeric host string length. */
-#define MAX_NUMERIC_SERVICE_LENGTH 6       /**< Maximum numeric service string length. */
+#define MAX_NUMERIC_HOST_LENGTH 47         /**< Maximum numeric host string length. (Including null terminator) */
+#define MAX_NUMERIC_SERVICE_LENGTH 6       /**< Maximum numeric service string length. (Including null terminator) */
 #define IP_V4_SIZE 4                       /**< Internet Protocol v4 address size in bytes. */
 #define IP_V6_SIZE 16                      /**< Internet Protocol v6 address size in bytes. */
 
@@ -337,7 +336,7 @@ SocketAddress createSocketAddressCopy(SocketAddress socketAddress);
 void destroySocketAddress(SocketAddress socketAddress);
 
 /**
- * @brief Resolves a new socket IP address array.
+ * @brief Resolves a new socket IP address array. (Blocking call)
  * @return The operation @ref NetsResult code.
  *
  * @param[in] host socket IP address host name string
@@ -430,37 +429,34 @@ uint16_t getSocketAddressPort(SocketAddress socketAddress);
 void setSocketAddressPort(SocketAddress socketAddress, uint16_t port);
 
 /***********************************************************************************************************************
- * @brief Resolves socket IP address host name. (Blocking call)
- * @warning This may be a slow running operation!
- * @return True on success, otherwise false.
+ * @brief Returns socket IP address numeric host name.
+ * @return Numeric host name on success, otherwise empty string.
  *
  * @param socketAddress target socket address instance
  * @param[out] host pointer to the host name string
- * @param length host name string length
+ * @param length host name string length (including null terminator)
  */
-bool getSocketAddressHost(SocketAddress socketAddress, char* host, size_t length);
+void getSocketAddressHost(SocketAddress socketAddress, char* host, size_t length);
 /**
- * @brief Resolves socket IP address service name. (Blocking call)
- * @warning This may be a slow running operation!
- * @return True on success, otherwise false.
+ * @brief Returns socket IP address numeric service name.
+ * @return Numeric service name on success, otherwise empty string.
  *
  * @param socketAddress target socket address instance
  * @param[out] service pointer to the service name string
- * @param length service name string length
+ * @param length service name string length (including null terminator)
  */
-bool getSocketAddressService(SocketAddress socketAddress, char* service, size_t length);
+void getSocketAddressService(SocketAddress socketAddress, char* service, size_t length);
 /**
- * @brief Resolves socket IP address host and service name. (Blocking call!)
- * @warning This may be a slow running operation!
- * @return True on success, otherwise false.
+ * @brief Returns socket IP address numeric host and service name.
+ * @return Numeric host and service names on success, otherwise empty strings.
  *
  * @param socketAddress target socket address instance
  * @param[out] host pointer to the host name string
- * @param hostLength host name string length
+ * @param hostLength host name string length (including null terminator)
  * @param[out] service pointer to the service name string
- * @param serviceLength service name string length
+ * @param serviceLength service name string length (including null terminator)
  */
-bool getSocketAddressHostService(SocketAddress socketAddress, char* host, 
+void getSocketAddressHostService(SocketAddress socketAddress, char* host, 
 	size_t hostLength, char* service, size_t serviceLength);
 
 /**
@@ -498,181 +494,3 @@ void destroySslContext(SslContext sslContext);
  * @param sslContext target SSL context instance
  */
 SslProtocol getSslContextProtocol(SslContext sslContext);
-
-/***********************************************************************************************************************
- * @brief Splits received stream data to the messages.
- * @return The operation @ref NetsResult code.
- *
- * @param[in] receiveBuffer received message buffer
- * @param byteCount message received byte count
- * @param[in,out] messageBuffer intermediate message buffer
- * @param messageBufferSize intermediate message buffer size in bytes (including messageLengthSize)
- * @param[in,out] messageByteCount pointer to the message buffer byte count
- * @param messageLengthSize message length header size in bytes (1, 2, 4 or 8)
- * @param[in] receiveFunction pointer to the receive function
- * @param[in] functionHandle receive function handle or NULL
- */
-inline static NetsResult handleStreamMessage(const uint8_t* receiveBuffer, size_t byteCount, 
-	uint8_t* messageBuffer, size_t messageBufferSize, size_t* messageByteCount, uint8_t messageLengthSize, 
-	NetsResult(*receiveFunction)(StreamMessage, void*), void* functionHandle)
-{
-	assert(receiveBuffer);
-	assert(messageBuffer);
-	assert(messageBufferSize > 0);
-	assert(messageByteCount);
-
-	assert(messageLengthSize == sizeof(uint8_t) || messageLengthSize == sizeof(uint16_t) ||
-		messageLengthSize == sizeof(uint32_t) || messageLengthSize == sizeof(uint64_t));
-	assert(messageBufferSize >= messageLengthSize);
-
-	if (byteCount == 0) // Check instead of assert for safety
-		return CONNECTION_IS_CLOSED_NETS_RESULT;
-
-	StreamMessage streamMessage;
-	streamMessage.offset = 0;
-
-	size_t _messageByteCount = *messageByteCount;
-	size_t pointer = 0;
-	
-	if (_messageByteCount > 0) // Handle received data with buffered data
-	{
-		if (_messageByteCount < messageLengthSize) // Message buffer has not full size
-		{
-			size_t messageSizePart = (size_t)messageLengthSize - _messageByteCount;
-			if (messageSizePart > byteCount) // Received not full message size
-			{
-				// Store part of the received message size
-				memcpy(messageBuffer + _messageByteCount, receiveBuffer, byteCount * sizeof(uint8_t));
-				*messageByteCount += byteCount;
-				return SUCCESS_NETS_RESULT;
-			}
-
-			// Copy remaining message size part
-			memcpy(messageBuffer + _messageByteCount, receiveBuffer, messageSizePart * sizeof(uint8_t));
-			pointer += messageSizePart;
-			_messageByteCount += messageSizePart;
-		}
-
-		uint64_t messageSize; // Decode received message size
-		if (messageLengthSize == sizeof(uint8_t))
-		{
-			messageSize = messageBuffer[0];
-		}
-		else if (messageLengthSize == sizeof(uint16_t))
-		{
-			#if NETS_LITTLE_ENDIAN
-			messageSize = *(uint16_t*)messageBuffer;
-			#else
-			datagramSize = swapBytes16(*(uint16_t*)datagramBuffer);
-			#endif
-		}
-		else if (messageLengthSize == sizeof(uint32_t))
-		{
-			#if NETS_LITTLE_ENDIAN
-			messageSize = *(uint32_t*)messageBuffer;
-			#else
-			datagramSize = swapBytes32(*(uint32_t*)datagramBuffer);
-			#endif
-		}
-		else if (messageLengthSize == sizeof(uint64_t))
-		{
-			#if NETS_LITTLE_ENDIAN
-			messageSize = *(uint64_t*)messageBuffer;
-			#else
-			datagramSize = swapBytes64(*(uint64_t*)datagramBuffer);
-			#endif
-		}
-		else abort();
-
-		if (messageSize > messageBufferSize - messageLengthSize)
-			return OUT_OF_MEMORY_NETS_RESULT; // Received message is bigger than buffer
-
-		size_t neededPartSize = messageSize - (_messageByteCount - messageLengthSize);
-		if (neededPartSize > byteCount - pointer) 
-		{
-			size_t messagePartSize = byteCount - pointer;
-			memcpy(messageBuffer + _messageByteCount, receiveBuffer + pointer, messagePartSize * sizeof(uint8_t));
-			*messageByteCount = _messageByteCount + messagePartSize;
-			return SUCCESS_NETS_RESULT; // Received not full message
-		}
-
-		memcpy(messageBuffer + _messageByteCount, receiveBuffer + pointer, neededPartSize * sizeof(uint8_t));
-		streamMessage.buffer = messageBuffer + messageLengthSize;
-		streamMessage.size = messageSize;
-		
-		NetsResult netsResult = receiveFunction(streamMessage, functionHandle);
-		if (netsResult != SUCCESS_NETS_RESULT)
-			return netsResult;
-
-		*messageByteCount = 0;
-		pointer += neededPartSize;
-	}
-
-	while (pointer < byteCount) // Continue until all received data handled
-	{
-		if (messageLengthSize > byteCount - pointer)
-		{
-			size_t messageSizePart = byteCount - pointer;
-			memcpy(messageBuffer, receiveBuffer + pointer, messageSizePart * sizeof(uint8_t));
-			*messageByteCount += messageSizePart;
-			return SUCCESS_NETS_RESULT; // Received not full message size
-		}
-
-		uint64_t messageSize; // Decode received message size
-		if (messageLengthSize == sizeof(uint8_t))
-		{
-			messageSize = receiveBuffer[pointer];
-		}
-		else if (messageLengthSize == sizeof(uint16_t))
-		{
-			#if NETS_LITTLE_ENDIAN
-			messageSize = *(uint16_t*)(receiveBuffer + pointer);
-			#else
-			datagramSize = swapBytes16(*(uint16_t*)(receiveBuffer + pointer));
-			#endif
-		}
-		else if (messageLengthSize == sizeof(uint32_t))
-		{
-			#if NETS_LITTLE_ENDIAN
-			messageSize = *(uint32_t*)(receiveBuffer + pointer);
-			#else
-			datagramSize = swapBytes32(*(uint32_t*)(receiveBuffer + pointer));
-			#endif
-		}
-		else if (messageLengthSize == sizeof(uint64_t))
-		{
-			#if NETS_LITTLE_ENDIAN
-			messageSize = *(uint64_t*)(receiveBuffer + pointer);
-			#else
-			datagramSize = swapBytes64(*(uint64_t*)(receiveBuffer + pointer));
-			#endif
-		}
-		else abort();
-
-		if (messageSize > messageBufferSize - messageLengthSize)
-			return OUT_OF_MEMORY_NETS_RESULT; // Received message is bigger than buffer
-
-		if (messageSize > (byteCount - pointer) - messageLengthSize)
-		{
-			size_t messagePartSize = byteCount - pointer;
-			memcpy(messageBuffer, receiveBuffer + pointer, messagePartSize * sizeof(uint8_t));
-			*messageByteCount += messagePartSize;
-			return SUCCESS_NETS_RESULT; // Received not full message
-		}
-
-		streamMessage.buffer = receiveBuffer + (pointer + messageLengthSize);
-		streamMessage.size = messageSize;
-
-		NetsResult netsResult = receiveFunction(streamMessage, functionHandle);
-		if (netsResult != SUCCESS_NETS_RESULT)
-			return netsResult;
-		pointer += messageLengthSize + messageSize;
-	}
-
-	return SUCCESS_NETS_RESULT;
-}
-
-// For library symbols
-NetsResult sHandleStreamMessage(const uint8_t* receiveBuffer, size_t byteCount, uint8_t* messageBuffer,
-	size_t messageBufferSize, size_t* messageByteCount, uint8_t messageLengthSize,
-	NetsResult(*receiveFunction)(StreamMessage, void*), void* functionHandle);

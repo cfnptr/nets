@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "nets/datagram-server.h"
+#include <string.h>
 
 struct DatagramServer_T
 {

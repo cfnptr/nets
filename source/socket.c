@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "nets/socket.h"
+#include <string.h>
 
 #if __linux__ || __APPLE__
 #include <netdb.h>
@@ -275,10 +276,10 @@ inline static NetsResult createSocketHandle(SocketType socketType, SocketFamily 
 	{
 		#if __linux__ || __APPLE__
 		int onlyV6 = isOnlyIPv6 ? 1 : 0;
-		SOCKET_LENGTH v6Length = sizeof(int);
+		const SOCKET_LENGTH v6Length = sizeof(int);
 		#elif _WIN32
 		BOOL onlyV6 = isOnlyIPv6 ? TRUE : FALSE;
-		SOCKET_LENGTH v6Length = sizeof(BOOL);
+		const SOCKET_LENGTH v6Length = sizeof(BOOL);
 		#endif
 
 		if (setsockopt(handleInstance, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&onlyV6, v6Length) != 0)
@@ -514,10 +515,10 @@ void setSocketNoDelay(Socket socket, bool value)
 
 	#if __linux__ || __APPLE__
 	int noDelay = value ? 1 : 0;
-	SOCKET_LENGTH length = sizeof(int);
+	const SOCKET_LENGTH length = sizeof(int);
 	#elif _WIN32
 	BOOL noDelay = value ? TRUE : FALSE;
-	SOCKET_LENGTH length = sizeof(BOOL);
+	const SOCKET_LENGTH length = sizeof(BOOL);
 	#endif
 
 	if (setsockopt(socket->handle, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay, length) != 0)
@@ -644,7 +645,7 @@ NetsResult acceptSslSocket(Socket socket)
 	#if NETS_SUPPORT_OPENSSL
 	assert(socket->sslContext);
 
-	int result = SSL_accept(socket->ssl) == 1;
+	int result = SSL_accept(socket->ssl);
 	if (result != 1)
 		return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	return SUCCESS_NETS_RESULT;
@@ -1246,29 +1247,34 @@ void setSocketAddressPort(SocketAddress socketAddress, uint16_t port)
 }
 
 //**********************************************************************************************************************
-bool getSocketAddressHost(SocketAddress socketAddress, char* host, size_t length)
+void getSocketAddressHost(SocketAddress socketAddress, char* host, size_t length)
 {
 	assert(socketAddress);
 	assert(host);
 	assert(length > 0);
 	assert(networkInitialized);
 
-	int flags = NI_NUMERICHOST;
-	return getnameinfo((const struct sockaddr*)&socketAddress->handle, 
-		sizeof(struct sockaddr_storage), host, (SOCKET_LENGTH)length, NULL, 0, flags) == 0;
+	const int flags = NI_NUMERICHOST;
+	int result = getnameinfo((const struct sockaddr*)&socketAddress->handle, 
+		sizeof(struct sockaddr_storage), host, (SOCKET_LENGTH)length, NULL, 0, flags);
+	if (result != 0)
+		host[0] = '\0';
 }
-bool getSocketAddressService(SocketAddress socketAddress, char* service, size_t length)
+void getSocketAddressService(SocketAddress socketAddress, char* service, size_t length)
 {
 	assert(socketAddress);
 	assert(service);
 	assert(length > 0);
 	assert(networkInitialized);
 
-	int flags = NI_NUMERICSERV;
-	return getnameinfo((const struct sockaddr*)&socketAddress->handle,
-		sizeof(struct sockaddr_storage), NULL, 0, service, (SOCKET_LENGTH)length, flags) == 0;
+	const int flags = NI_NUMERICSERV;
+	int result = getnameinfo((const struct sockaddr*)&socketAddress->handle,
+		sizeof(struct sockaddr_storage), NULL, 0, service, (SOCKET_LENGTH)length, flags);
+	if (result != 0)
+		service[0] = '\0';
 }
-bool getSocketAddressHostService(SocketAddress socketAddress, char* host, size_t hostLength, char* service, size_t serviceLength)
+void getSocketAddressHostService(SocketAddress socketAddress, char* host, 
+	size_t hostLength, char* service, size_t serviceLength)
 {
 	assert(socketAddress);
 	assert(host);
@@ -1277,9 +1283,11 @@ bool getSocketAddressHostService(SocketAddress socketAddress, char* host, size_t
 	assert(serviceLength > 0);
 	assert(networkInitialized);
 
-	int flags = NI_NUMERICHOST | NI_NUMERICSERV;
-	return getnameinfo((const struct sockaddr*)&socketAddress->handle, sizeof(struct sockaddr_storage), 
-		host, (SOCKET_LENGTH)hostLength, service, (SOCKET_LENGTH)serviceLength, flags) == 0;
+	const int flags = NI_NUMERICHOST | NI_NUMERICSERV;
+	int result = getnameinfo((const struct sockaddr*)&socketAddress->handle, sizeof(struct sockaddr_storage), 
+		host, (SOCKET_LENGTH)hostLength, service, (SOCKET_LENGTH)serviceLength, flags);
+	if (result != 0)
+		host[0] = service[0] = '\0';
 }
 
 //**********************************************************************************************************************
@@ -1449,12 +1457,4 @@ SslProtocol getSslContextProtocol(SslContext sslContext)
 	#else
 	abort(); // Note: OpenSSL support is disabled.
 	#endif
-}
-
-NetsResult sHandleStreamMessage(const uint8_t* receiveBuffer, size_t byteCount, 
-	uint8_t* messageBuffer, size_t messageBufferSize, size_t* messageByteCount, uint8_t messageLengthSize, 
-	NetsResult(*receiveFunction)(StreamMessage, void*), void* functionHandle)
-{
-	return handleStreamMessage(receiveBuffer, byteCount, messageBuffer, messageBufferSize, 
-		messageByteCount, messageLengthSize, receiveFunction, functionHandle);
 }

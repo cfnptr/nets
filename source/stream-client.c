@@ -383,10 +383,7 @@ NetsResult streamClientSend(StreamClient streamClient, const void* sendBuffer, s
 NetsResult streamClientSendMessage(StreamClient streamClient, StreamMessage streamMessage)
 {
 	assert(streamClient);
-	assert(streamMessage.buffer);
-	assert(streamMessage.size > 0);
-	assert(streamMessage.size == streamMessage.offset);
-
+	assert(validateStreamMessage(streamMessage));
 	NetsResult netsResult = socketSend(streamClient->socket, streamMessage.buffer, streamMessage.size);
 	if (netsResult != SUCCESS_NETS_RESULT)
 		return netsResult;

@@ -42,7 +42,7 @@ public:
 	 * @brief Creates a new stream stream session handle.
 	 * @param[in] instance target stream session instance
 	 */
-	StreamSessionView(StreamSession_T* instance) : instance(instance) { }
+	StreamSessionView(StreamSession_T* instance) noexcept : instance(instance) { }
 
 	/**
 	 * @brief Returns stream session view instance.
@@ -66,12 +66,34 @@ public:
 	 * @details See the @ref createStreamServer().
 	 */
 	void* getHandle() const noexcept { return getStreamSessionHandle(instance); }
+
+	/**
+	 * @brief Sends stream data to the specified session.
+	 * @details See the @ref streamSessionSend().
+	 * @return The operation @ref NetsResult code.
+	 *
+	 * @param[in] sendBuffer data send buffer
+	 * @param byteCount data byte count to send
+	 */
+	NetsResult send(const void* sendBuffer, size_t byteCount) noexcept
+	{
+		return streamSessionSend(instance, sendBuffer, byteCount);
+	}
+	/**
+	 * @brief Sends stream message to the specified session.
+	 * @details See the @ref streamSessionSendMessage().
+	 * @return The operation @ref NetsResult code.
+	 * @param streamMessage stream message to send
+	 */
+	NetsResult send(StreamMessage streamMessage) noexcept
+	{
+		return streamSessionSendMessage(instance, streamMessage);
+	}
 };
 
 inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession, void** handle);
-inline static void _onStreamSessionDestroy(StreamServer_T* streamServer, 
-	StreamSession_T* streamSession, NetsResult netsResult);
-inline static NetsResult _onStreamSessionReceive(StreamServer_T* streamServer, 
+inline static void _onStreamSessionDestroy(StreamServer_T* streamServer, StreamSession_T* streamSession, int reason);
+inline static int _onStreamSessionReceive(StreamServer_T* streamServer, 
 	StreamSession_T* streamSession, const uint8_t* receiveBuffer, size_t byteCount);
 
 /***********************************************************************************************************************
@@ -143,18 +165,17 @@ public:
 	 * @param streamSession stream session instance
 	 * @param reason session destruction reason
 	 */
-	virtual void onSessionDestroy(StreamSessionView streamSession, NetsResult reason) = 0;
+	virtual void onSessionDestroy(StreamSessionView streamSession, int reason) = 0;
 	/**
 	 * @brief Stream session receive function. (TCP)
-	 * @details Server destroys session on this function failure return result.
+	 * @details Server destroys session on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param streamSession stream session instance
 	 * @param[in] receiveBuffer received data buffer
 	 * @param byteCount received byte count
 	 */
-	virtual NetsResult onStreamReceive(StreamSessionView streamSession, 
-		const uint8_t* receiveBuffer, size_t byteCount) = 0;
+	virtual int onStreamReceive(StreamSessionView streamSession, const uint8_t* receiveBuffer, size_t byteCount) = 0;
 
 	/*******************************************************************************************************************
 	 * @brief Returns stream server handle instance.
@@ -190,6 +211,11 @@ public:
 	 * @details See the @ref getStreamServerSocket().
 	 */
 	bool isRunning() const noexcept { return isStreamServerRunning(instance); }
+	/**
+	 * @brief Returns true if stream server use encrypted connection.
+	 * @details See the @ref getStreamServerSocket().
+	 */
+	bool isSecure() const noexcept { return isStreamServerSecure(instance); }
 };
 
 inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession, void** handle)
@@ -197,13 +223,12 @@ inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSe
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
 	return server->onSessionCreate(StreamSessionView(streamSession), *handle);
 }
-inline static void _onStreamSessionDestroy(StreamServer_T* streamServer, 
-	StreamSession_T* streamSession, NetsResult netsResult)
+inline static void _onStreamSessionDestroy(StreamServer_T* streamServer, StreamSession_T* streamSession, int reason)
 {
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
-	server->onSessionDestroy(StreamSessionView(streamSession), netsResult);
+	server->onSessionDestroy(StreamSessionView(streamSession), reason);
 }
-inline static NetsResult _onStreamSessionReceive(StreamServer_T* streamServer, 
+inline static int _onStreamSessionReceive(StreamServer_T* streamServer, 
 	StreamSession_T* streamSession, const uint8_t* receiveBuffer, size_t byteCount)
 {
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);

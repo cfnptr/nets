@@ -19,6 +19,7 @@
 
 #pragma once
 #include "nets/socket.h"
+#include "nets/stream-message.h"
 
 typedef struct StreamServer_T StreamServer_T;   /**< Stream server structure. (TCP) */
 typedef StreamServer_T* StreamServer;           /**< Stream server instance. (TCP) */
@@ -43,10 +44,10 @@ typedef bool(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession st
  * @param streamSession stream session instance
  * @param reason session destruction reason
  */
-typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession streamSession, NetsResult reason);
+typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession streamSession, int reason);
 /**
  * @brief Stream session receive function. (TCP)
- * @details Server destroys session on this function failure return result.
+ * @details Server destroys session on this function non zero return result.
  * @warning This function is called asynchronously from the receive thread!
  *
  * @param streamServer stream server instance
@@ -54,7 +55,7 @@ typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession s
  * @param[in] receiveBuffer received data buffer
  * @param byteCount received byte count
  */
-typedef NetsResult(*OnStreamSessionReceive)(StreamServer streamServer, 
+typedef int(*OnStreamSessionReceive)(StreamServer streamServer, 
 	StreamSession streamSession, const uint8_t* receiveBuffer, size_t byteCount);
 
 /***********************************************************************************************************************
@@ -134,6 +135,11 @@ Socket getStreamServerSocket(StreamServer streamServer);
  * @param streamServer target stream server instance
  */
 bool isStreamServerRunning(StreamServer streamServer);
+/**
+ * @brief Returns true if server use encrypted connection.
+ * @param streamServer target stream server instance
+ */
+bool isStreamServerSecure(StreamServer streamServer);
 /**
  * @brief Returns stream session socket instance.
  * @param streamSession target stream session instance

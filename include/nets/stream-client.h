@@ -19,6 +19,7 @@
 
 #pragma once
 #include "nets/socket.h"
+#include "nets/stream-message.h"
 
 typedef struct StreamClient_T StreamClient_T; /**< Stream client structure. (TCP) */
 typedef StreamClient_T* StreamClient;         /**< Stream client instance. (TCP) */
