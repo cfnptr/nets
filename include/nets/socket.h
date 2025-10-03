@@ -401,6 +401,21 @@ size_t getSocketFamilyIpSize(SocketFamily family);
  * @param socketAddress target socket address instance
  */
 size_t getSocketAddressIpSize(SocketAddress socketAddress);
+/**
+ * @brief Returns true if socket address is any address.
+ * @param socketAddress target socket address instance
+ */
+bool isSocketAddressAny(SocketAddress socketAddress);
+/**
+ * @brief Returns true if socket address is loopback address.
+ * @param socketAddress target socket address instance
+ */
+bool isSocketAddressLoopback(SocketAddress socketAddress);
+/**
+ * @brief Returns true if socket address is IPv4 mapped IPv6.
+ * @param socketAddress target socket address instance
+ */
+bool isSocketAddressMappedV4(SocketAddress socketAddress);
 
 /**
  * @brief Returns socket IP address byte array.

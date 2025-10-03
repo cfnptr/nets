@@ -20,6 +20,7 @@
 
 #pragma once
 #include "nets/socket.hpp"
+#include "nets/stream-message.hpp"
 
 extern "C"
 {
@@ -52,15 +53,12 @@ public:
 	 * @brief Returns stream session socket instance.
 	 * @details See the @ref getStreamSessionSocket().
 	 */
-	SocketView getSocket() const noexcept { return SocketView(getStreamSessionSocket(instance)); }
+	SocketView getSocket() const noexcept { return getStreamSessionSocket(instance); }
 	/**
 	 * @brief Returns stream session remote IP address instance.
 	 * @details See the @ref getStreamSessionRemoteAddress().
 	 */
-	SocketAddressView getRemoteAddress() const noexcept
-	{
-		return SocketAddressView(getStreamSessionRemoteAddress(instance));
-	}
+	SocketAddressView getRemoteAddress() const noexcept { return getStreamSessionRemoteAddress(instance); }
 	/**
 	 * @brief Returns stream session handle.
 	 * @details See the @ref createStreamServer().
@@ -68,8 +66,25 @@ public:
 	void* getHandle() const noexcept { return getStreamSessionHandle(instance); }
 
 	/**
+	 * @brief Returns stream session IP address and port string.
+	 */
+	string getAddress() const
+	{
+		auto remoteAddress = getRemoteAddress();
+		string ip, port; remoteAddress.getHostService(ip, port);
+		if (ip.empty() || port.empty())
+			return "";
+		if (remoteAddress.isMappedV4() && ip.size() > 7)
+			ip = string(ip.c_str() + 7, ip.size() - 7);
+		ip.reserve(ip.size() + port.size() + 1);
+		ip += ":"; ip += port;
+		return ip;
+	}
+
+	/**
 	 * @brief Sends stream data to the specified session.
 	 * @details See the @ref streamSessionSend().
+	 * @warning You should lock sessions before sending messages!
 	 * @return The operation @ref NetsResult code.
 	 *
 	 * @param[in] sendBuffer data send buffer
@@ -81,13 +96,15 @@ public:
 	}
 	/**
 	 * @brief Sends stream message to the specified session.
-	 * @details See the @ref streamSessionSendMessage().
+	 * @details See the @ref streamSessionSend().
+	 * @warning You should lock sessions before sending messages!
 	 * @return The operation @ref NetsResult code.
-	 * @param streamMessage stream message to send
+	 * @param[in] streamMessage stream message to send
 	 */
-	NetsResult send(StreamMessage streamMessage) noexcept
+	NetsResult send(const OutStreamMessage& streamMessage) noexcept
 	{
-		return streamSessionSendMessage(instance, streamMessage);
+		assert(streamMessage.isComplete());
+		return streamSessionSend(instance, streamMessage.getBuffer(), streamMessage.getSize());
 	}
 };
 
@@ -116,10 +133,6 @@ public:
 	}
 
 	/**
-	 * @brief Creates a new empty stream server instance. (TCP)
-	 */
-	IStreamServer() = default;
-	/**
 	 * @brief Creates a new stream server instance. (TCP)
 	 * @details See the @ref createStreamServer().
 	 *
@@ -134,8 +147,8 @@ public:
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
 	IStreamServer(SocketFamily socketFamily, const char* service, size_t sessionBufferSize = 512, 
-		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 1, double timeoutTime = 5.0, 
-		SslContextView sslContext = SslContextView(nullptr))
+		size_t connectionQueueSize = 256, size_t receiveBufferSize = UINT16_MAX + 1, 
+		double timeoutTime = 5.0, SslContextView sslContext = nullptr)
 	{
 		auto result = createStreamServer(socketFamily, service, sessionBufferSize, connectionQueueSize, 
 			receiveBufferSize, timeoutTime, _onStreamSessionCreate, _onStreamSessionDestroy,
@@ -144,10 +157,10 @@ public:
 			throw Error(netsResultToString(result));
 	}
 	/**
-	 * @brief Destroys socket IP address instance.
-	 * @details See the @ref destroySocketAddress().
+	 * @brief Destroys stream server instance.
+	 * @details See the @ref destroyStreamServer().
 	 */
-	~IStreamServer() { destroyStreamServer(instance); }
+	void destroy() noexcept { destroyStreamServer(instance); instance = nullptr; }
 
 	/**
 	 * @brief Stream session create function. (TCP)
@@ -155,7 +168,7 @@ public:
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param streamSession a new accepted stream session instance
-	 * @param[out] handle pointer to the custom session handle
+	 * @param[out] handle reference to the custom session handle
 	 */
 	virtual bool onSessionCreate(StreamSessionView streamSession, void*& handle) = 0;
 	/**
@@ -163,11 +176,11 @@ public:
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
 	 * @param streamSession stream session instance
-	 * @param reason session destruction reason
+	 * @param reason stream session destruction reason
 	 */
 	virtual void onSessionDestroy(StreamSessionView streamSession, int reason) = 0;
 	/**
-	 * @brief Stream session receive function. (TCP)
+	 * @brief Stream session data receive function. (TCP)
 	 * @details Server destroys session on this function non zero return result.
 	 * @warning This function is called asynchronously from the receive thread!
 	 *
@@ -176,6 +189,15 @@ public:
 	 * @param byteCount received byte count
 	 */
 	virtual int onStreamReceive(StreamSessionView streamSession, const uint8_t* receiveBuffer, size_t byteCount) = 0;
+
+	/**
+	 * @brief Converts reason value to string.
+	 * @param reason target reason value
+	 */
+	virtual string reasonToString(int reason)
+	{
+		return reason < NETS_RESULT_COUNT ? netsResultToString(reason) : to_string(reason);
+	}
 
 	/*******************************************************************************************************************
 	 * @brief Returns stream server handle instance.
@@ -205,34 +227,83 @@ public:
 	 * @brief Returns stream server socket instance.
 	 * @details See the @ref getStreamServerSocket().
 	 */
-	SocketView getSocket() const noexcept { return SocketView(getStreamServerSocket(instance)); }
+	SocketView getSocket() const noexcept { return getStreamServerSocket(instance); }
 	/**
-	 * @brief Returns true if stream server is running.
-	 * @details See the @ref getStreamServerSocket().
+	 * @brief Returns true if stream server receive thread is running.
+	 * @details See the @ref isStreamServerRunning().
 	 */
 	bool isRunning() const noexcept { return isStreamServerRunning(instance); }
 	/**
 	 * @brief Returns true if stream server use encrypted connection.
-	 * @details See the @ref getStreamServerSocket().
+	 * @details See the @ref isStreamServerSecure().
 	 */
 	bool isSecure() const noexcept { return isStreamServerSecure(instance); }
+
+	/*******************************************************************************************************************
+	 * @brief Locks stream server session buffer access.
+	 * @details See the @ref lockStreamServerSessions().
+	 */
+	void lockSessions() noexcept { lockStreamServerSessions(instance); }
+	/**
+	 * @brief Unlocks stream server session buffer access.
+	 * @details See the @ref unlockStreamServerSessions().
+	 */
+	void unlockSessions() noexcept { unlockStreamServerSessions(instance); }
+	/**
+	 * @brief Returns stream server session buffer.
+	 * @details See the @ref getStreamServerSessions().
+	 * @warning You should lock sessions before getting!
+	 */
+	StreamSessionView* getSessions() noexcept { return (StreamSessionView*)getStreamServerSessions(instance); }
+	/**
+	 * @brief Returns stream server session count.
+	 * @details See the @ref getStreamServerSessionCount().
+	 * @warning You should lock sessions before getting!
+	 */
+	size_t getSessionCount() noexcept { return getStreamServerSessionCount(instance); }
+
+	/**
+	 * @brief Updates specified stream server session.
+	 * @details See the @ref updateStreamSession().
+	 * @warning You should lock sessions before updating!
+	 * @return Zero on success, otherwise failure reason.
+	 *
+	 * @param streamSession stream session instance to update
+	 * @param currentTime current time value
+	 */
+	int updateSession(StreamSessionView streamSession, double currentTime) noexcept
+	{
+		return updateStreamSession(instance, streamSession.getInstance(), currentTime);
+	}
+	/**
+	 * @brief Closes specified stream server session.
+	 * @details See the @ref closeStreamSession().
+	 * @warning You should lock sessions before closing!
+	 *
+	 * @param streamSession stream session instance to close
+	 * @param reason stream session destruction reason
+	 */
+	void closeSession(StreamSessionView streamSession, int reason) noexcept
+	{
+		closeStreamSession(instance, streamSession.getInstance(), reason);
+	}
 };
 
 inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession, void** handle)
 {
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
-	return server->onSessionCreate(StreamSessionView(streamSession), *handle);
+	return server->onSessionCreate(streamSession, *handle);
 }
 inline static void _onStreamSessionDestroy(StreamServer_T* streamServer, StreamSession_T* streamSession, int reason)
 {
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
-	server->onSessionDestroy(StreamSessionView(streamSession), reason);
+	server->onSessionDestroy(streamSession, reason);
 }
 inline static int _onStreamSessionReceive(StreamServer_T* streamServer, 
 	StreamSession_T* streamSession, const uint8_t* receiveBuffer, size_t byteCount)
 {
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
-	return server->onStreamReceive(StreamSessionView(streamSession), receiveBuffer, byteCount);
+	return server->onStreamReceive(streamSession, receiveBuffer, byteCount);
 }
 
 } // nets

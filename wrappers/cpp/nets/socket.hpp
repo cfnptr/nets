@@ -69,6 +69,21 @@ public:
 	 * @details See the @ref getSocketAddressIpSize().
 	 */
 	size_t getIpSize() const noexcept { return getSocketAddressIpSize(instance); }
+	/**
+	 * @brief Returns true if socket IP address is any address.
+	 * @details See the @ref isSocketAddressAny().
+	 */
+	bool isAny() const noexcept { return isSocketAddressAny(instance); }
+	/**
+	 * @brief Returns true if socket IP address is loopback address.
+	 * @details See the @ref isSocketAddressLoopback().
+	 */
+	bool isLoopback() const noexcept { return isSocketAddressLoopback(instance); }
+	/**
+	 * @brief Returns true if socket IP address is IPv4 mapped IPv6.
+	 * @details See the @ref isSocketAddressMappedV4().
+	 */
+	bool isMappedV4() const noexcept { return isSocketAddressMappedV4(instance); }
 
 	/**
 	 * @brief Returns socket IP address byte array.
@@ -102,14 +117,14 @@ public:
 	 * @param[out] host pointer to the host name string
 	 * @param length host name string length (including null terminator)
 	 */
-	void getHost(char* host, size_t length) noexcept { getSocketAddressHost(instance, host, length); }
+	void getHost(char* host, size_t length) const noexcept { getSocketAddressHost(instance, host, length); }
 	/**
 	 * @brief Returns socket IP address numeric host name.
 	 * @details See the @ref getSocketAddressHost().
 	 * @return True on success, otherwise false.
 	 * @param[out] host target host name string
 	 */
-	void getHost(std::string& host)
+	void getHost(std::string& host) const
 	{
 		host.resize(MAX_NUMERIC_HOST_LENGTH);
 		getSocketAddressHost(instance, host.data(), MAX_NUMERIC_HOST_LENGTH);
@@ -124,14 +139,14 @@ public:
 	 * @param[out] service pointer to the service name string
 	 * @param length service name string length (including null terminator)
 	 */
-	void getService(char* service, size_t length) noexcept { getSocketAddressService(instance, service, length); }
+	void getService(char* service, size_t length) const noexcept { getSocketAddressService(instance, service, length); }
 	/**
 	 * @brief Returns socket IP address numeric service name.
 	 * @details See the @ref getSocketAddressService().
 	 * @return True on success, otherwise false.
 	 * @param[out] service target service name string
 	 */
-	void getService(std::string& service)
+	void getService(std::string& service) const
 	{
 		service.resize(MAX_NUMERIC_SERVICE_LENGTH);
 		getSocketAddressService(instance, service.data(), MAX_NUMERIC_SERVICE_LENGTH);
@@ -148,7 +163,7 @@ public:
 	 * @param[out] service pointer to the service name string
 	 * @param serviceLength service name string length (including null terminator)
 	 */
-	void getHostService(char* host, size_t hostLength, char* service, size_t serviceLength) noexcept
+	void getHostService(char* host, size_t hostLength, char* service, size_t serviceLength) const noexcept
 	{
 		getSocketAddressHostService(instance, host, hostLength, service, serviceLength);
 	}
@@ -160,7 +175,7 @@ public:
 	 * @param[out] host target host name string
 	 * @param[out] service target service name string
 	 */
-	void getHostService(std::string& host, std::string& service)
+	void getHostService(std::string& host, std::string& service) const
 	{
 		host.resize(MAX_NUMERIC_HOST_LENGTH); service.resize(MAX_NUMERIC_SERVICE_LENGTH);
 		getSocketAddressHostService(instance, host.data(), MAX_NUMERIC_HOST_LENGTH, 
@@ -178,8 +193,8 @@ public:
 	 * @param[in] service socket IP address service name string (port)
 	 * @param family socket IP address family type
 	 * @param type socket communication protocol type
-	 * @param[out] socketAddresses pointer to the socket address array
-	 * @param[out] addressCount pointer to the socket address count
+	 * @param[out] socketAddresses reference to the socket address array
+	 * @param[out] addressCount reference to the socket address count
 	 */
 	static NetsResult resolve(const char* host, const char* service, SocketFamily family,
 		SocketType type, SocketAddressView*& socketAddresses, size_t& addressCount) noexcept
@@ -461,7 +476,7 @@ public:
 	 * @brief Returns socket SSL context instance.
 	 * @details See the @ref getSocketSslContext().
 	 */
-	SslContextView getSslContext() const noexcept { return SslContextView(getSocketSslContext(instance)); }
+	SslContextView getSslContext() const noexcept { return getSocketSslContext(instance); }
 	/**
 	 * @brief Returns socket internal handle.
 	 * @details See the @ref getSocketHandle().
@@ -504,14 +519,14 @@ public:
 	 * @note You should destroy accepted socket instance manually!
 	 * @details See the @ref acceptSocket().
 	 * @return The operation @ref NetsResult code.
-	 * @param[out] accepted pointer to the accepted socket
+	 * @param[out] accepted reference to the accepted socket
 	 */
 	NetsResult accept(SocketView& accepted) noexcept
 	{
 		Socket_T* acceptedSocket;
 		auto result = acceptSocket(instance, &acceptedSocket);
 		if (result == SUCCESS_NETS_RESULT)
-			accepted = SocketView(acceptedSocket);
+			accepted = acceptedSocket;
 		return result;
 	}
 	/**
@@ -560,7 +575,7 @@ public:
 	 *
 	 * @param[out] receiveBuffer data receive buffer
 	 * @param bufferSize data receive buffer size in bytes
-	 * @param[out] byteCount pointer to the received byte count
+	 * @param[out] byteCount reference to the received byte count
 	 */
 	NetsResult receive(void* receiveBuffer, size_t bufferSize, size_t& byteCount) noexcept
 	{
@@ -584,11 +599,10 @@ public:
 	 * @return The operation @ref NetsResult code.
 	 *
 	 * @tparam T type of the send data
-	 * @param[in] sendData data to send
-	 * @param byteCount data byte count to send
+	 * @param[in] data target data to send
 	 */
 	template<class T>
-	NetsResult send(const T& sendData) { return socketSend(instance, &sendData, sizeof(T)); }
+	NetsResult send(const T& data) { return socketSend(instance, &data, sizeof(T)); }
 
 	/*******************************************************************************************************************
 	 * @brief Receives pending data from the remote socket.
@@ -598,7 +612,7 @@ public:
 	 * @param[out] remoteAddress remote socket IP address
 	 * @param[out] receiveBuffer data receive buffer
 	 * @param bufferSize data receive buffer size in bytes
-	 * @param[out] byteCount pointer to the received byte count
+	 * @param[out] byteCount reference to the received byte count
 	 */
 	NetsResult receiveFrom(SocketAddressView remoteAddress, 
 		void* receiveBuffer, size_t bufferSize, size_t& byteCount) noexcept
@@ -624,14 +638,13 @@ public:
 	 * @return The operation @ref NetsResult code.
 	 *
 	 * @tparam T type of the send data
-	 * @param[in] sendData data to send
-	 * @param byteCount data byte count to send
+	 * @param[in] data target data to send
 	 * @param remoteAddress destination remote socket IP address
 	 */
 	template<class T>
-	NetsResult sendTo(const T& sendData, SocketAddressView remoteAddress) noexcept
+	NetsResult sendTo(const T& data, SocketAddressView remoteAddress) noexcept
 	{
-		return socketSendTo(instance, &sendData, sizeof(T), remoteAddress.getInstance());
+		return socketSendTo(instance, &data, sizeof(T), remoteAddress.getInstance());
 	}
 };
 
@@ -667,7 +680,7 @@ struct Socket final : public SocketView
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
 	Socket(SocketType type, SocketFamily family, SocketAddressView localAddress, bool isBlocking = true, 
-		bool isOnlyIPv6 = false, SslContextView sslContext = SslContextView(nullptr)) : SocketView(nullptr)
+		bool isOnlyIPv6 = false, SslContextView sslContext = nullptr) : SocketView(nullptr)
 	{
 		auto result = createSocket(type, family, localAddress.getInstance(), 
 			isBlocking, isOnlyIPv6, sslContext.getInstance(), &instance);

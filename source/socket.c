@@ -20,7 +20,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -65,7 +64,7 @@ struct Socket_T
 };
 struct SocketAddress_T
 {
-	struct sockaddr_storage handle;
+	struct sockaddr_in6 handle;
 };
 struct SslContext_T
 {
@@ -272,6 +271,14 @@ inline static NetsResult createSocketHandle(SocketType socketType, SocketFamily 
 	if (handleInstance == INVALID_SOCKET)
 		return lastErrorToNetsResult();
 
+	#if __linux__ || __APPLE__
+	if (fcntl(handleInstance, F_SETFD, FD_CLOEXEC) != 0)
+	{
+		closesocket(handleInstance);
+		return FAILED_TO_SET_FLAG_NETS_RESULT;
+	}
+	#endif
+
 	if (socketFamily == IP_V6_SOCKET_FAMILY)
 	{
 		#if __linux__ || __APPLE__
@@ -346,7 +353,6 @@ NetsResult createSocket(SocketType type, SocketFamily family, SocketAddress loca
 	if (!socketInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
-	socketInstance->queueSize = 0;
 	socketInstance->type = type;
 	socketInstance->family = family;
 	socketInstance->isBlocking = isBlocking;
@@ -439,9 +445,9 @@ bool getSocketLocalAddress(Socket socket, SocketAddress socketAddress)
 	assert(socketAddress);
 	assert(networkInitialized);
 
-	struct sockaddr_storage storage;
-	memset(&storage, 0, sizeof(struct sockaddr_storage));
-	SOCKET_LENGTH length = sizeof(struct sockaddr_storage);
+	struct sockaddr_in6 storage;
+	memset(&storage, 0, sizeof(struct sockaddr_in6));
+	SOCKET_LENGTH length = sizeof(struct sockaddr_in6);
 
 	if (getsockname(socket->handle, (struct sockaddr*)&storage, &length) == 0)
 	{
@@ -456,9 +462,9 @@ bool getSocketRemoteAddress(Socket socket, SocketAddress socketAddress)
 	assert(socketAddress);
 	assert(networkInitialized);
 
-	struct sockaddr_storage storage;
-	memset(&storage, 0, sizeof(struct sockaddr_storage));
-	SOCKET_LENGTH length = sizeof(struct sockaddr_storage);
+	struct sockaddr_in6 storage;
+	memset(&storage, 0, sizeof(struct sockaddr_in6));
+	SOCKET_LENGTH length = sizeof(struct sockaddr_in6);
 
 	if (getpeername(socket->handle, (struct sockaddr*)&storage, &length) == 0)
 	{
@@ -573,13 +579,20 @@ NetsResult acceptSocket(Socket socket, Socket* accepted)
 	if (handle == INVALID_SOCKET)
 		return lastErrorToNetsResult();
 
+	#if __linux__ || __APPLE__
+	if (fcntl(handle, F_SETFD, FD_CLOEXEC) != 0)
+	{
+		closesocket(handle);
+		return FAILED_TO_SET_FLAG_NETS_RESULT;
+	}
+	#endif
+
 	Socket acceptedInstance = calloc(1, sizeof(Socket_T));
 	if (!acceptedInstance)
 	{
-		closesocket(socket->handle);
+		closesocket(handle);
 		return OUT_OF_MEMORY_NETS_RESULT;
 	}
-
 	acceptedInstance->handle = handle;
 
 	if (!socket->isBlocking)
@@ -661,7 +674,7 @@ NetsResult connectSocket(Socket socket, SocketAddress remoteAddress)
 	assert(remoteAddress);
 	assert(networkInitialized);
 
-	int family = remoteAddress->handle.ss_family;
+	int family = remoteAddress->handle.sin6_family;
 
 	SOCKET_LENGTH length;
 	if (family == AF_INET)
@@ -809,9 +822,9 @@ NetsResult socketReceiveFrom(Socket socket, SocketAddress remoteAddress,
 	assert(!socket->sslContext);
 	#endif
 
-	struct sockaddr_storage storage;
-	memset(&storage, 0, sizeof(struct sockaddr_storage));
-	SOCKET_LENGTH length = sizeof(struct sockaddr_storage);
+	struct sockaddr_in6 storage;
+	memset(&storage, 0, sizeof(struct sockaddr_in6));
+	SOCKET_LENGTH length = sizeof(struct sockaddr_in6);
 
 	int64_t count = recvfrom(socket->handle, (char*)receiveBuffer, 
 		(int)bufferSize, 0, (struct sockaddr*)&storage, &length);
@@ -833,7 +846,7 @@ NetsResult socketSendTo(Socket socket, const void* sendBuffer, size_t byteCount,
 	assert(!socket->sslContext);
 	#endif
 
-	int family = remoteAddress->handle.ss_family;
+	int family = remoteAddress->handle.sin6_family;
 
 	SOCKET_LENGTH length;
 	if (family == AF_INET)
@@ -1130,7 +1143,7 @@ void copySocketAddress(SocketAddress sourceAddress, SocketAddress destinationAdd
 {
 	assert(sourceAddress);
 	assert(destinationAddress);
-	memcpy(&destinationAddress->handle, &sourceAddress->handle, sizeof(struct sockaddr_storage));
+	memcpy(&destinationAddress->handle, &sourceAddress->handle, sizeof(struct sockaddr_in6));
 }
 
 int compareSocketAddress(SocketAddress a, SocketAddress b)
@@ -1138,7 +1151,7 @@ int compareSocketAddress(SocketAddress a, SocketAddress b)
 	// Note: a and b should not be NULL!
 	// Skipping here assertions for debug build speed.
 
-	int family = a->handle.ss_family;
+	int family = a->handle.sin6_family;
 	if (family == AF_INET)
 		return memcmp(&a->handle, &b->handle, sizeof(struct sockaddr_in));
 	if (family == AF_INET6)
@@ -1151,7 +1164,7 @@ SocketFamily getSocketAddressFamily(SocketAddress socketAddress)
 	assert(socketAddress);
 	assert(networkInitialized);
 
-	int family = socketAddress->handle.ss_family;
+	int family = socketAddress->handle.sin6_family;
 	if (family == AF_INET)
 		return IP_V4_SOCKET_FAMILY;
 	if (family == AF_INET6)
@@ -1174,11 +1187,37 @@ size_t getSocketAddressIpSize(SocketAddress socketAddress)
 	assert(socketAddress);
 	assert(networkInitialized);
 
-	int family = socketAddress->handle.ss_family;
+	int family = socketAddress->handle.sin6_family;
 	if (family == AF_INET)
 		return sizeof(struct in_addr);
 	if (family == AF_INET6)
 		return sizeof(struct in6_addr);
+	abort();
+}
+bool isSocketAddressMappedV4(SocketAddress socketAddress)
+{
+	if (socketAddress->handle.sin6_family == AF_INET)
+		return false;
+	return IN6_IS_ADDR_V4MAPPED(&socketAddress->handle.sin6_addr);
+}
+bool isSocketAddressAny(SocketAddress socketAddress)
+{
+	const uint32_t any = INADDR_ANY;
+	int family = socketAddress->handle.sin6_family;
+	if (family == AF_INET)
+		return memcmp(&((struct sockaddr_in*)&socketAddress->handle)->sin_addr, &any, sizeof(uint32_t)) == 0;
+	if (family == AF_INET6)
+		return IN6_IS_ADDR_UNSPECIFIED(&socketAddress->handle.sin6_addr);
+	abort();
+}
+bool isSocketAddressLoopback(SocketAddress socketAddress)
+{
+	const uint32_t loopback = INADDR_LOOPBACK;
+	int family = socketAddress->handle.sin6_family;
+	if (family == AF_INET)
+		return memcmp(&((struct sockaddr_in*)&socketAddress->handle)->sin_addr, &loopback, sizeof(uint32_t)) == 0;
+	if (family == AF_INET6)
+		return IN6_IS_ADDR_LOOPBACK(&socketAddress->handle.sin6_addr);
 	abort();
 }
 
@@ -1188,7 +1227,7 @@ const uint8_t* getSocketAddressIP(SocketAddress socketAddress)
 	assert(socketAddress);
 	assert(networkInitialized);
 
-	int family = socketAddress->handle.ss_family;
+	int family = socketAddress->handle.sin6_family;
 	if (family == AF_INET)
 		return (const uint8_t*)&((struct sockaddr_in*)&socketAddress->handle)->sin_addr;
 	if (family == AF_INET6)
@@ -1201,7 +1240,7 @@ void setSocketAddressIP(SocketAddress socketAddress, const uint8_t* ip)
 	assert(ip);
 	assert(networkInitialized);
 
-	int family = socketAddress->handle.ss_family;
+	int family = socketAddress->handle.sin6_family;
 	if (family == AF_INET)
 		memcpy(&((struct sockaddr_in*)&socketAddress->handle)->sin_addr, ip, sizeof(struct in_addr));
 	else if (family == AF_INET6)
@@ -1214,7 +1253,7 @@ uint16_t getSocketAddressPort(SocketAddress socketAddress)
 	assert(socketAddress);
 	assert(networkInitialized);
 
-	int family = socketAddress->handle.ss_family;
+	int family = socketAddress->handle.sin6_family;
 	if (family == AF_INET)
 	{
 		struct sockaddr_in* address4 = (struct sockaddr_in*)&socketAddress->handle;
@@ -1232,7 +1271,7 @@ void setSocketAddressPort(SocketAddress socketAddress, uint16_t port)
 	assert(socketAddress);
 	assert(networkInitialized);
 
-	int family = socketAddress->handle.ss_family;
+	int family = socketAddress->handle.sin6_family;
 	if (family == AF_INET)
 	{
 		struct sockaddr_in* address4 = (struct sockaddr_in*)&socketAddress->handle;
@@ -1256,7 +1295,7 @@ void getSocketAddressHost(SocketAddress socketAddress, char* host, size_t length
 
 	const int flags = NI_NUMERICHOST;
 	int result = getnameinfo((const struct sockaddr*)&socketAddress->handle, 
-		sizeof(struct sockaddr_storage), host, (SOCKET_LENGTH)length, NULL, 0, flags);
+		sizeof(struct sockaddr_in6), host, (SOCKET_LENGTH)length, NULL, 0, flags);
 	if (result != 0)
 		host[0] = '\0';
 }
@@ -1269,7 +1308,7 @@ void getSocketAddressService(SocketAddress socketAddress, char* service, size_t 
 
 	const int flags = NI_NUMERICSERV;
 	int result = getnameinfo((const struct sockaddr*)&socketAddress->handle,
-		sizeof(struct sockaddr_storage), NULL, 0, service, (SOCKET_LENGTH)length, flags);
+		sizeof(struct sockaddr_in6), NULL, 0, service, (SOCKET_LENGTH)length, flags);
 	if (result != 0)
 		service[0] = '\0';
 }
@@ -1284,7 +1323,7 @@ void getSocketAddressHostService(SocketAddress socketAddress, char* host,
 	assert(networkInitialized);
 
 	const int flags = NI_NUMERICHOST | NI_NUMERICSERV;
-	int result = getnameinfo((const struct sockaddr*)&socketAddress->handle, sizeof(struct sockaddr_storage), 
+	int result = getnameinfo((const struct sockaddr*)&socketAddress->handle, sizeof(struct sockaddr_in6), 
 		host, (SOCKET_LENGTH)hostLength, service, (SOCKET_LENGTH)serviceLength, flags);
 	if (result != 0)
 		host[0] = service[0] = '\0';

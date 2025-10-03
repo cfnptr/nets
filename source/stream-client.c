@@ -15,25 +15,315 @@
 #include "nets/stream-client.h"
 #include "mpmt/thread.h"
 #include "mpio/os.h"
+#include <string.h>
+
+#if __linux__
+#include <errno.h>
+#include <unistd.h>
+#include <sys/epoll.h>
+#include <sys/eventfd.h>
+#elif __APPLE__
+#include <unistd.h>
+#include <sys/event.h>
+#endif
 
 struct StreamClient_T
 {
-	size_t bufferSize;
 	double timeoutTime;
+	OnStreamClientConnection onConnection;
 	OnStreamClientReceive onReceive;
 	void* handle;
 	SslContext sslContext;
 	uint8_t* buffer;
+	size_t bufferSize;
 	Socket socket;
-	double timeout;
+	double lastReceiveTime;
+	Thread receiveThread;
+	#if __linux__ || __APPLE__
+	int eventPool;
+	#endif
+	#if __linux__
+	int wakeupEvent;
+	#endif
+	volatile bool isRunning;
+	volatile bool isConnected;
 };
 
+typedef struct ConnectByAddress_T
+{
+	StreamClient streamClient;
+	bool isByAddress;
+	bool noDelay;
+	char* hostname;
+	SocketAddress remoteAddress;
+} ConnectByAddress;
+typedef struct ConnectByHostname_T
+{
+	StreamClient streamClient;
+	bool isByAddress;
+	bool noDelay;
+	bool setSNI;
+	char* hostname;
+	char* service;
+} ConnectByHostname;
+typedef union StreamClientConnect_T
+{
+	ConnectByAddress byAddress;
+	ConnectByHostname byHostname;
+} StreamClientConnect;
+
+inline static void destroyStreamClientConnect(StreamClientConnect* connectData)
+{
+	if (connectData->byAddress.isByAddress)
+	{
+		free(connectData->byAddress.hostname);
+		destroySocketAddress(connectData->byAddress.remoteAddress);
+	}
+	else
+	{
+		free(connectData->byHostname.hostname);
+		free(connectData->byHostname.service);
+	}
+	free(connectData);
+}
+
 //**********************************************************************************************************************
-NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamClientReceive onReceive,
-	void* handle, SslContext sslContext, StreamClient* streamClient)
+inline static NetsResult connectSslStreamClient(const char* hostname, Socket socket, double nextTimeout)
+{
+	if (!getSocketSslContext(socket))
+		return SUCCESS_NETS_RESULT;
+
+	while (getCurrentClock() < nextTimeout)
+	{
+		NetsResult netsResult = connectSslSocket(socket, hostname);
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
+		{
+			sleepThread(0.001);
+			continue;
+		}
+
+		if (netsResult != SUCCESS_NETS_RESULT)
+			return netsResult;
+		return SUCCESS_NETS_RESULT;
+	}
+
+	return TIMED_OUT_NETS_RESULT;
+}
+inline static NetsResult connectStreamClientAddress(StreamClient streamClient, 
+	SocketAddress remoteAddress, const char* hostname, bool noDelay, SocketFamily socketFamily)
+{
+	SocketAddress socketAddress;
+	NetsResult netsResult = createAnySocketAddress(socketFamily, &socketAddress);
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
+
+	Socket socket;
+	netsResult = createSocket(STREAM_SOCKET_TYPE, socketFamily,
+		socketAddress, false, false, streamClient->sslContext, &socket);
+	destroySocketAddress(socketAddress);
+
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroySocket(socket);
+		return netsResult;
+	}
+	setSocketNoDelay(socket, noDelay);
+
+	double nextTimeout = getCurrentClock() + streamClient->timeoutTime;
+
+	while (getCurrentClock() < nextTimeout)
+	{
+		netsResult = connectSocket(socket, remoteAddress);
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
+		{
+			sleepThread(0.001);
+			continue;
+		}
+
+		if (netsResult != SUCCESS_NETS_RESULT && netsResult != ALREADY_CONNECTED_NETS_RESULT)
+		{
+			destroySocket(socket);
+			return netsResult;
+		}
+
+		netsResult = connectSslStreamClient(hostname, socket, nextTimeout);
+		if (netsResult != SUCCESS_NETS_RESULT)
+		{
+			destroySocket(socket);
+			return netsResult;
+		}
+
+		streamClient->socket = socket;
+		streamClient->lastReceiveTime = getCurrentClock(); // Note: getting latest time here.
+		return SUCCESS_NETS_RESULT;
+	}
+
+	return TIMED_OUT_NETS_RESULT;
+}
+inline static NetsResult connectStreamClientHostname(StreamClient streamClient, 
+	const char* hostname, const char* service, bool noDelay, bool setSNI, SocketFamily socketFamily)
+{
+	SocketAddress* resolvedAddresses; size_t resolvedAddressCount;
+	NetsResult netsResult = resolveSocketAddresses(hostname, service,
+		socketFamily, STREAM_SOCKET_TYPE, &resolvedAddresses, &resolvedAddressCount);
+	if (netsResult != SUCCESS_NETS_RESULT)
+		return netsResult;
+
+	const char* sni = setSNI ? hostname : NULL;
+
+	for (size_t i = 0; i < resolvedAddressCount; i++)
+	{
+		netsResult = connectStreamClientAddress(streamClient, resolvedAddresses[i], sni, noDelay, socketFamily);
+		if (netsResult == SUCCESS_NETS_RESULT)
+			break;
+	}
+
+	destroySocketAddresses(resolvedAddresses, resolvedAddressCount);
+	return netsResult;
+}
+
+//**********************************************************************************************************************
+inline static void processStreamClient(StreamClient streamClient)
+{
+	if (getCurrentClock() - streamClient->lastReceiveTime > streamClient->timeoutTime)
+	{
+		streamClient->isRunning = streamClient->isConnected = false;
+		return;
+	}
+
+	OnStreamClientReceive onReceive = streamClient->onReceive;
+	Socket socket = streamClient->socket;
+	uint8_t* buffer = streamClient->buffer;
+	size_t bufferSize = streamClient->bufferSize;
+
+	size_t byteCount;
+	while (streamClient->isRunning)
+	{
+		NetsResult netsResult = socketReceive(socket, buffer, bufferSize, &byteCount);
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
+		{
+			streamClient->lastReceiveTime = getCurrentClock(); // Note: getting latest time here.
+			return;
+		}
+
+		if (netsResult != SUCCESS_NETS_RESULT || byteCount == 0 ||
+			!onReceive(streamClient, buffer, byteCount))
+		{
+			streamClient->isRunning = streamClient->isConnected = false;
+			return;
+		}
+	}
+}
+
+inline static void streamClientReceive(void* argument)
+{
+	setThreadName("RECV");
+	setThreadForegroundPriority();
+
+	StreamClientConnect* connectData = (StreamClientConnect*)argument;
+	StreamClient streamClient = connectData->byAddress.streamClient;
+
+	NetsResult netsResult;
+	if (connectData->byAddress.isByAddress)
+	{
+		SocketFamily socketFamily = getSocketAddressFamily(connectData->byAddress.remoteAddress);
+		netsResult = connectStreamClientAddress(streamClient, connectData->byAddress.remoteAddress, 
+			connectData->byAddress.hostname, connectData->byAddress.noDelay, socketFamily);
+	}
+	else
+	{
+		netsResult = connectStreamClientHostname(
+			streamClient, connectData->byHostname.hostname, connectData->byHostname.service, 
+			connectData->byHostname.noDelay, connectData->byHostname.setSNI, IP_V6_SOCKET_FAMILY);
+		if (netsResult != SUCCESS_NETS_RESULT)
+		{
+			netsResult = connectStreamClientHostname(
+				streamClient, connectData->byHostname.hostname, connectData->byHostname.service, 
+				connectData->byHostname.noDelay, connectData->byHostname.setSNI, IP_V4_SOCKET_FAMILY);
+		}
+	}
+	destroyStreamClientConnect(connectData);
+
+	if (netsResult == SUCCESS_NETS_RESULT)
+		streamClient->isConnected = true;
+	streamClient->onConnection(streamClient, netsResult);
+
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		streamClient->isRunning = false;
+		return;
+	}
+
+	#if __linux__ || __APPLE__
+	int eventPool = streamClient->eventPool;
+
+	#if __linux__
+	struct epoll_event event;
+	#elif __APPLE__
+	struct kevent event;
+	#endif
+
+	while (streamClient->isRunning)
+	{
+		#if __linux__
+		int eventCount = epoll_wait(eventPool, &event, 1, -1);
+		#elif __APPLE__
+		int eventCount = kevent(eventPool, NULL, 0, &event, 1, NULL);
+		#endif
+
+		if (eventCount == -1)
+		{
+			streamClient->isRunning = streamClient->isConnected = false;
+			return;
+		}
+
+		#if __linux__
+		void* eventData = event.data.ptr;
+		#elif __APPLE__
+		void* eventData = event.udata;
+		#endif
+
+		if (eventData == NULL) // Note: client has been waked up.
+		{
+			#if __linux__
+			uint64_t count;
+			if (read(streamClient->wakeupEvent, &count, sizeof(uint64_t)) != sizeof(uint64_t))
+			{
+				while (true)
+				{
+					ssize_t result = read(streamClient->wakeupEvent, &count, sizeof(uint64_t));
+					if (result == -1 && errno == EAGAIN)
+						break;
+				}
+			}
+			#endif
+		}
+		#if __APPLE__
+		else if (events[i].flags & (EV_EOF | EV_ERROR))
+		{
+			streamClient->isRunning = streamClient->isConnected = false;
+			return;
+		}
+		#endif
+
+		processStreamClient(streamClient);
+	}
+	#elif _WIN32
+	while (streamClient->isRunning)
+	{
+		processStreamClient(streamClient);
+		sleepThread(0.001f); // TODO: suboptimal, use IOCP or RIO instead on Windows.
+	}
+	#endif
+}
+
+//**********************************************************************************************************************
+NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamClientConnection onConnection,
+	OnStreamClientReceive onReceive, void* handle, SslContext sslContext, StreamClient* streamClient)
 {
 	assert(bufferSize > 0);
 	assert(timeoutTime > 0.0);
+	assert(onConnection);
 	assert(onReceive);
 	assert(streamClient);
 
@@ -42,11 +332,10 @@ NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamCli
 		return OUT_OF_MEMORY_NETS_RESULT;
 
 	streamClientInstance->timeoutTime = timeoutTime;
+	streamClientInstance->onConnection = onConnection;
 	streamClientInstance->onReceive = onReceive;
 	streamClientInstance->handle = handle;
 	streamClientInstance->sslContext = sslContext;
-	streamClientInstance->socket = NULL;
-	streamClientInstance->timeout = 0.0;
 
 	uint8_t* buffer = malloc(bufferSize * sizeof(uint8_t));
 	if (!buffer)
@@ -57,13 +346,93 @@ NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamCli
 
 	streamClientInstance->buffer = buffer;
 	streamClientInstance->bufferSize = bufferSize;
+
+	#if __linux__
+	int wakeupEvent = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+	if (wakeupEvent == -1)
+	{
+		destroyStreamClient(streamClientInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	streamClientInstance->wakeupEvent = wakeupEvent;
+
+	int eventPool = epoll_create1(EPOLL_CLOEXEC);
+	#elif __APPLE__
+	int eventPool = kqueue1(O_CLOEXEC);
+	#endif
+
+	#if __linux__ || __APPLE__
+	if (eventPool == -1)
+	{
+		destroyStreamClient(streamClientInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	streamClientInstance->eventPool = eventPool;
+	#endif
+
+	#if __linux__
+	struct epoll_event event;
+	event.events = EPOLLIN;
+	event.data.ptr = NULL;
+	int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, wakeupEvent, &event);
+	#elif __APPLE__
+	struct kevent event;
+	EV_SET(&events[0], 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, NULL);
+	int eventResult = kevent(eventPool, &event, 1, NULL, 0, NULL);
+	#elif _WIN32
+	// TODO: implement.
+	#endif
+
+	#if __linux__ || __APPLE__
+	if (eventResult == -1)
+	{
+		destroyStreamClient(streamClientInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	#endif
+
 	*streamClient = streamClientInstance;
 	return SUCCESS_NETS_RESULT;
+}
+
+//**********************************************************************************************************************
+static void wakeUpStreamClient(StreamClient streamClient)
+{
+	#if __linux__
+	uint64_t wakeupData = 1;
+	ssize_t result = write(streamClient->wakeupEvent, &wakeupData, sizeof(uint64_t));
+	assert(result == sizeof(uint64_t));
+	#elif __APPLE__
+	struct kevent event;
+	EV_SET(&event, 1, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
+	kevent(streamClient->eventPool, &event, 1, NULL, 0, NULL);
+	#endif
+}
+inline static void stopStreamClientReceive(StreamClient streamClient)
+{
+	streamClient->isRunning = streamClient->isConnected = false;
+	wakeUpStreamClient(streamClient);
+
+	Thread receiveThread = streamClient->receiveThread;
+	joinThread(receiveThread);
+	destroyThread(receiveThread);
 }
 void destroyStreamClient(StreamClient streamClient)
 {
 	if (!streamClient)
 		return;
+
+	if (streamClient->receiveThread)
+		stopStreamClientReceive(streamClient);
+
+	#if __linux__
+	if (streamClient->wakeupEvent > 0)
+		close(streamClient->wakeupEvent);
+	#endif
+	#if __linux__ || __APPLE__
+	if (streamClient->eventPool > 0)
+		close(streamClient->eventPool);
+	#endif
 
 	if (streamClient->socket)
 	{
@@ -82,6 +451,11 @@ size_t getStreamClientBufferSize(StreamClient streamClient)
 	assert(streamClient);
 	return streamClient->bufferSize;
 }
+double getStreamClientTimeoutTime(StreamClient streamClient)
+{
+	assert(streamClient);
+	return streamClient->timeoutTime;
+}
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient)
 {
 	assert(streamClient);
@@ -97,23 +471,6 @@ uint8_t* getStreamClientBuffer(StreamClient streamClient)
 	assert(streamClient);
 	return streamClient->buffer;
 }
-Socket getStreamClientSocket(StreamClient streamClient)
-{
-	assert(streamClient);
-	return streamClient->socket;
-}
-
-double getStreamClientTimeoutTime(StreamClient streamClient)
-{
-	assert(streamClient);
-	return streamClient->timeoutTime;
-}
-void setStreamClientTimeoutTime(StreamClient streamClient, double timeoutTime)
-{
-	assert(streamClient);
-	assert(timeoutTime > 0.0);
-	streamClient->timeoutTime = timeoutTime;
-}
 
 SslContext getStreamClientSslContext(StreamClient streamClient)
 {
@@ -123,216 +480,130 @@ SslContext getStreamClientSslContext(StreamClient streamClient)
 void setStreamClientSslContext(StreamClient streamClient, SslContext sslContext)
 {
 	assert(streamClient);
-	assert(!streamClient->socket);
+	assert(!streamClient->isRunning);
 	streamClient->sslContext = sslContext;
 }
 
 //**********************************************************************************************************************
+bool isStreamClientRunning(StreamClient streamClient)
+{
+	assert(streamClient);
+	return streamClient->isRunning;
+}
 bool isStreamClientConnected(StreamClient streamClient)
 {
 	assert(streamClient);
-	return streamClient->socket;
+	return streamClient->isConnected;
 }
-NetsResult connectAddressStreamClient(StreamClient streamClient, SocketAddress remoteAddress, const char* hostname)
+
+NetsResult connectStreamClientByAddress(StreamClient streamClient, 
+	SocketAddress remoteAddress, const char* hostname, bool noDelay)
 {
 	assert(streamClient);
 	assert(remoteAddress);
-	assert(!streamClient->socket);
-	SocketFamily socketFamily = getSocketAddressFamily(remoteAddress);
+	assert(!streamClient->receiveThread);
 
-	SocketAddress socketAddress;
-	NetsResult netsResult = createAnySocketAddress(socketFamily, &socketAddress);
-	if (netsResult != SUCCESS_NETS_RESULT)
-		return netsResult;
+	StreamClientConnect* connectData = calloc(1, sizeof(StreamClientConnect));
+	if (!connectData)
+		return OUT_OF_MEMORY_NETS_RESULT;
 
-	Socket socket;
-	netsResult = createSocket(STREAM_SOCKET_TYPE, socketFamily,
-		socketAddress, false, false, streamClient->sslContext, &socket);
-	destroySocketAddress(socketAddress);
+	connectData->byAddress.streamClient = streamClient;
+	connectData->byAddress.isByAddress = true;
+	connectData->byAddress.noDelay = noDelay;
 
-	if (netsResult != SUCCESS_NETS_RESULT)
-		return netsResult;
-
-	double timeout = getCurrentClock() + streamClient->timeoutTime;
-
-	while (getCurrentClock() < timeout)
+	if (hostname)
 	{
-		netsResult = connectSocket(socket, remoteAddress);
-		if (netsResult == IN_PROGRESS_NETS_RESULT)
+		size_t hostnameLenght = strlen(hostname);
+		assert(hostnameLenght > 0);
+
+		connectData->byAddress.hostname = malloc(hostnameLenght);
+		if (!connectData->byAddress.hostname)
 		{
-			sleepThread(0.001);
-			continue;
+			destroyStreamClientConnect(connectData);
+			return OUT_OF_MEMORY_NETS_RESULT;
 		}
-		if (netsResult != SUCCESS_NETS_RESULT && netsResult != ALREADY_CONNECTED_NETS_RESULT)
-		{
-			destroySocket(socket);
-			return netsResult;
-		}
-		goto CONNECT_SSL;
+		memcpy(connectData->byAddress.hostname, hostname, hostnameLenght * sizeof(char));
 	}
 
-	destroySocket(socket);
-	return TIMED_OUT_NETS_RESULT;
-
-CONNECT_SSL:
-
-	if (!getSocketSslContext(socket))
+	connectData->byAddress.remoteAddress = createSocketAddressCopy(remoteAddress);
+	if (!connectData->byAddress.remoteAddress)
 	{
-		assert(hostname == NULL);
-		streamClient->socket = socket;
-		streamClient->timeout = timeout;
-		return SUCCESS_NETS_RESULT;
+		destroyStreamClientConnect(connectData);
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 
-	while (getCurrentClock() < timeout)
+	streamClient->isRunning = true;
+	Thread receiveThread = createThread(streamClientReceive, connectData);
+	if (receiveThread == NULL)
 	{
-		netsResult = connectSslSocket(socket, hostname);
-		if (netsResult == IN_PROGRESS_NETS_RESULT)
-		{
-			sleepThread(0.001);
-			continue;
-		}
-		if (netsResult != SUCCESS_NETS_RESULT)
-		{
-			destroySocket(socket);
-			return netsResult;
-		}
-
-		streamClient->socket = socket;
-		streamClient->timeout = timeout;
-		return SUCCESS_NETS_RESULT;
+		streamClient->isRunning = false;
+		destroyStreamClientConnect(connectData);
+		return OUT_OF_MEMORY_NETS_RESULT;
 	}
-
-	destroySocket(socket);
-	return TIMED_OUT_NETS_RESULT;
-}
-
-//**********************************************************************************************************************
-inline static NetsResult connectByHostname(StreamClient streamClient, 
-	const char* hostname, const char* service, bool setSNI, SocketFamily socketFamily)
-{
-	assert(streamClient);
-	assert(hostname);
-	assert(service);
-	assert(!streamClient->socket);
-	assert(socketFamily < SOCKET_FAMILY_COUNT);
-
-	SocketAddress* resolvedAddresses; size_t resolvedAddressCount;
-	NetsResult netsResult = resolveSocketAddresses(hostname, service,
-		socketFamily, STREAM_SOCKET_TYPE, &resolvedAddresses, &resolvedAddressCount);
-	if (netsResult != SUCCESS_NETS_RESULT)
-		return netsResult;
-
-	SocketAddress socketAddress;
-	netsResult = createAnySocketAddress(socketFamily, &socketAddress);
-	if (netsResult != SUCCESS_NETS_RESULT)
-	{
-		destroySocketAddresses(resolvedAddresses, resolvedAddressCount);
-		return netsResult;
-	}
-
-	double timeout = getCurrentClock() + streamClient->timeoutTime;
-
-	for (size_t i = 0; i < resolvedAddressCount; i++)
-	{
-		Socket socket;
-		netsResult = createSocket(STREAM_SOCKET_TYPE, socketFamily, 
-			socketAddress, false, false, streamClient->sslContext, &socket);
-		if (netsResult != SUCCESS_NETS_RESULT)
-		{
-			destroySocketAddress(socketAddress);
-			destroySocketAddresses(resolvedAddresses, resolvedAddressCount);
-			return netsResult;
-		}
-
-		SocketAddress remoteAddress = resolvedAddresses[i];
-
-		while (getCurrentClock() < timeout)
-		{
-			netsResult = connectSocket(socket, remoteAddress);
-			if (netsResult == IN_PROGRESS_NETS_RESULT)
-			{
-				sleepThread(0.001);
-				continue;
-			}
-			if (netsResult != SUCCESS_NETS_RESULT && netsResult != ALREADY_CONNECTED_NETS_RESULT)
-			{
-				destroySocket(socket);
-				goto CONTINUE;
-			}
-			goto CONNECT_SSL;
-		}
-
-		destroySocket(socket);
-		destroySocketAddress(socketAddress);
-		destroySocketAddresses(resolvedAddresses, resolvedAddressCount);
-		return TIMED_OUT_NETS_RESULT;
-
-CONNECT_SSL:
-
-		if (!getSocketSslContext(socket))
-		{
-			assert(setSNI == false);
-			destroySocketAddress(socketAddress);
-			destroySocketAddresses(resolvedAddresses, resolvedAddressCount);
-			streamClient->socket = socket;
-			streamClient->timeout = timeout;
-			return SUCCESS_NETS_RESULT;
-		}
-
-		while (getCurrentClock() < timeout)
-		{
-			netsResult = connectSslSocket(socket, setSNI ? hostname : NULL);
-			if (netsResult == IN_PROGRESS_NETS_RESULT)
-			{
-				sleepThread(0.001);
-				continue;
-			}
-			if (netsResult != SUCCESS_NETS_RESULT)
-			{
-				destroySocket(socket);
-				goto CONTINUE;
-			}
-
-			destroySocketAddress(socketAddress);
-			destroySocketAddresses(resolvedAddresses, resolvedAddressCount);
-			streamClient->socket = socket;
-			streamClient->timeout = timeout;
-			return SUCCESS_NETS_RESULT;
-		}
-
-		destroySocket(socket);
-		destroySocketAddress(socketAddress);
-		destroySocketAddresses(resolvedAddresses, resolvedAddressCount);
-		return TIMED_OUT_NETS_RESULT;
-CONTINUE:
-		continue;
-	}
-
-	destroySocketAddress(socketAddress);
-	return netsResult;
-}
-
-//**********************************************************************************************************************
-NetsResult connectHostnameStreamClient(StreamClient streamClient, const char* hostname, const char* service, bool setSNI)
-{
-	assert(streamClient);
-	assert(hostname);
-	assert(service);
-	assert(!streamClient->socket);
-
-	NetsResult netsResult = connectByHostname(streamClient, hostname, service, setSNI, IP_V4_SOCKET_FAMILY);
-	if (netsResult != SUCCESS_NETS_RESULT)
-	{
-		NetsResult netsResult6 = connectByHostname(streamClient, hostname, service, setSNI, IP_V6_SOCKET_FAMILY);
-		if (netsResult6 != SUCCESS_NETS_RESULT)
-			return netsResult;
-	}
+	streamClient->receiveThread = receiveThread;
 	return SUCCESS_NETS_RESULT;
 }
+
+//**********************************************************************************************************************
+NetsResult connectStreamClientByHostname(StreamClient streamClient, 
+	const char* hostname, const char* service, bool noDelay, bool setSNI)
+{
+	assert(streamClient);
+	assert(hostname);
+	assert(service);
+	assert(!streamClient->receiveThread);
+
+	StreamClientConnect* connectData = calloc(1, sizeof(StreamClientConnect));
+	if (!connectData)
+		return OUT_OF_MEMORY_NETS_RESULT;
+
+	connectData->byHostname.streamClient = streamClient;
+	connectData->byHostname.isByAddress = false;
+	connectData->byHostname.noDelay = noDelay;
+	connectData->byHostname.setSNI = setSNI;
+
+	size_t hostnameLenght = strlen(hostname);
+	assert(hostnameLenght > 0);
+
+	connectData->byHostname.hostname = malloc(hostnameLenght);
+	if (!connectData->byHostname.hostname)
+	{
+		destroyStreamClientConnect(connectData);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+	memcpy(connectData->byHostname.hostname, hostname, hostnameLenght * sizeof(char));
+
+	size_t serviceLenght = strlen(hostname);
+	assert(serviceLenght > 0);
+
+	connectData->byHostname.service = malloc(serviceLenght);
+	if (!connectData->byHostname.service)
+	{
+		destroyStreamClientConnect(connectData);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+	memcpy(connectData->byHostname.service, service, serviceLenght * sizeof(char));
+
+	streamClient->isRunning = true;
+	Thread receiveThread = createThread(streamClientReceive, connectData);
+	if (receiveThread == NULL)
+	{
+		streamClient->isRunning = false;
+		destroyStreamClientConnect(connectData);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+	streamClient->receiveThread = receiveThread;
+	return SUCCESS_NETS_RESULT;
+}
+
 void disconnectStreamClient(StreamClient streamClient)
 {
 	assert(streamClient);
+	if (streamClient->receiveThread)
+	{
+		stopStreamClientReceive(streamClient);
+		streamClient->receiveThread = NULL;
+	}
 
 	if (streamClient->socket)
 	{
@@ -340,51 +611,22 @@ void disconnectStreamClient(StreamClient streamClient)
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
 		streamClient->socket = NULL;
-		streamClient->timeout = 0.0;
+		streamClient->lastReceiveTime = 0.0;
 	}
 }
 
-NetsResult updateStreamClient(StreamClient streamClient)
-{
-	assert(streamClient);
-	assert(streamClient->socket);
-
-	double currentTime = getCurrentClock();
-	if (currentTime > streamClient->timeout)
-		return TIMED_OUT_NETS_RESULT;
-
-	uint8_t* receiveBuffer = streamClient->buffer;
-
-	size_t byteCount;
-	NetsResult netsResult = socketReceive(streamClient->socket,
-		receiveBuffer, streamClient->bufferSize, &byteCount);
-	if (netsResult != SUCCESS_NETS_RESULT)
-		return netsResult;
-
-	streamClient->timeout = currentTime + streamClient->timeoutTime;
-	streamClient->onReceive(streamClient, receiveBuffer, byteCount);
-	return SUCCESS_NETS_RESULT;
-}
-void resetStreamClientTimeout(StreamClient streamClient)
-{
-	assert(streamClient);
-	streamClient->timeout = getCurrentClock() + streamClient->timeoutTime;
-}
-
 //**********************************************************************************************************************
+void updateStreamClient(StreamClient streamClient)
+{
+	wakeUpStreamClient(streamClient);
+}
+
 NetsResult streamClientSend(StreamClient streamClient, const void* sendBuffer, size_t byteCount)
 {
 	assert(streamClient);
+	if (!streamClient->isConnected)
+		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	NetsResult netsResult = socketSend(streamClient->socket, sendBuffer, byteCount);
-	if (netsResult != SUCCESS_NETS_RESULT)
-		return netsResult;
-	return SUCCESS_NETS_RESULT;
-}
-NetsResult streamClientSendMessage(StreamClient streamClient, StreamMessage streamMessage)
-{
-	assert(streamClient);
-	assert(validateStreamMessage(streamMessage));
-	NetsResult netsResult = socketSend(streamClient->socket, streamMessage.buffer, streamMessage.size);
 	if (netsResult != SUCCESS_NETS_RESULT)
 		return netsResult;
 	return SUCCESS_NETS_RESULT;

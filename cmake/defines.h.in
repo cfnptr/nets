@@ -58,6 +58,13 @@
 #define netToHost16(x) swapBytes16(x)
 #define netToHost32(x) swapBytes32(x)
 #define netToHost64(x) swapBytes64(x)
+
+#define hostToLE16(x) (uint16_t)(x)
+#define hostToLE32(x) (uint32_t)(x)
+#define hostToLE64(x) (uint64_t)(x)
+#define leToHost16(x) (uint16_t)(x)
+#define leToHost32(x) (uint32_t)(x)
+#define leToHost64(x) (uint64_t)(x)
 #else
 #define hostToNet16(x) (uint16_t)(x)
 #define hostToNet32(x) (uint32_t)(x)
@@ -65,6 +72,13 @@
 #define netToHost16(x) (uint16_t)(x)
 #define netToHost32(x) (uint32_t)(x)
 #define netToHost64(x) (uint64_t)(x)
+
+#define hostToLE16(x) swapBytes16(x)
+#define hostToLE32(x) swapBytes32(x)
+#define hostToLE64(x) swapBytes64(x)
+#define leToHost16(x) swapBytes16(x)
+#define leToHost32(x) swapBytes32(x)
+#define leToHost64(x) swapBytes64(x)
 #endif
 
 /***********************************************************************************************************************

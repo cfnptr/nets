@@ -19,7 +19,6 @@
 
 #pragma once
 #include "nets/socket.h"
-#include "nets/stream-message.h"
 
 typedef struct StreamServer_T StreamServer_T;   /**< Stream server structure. (TCP) */
 typedef StreamServer_T* StreamServer;           /**< Stream server instance. (TCP) */
@@ -70,7 +69,7 @@ typedef int(*OnStreamSessionReceive)(StreamServer streamServer,
  * @param timeoutTime session timeout time in seconds
  * @param[in] onCreate on session create function
  * @param[in] onDestroy on session destroy function
- * @param[in] onReceive on session receive function
+ * @param[in] onReceive on session data receive function
  * @param[in] handle receive function argument or NULL
  * @param sslContext socket SSL context instance or NULL
  * @param[out] streamServer pointer to the stream server instance
@@ -131,17 +130,43 @@ uint8_t* getStreamServerReceiveBuffer(StreamServer streamServer);
  */
 Socket getStreamServerSocket(StreamServer streamServer);
 /**
- * @brief Returns true if stream server is running.
+ * @brief Returns true if stream server receive thread is running.
  * @param streamServer target stream server instance
  */
 bool isStreamServerRunning(StreamServer streamServer);
 /**
- * @brief Returns true if server use encrypted connection.
+ * @brief Returns true if stream server use encrypted connection.
  * @param streamServer target stream server instance
  */
 bool isStreamServerSecure(StreamServer streamServer);
+
+/***********************************************************************************************************************
+ * @brief Locks stream server session buffer access.
+ * @param streamServer target stream server instance
+ */
+void lockStreamServerSessions(StreamServer streamServer);
+/**
+ * @brief Unlocks stream server session buffer access.
+ * @param streamServer target stream server instance
+ */
+void unlockStreamServerSessions(StreamServer streamServer);
+/**
+ * @brief Returns stream server session buffer.
+ * @warning You should lock sessions before getting!
+ * @param streamServer target stream server instance
+ */
+StreamSession* getStreamServerSessions(StreamServer streamServer);
+/**
+ * @brief Returns stream server session buffer.
+ * @warning You should lock sessions before getting count!
+ * @param streamServer target stream server instance
+ */
+size_t getStreamServerSessionCount(StreamServer streamServer);
+
+
 /**
  * @brief Returns stream session socket instance.
+ * @warning You should lock sessions before getting socket!
  * @param streamSession target stream session instance
  */
 Socket getStreamSessionSocket(StreamSession streamSession);
@@ -157,7 +182,27 @@ SocketAddress getStreamSessionRemoteAddress(StreamSession streamSession);
 void* getStreamSessionHandle(StreamSession streamSession);
 
 /**
+ * @brief Updates specified stream server session state.
+ * @warning You should lock sessions before updating!
+ * @return Zero on success, otherwise failure reason.
+ *
+ * @param streamServer target stream server instance
+ * @param streamSession stream session instance to update
+ * @param currentTime current time value
+ */
+int updateStreamSession(StreamServer streamServer, StreamSession streamSession, double currentTime);
+/**
+ * @brief Closes specified stream server session.
+ * @warning You should lock sessions before closing!
+ *
+ * @param streamServer target stream server instance
+ * @param streamSession stream session instance to close
+ * @param reason stream session destruction reason
+ */
+void closeStreamSession(StreamServer streamServer, StreamSession streamSession, int reason);
+/**
  * @brief Sends stream data to the specified session.
+ * @warning You should lock sessions before sending messages!
  * @return The operation @ref NetsResult code.
  *
  * @param streamSession target stream session instance
@@ -165,11 +210,3 @@ void* getStreamSessionHandle(StreamSession streamSession);
  * @param byteCount data byte count to send
  */
 NetsResult streamSessionSend(StreamSession streamSession, const void* sendBuffer, size_t byteCount);
-/**
- * @brief Sends stream message to the specified session.
- * @return The operation @ref NetsResult code.
- *
- * @param streamSession target stream session instance
- * @param streamMessage stream message to send
- */
-NetsResult streamSessionSendMessage(StreamSession streamSession, StreamMessage streamMessage);
