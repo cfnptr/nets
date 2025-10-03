@@ -495,9 +495,9 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 	}
 	streamServerInstance->eventPool = eventPool;
 
-	if (fcntl(eventPool, F_SETFD, FD_CLOEXEC) != 0)
+	if (fcntl(eventPool, F_SETFD, FD_CLOEXEC) == -1)
 	{
-		destroyStreamClient(streamClientInstance);
+		destroyStreamServer(streamServerInstance);
 		return FAILED_TO_SET_FLAG_NETS_RESULT;
 	}
 

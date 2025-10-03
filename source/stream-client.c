@@ -300,7 +300,7 @@ inline static void streamClientReceive(void* argument)
 			#endif
 		}
 		#if __APPLE__
-		else if (events[i].flags & (EV_EOF | EV_ERROR))
+		else if (event.flags & (EV_EOF | EV_ERROR))
 		{
 			streamClient->isRunning = streamClient->isConnected = false;
 			return;
@@ -383,14 +383,14 @@ NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamCli
 	}
 	streamClientInstance->eventPool = eventPool;
 	
-	if (fcntl(eventPool, F_SETFD, FD_CLOEXEC) != 0)
+	if (fcntl(eventPool, F_SETFD, FD_CLOEXEC) == -1)
 	{
 		destroyStreamClient(streamClientInstance);
 		return FAILED_TO_SET_FLAG_NETS_RESULT;
 	}
 
 	struct kevent event;
-	EV_SET(&events[0], 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, NULL);
+	EV_SET(&event, 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, NULL);
 
 	if (kevent(eventPool, &event, 1, NULL, 0, NULL) == -1)
 	{
