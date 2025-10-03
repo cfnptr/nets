@@ -23,6 +23,7 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #elif __APPLE__
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/event.h>
 #endif
@@ -450,6 +451,8 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 		return netsResult;
 	}
 
+	int socketHandle = (int)(size_t)getSocketHandle(acceptSocket);
+
 	#if __linux__
 	int wakeupEvent = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 	if (wakeupEvent == -1)
@@ -460,50 +463,55 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service,
 	streamServerInstance->wakeupEvent = wakeupEvent;
 
 	int eventPool = epoll_create1(EPOLL_CLOEXEC);
-	#elif __APPLE__
-	int eventPool = kqueue1(O_CLOEXEC);
-	#endif
-
-	#if __linux__ || __APPLE__
 	if (eventPool == -1)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
 	streamServerInstance->eventPool = eventPool;
-	#endif
 
-	int socketHandle = (int)(size_t)getSocketHandle(acceptSocket);
-
-	#if __linux__
 	struct epoll_event event;
 	event.events = EPOLLIN;
 	event.data.ptr = NULL;
 
-	int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, wakeupEvent, &event);
-	if (eventResult == -1)
+	if (epoll_ctl(eventPool, EPOLL_CTL_ADD, wakeupEvent, &event) == -1)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
 
 	event.data.ptr = streamServerInstance;
-	eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event);
-	#elif __APPLE__
-	struct kevent events[2];
-	EV_SET(&events[0], 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, NULL);
-	EV_SET(&events[1], socketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, streamServerInstance);
-	int eventResult = kevent(eventPool, events, 2, NULL, 0, NULL);
-	#elif _WIN32
-	// TODO: implement.
-	#endif
-
-	#if __linux__ || __APPLE__
-	if (eventResult == -1)
+	if (epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event) == -1)
 	{
 		destroyStreamServer(streamServerInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
+	#elif __APPLE__
+	int eventPool = kqueue();
+	if (eventPool == -1)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	streamServerInstance->eventPool = eventPool;
+
+	if (fcntl(eventPool, F_SETFD, FD_CLOEXEC) != 0)
+	{
+		destroyStreamClient(streamClientInstance);
+		return FAILED_TO_SET_FLAG_NETS_RESULT;
+	}
+
+	struct kevent events[2];
+	EV_SET(&events[0], 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, NULL);
+	EV_SET(&events[1], socketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, streamServerInstance);
+
+	if (kevent(eventPool, events, 2, NULL, 0, NULL) == -1)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	#elif _WIN32
+	// TODO: implement.
 	#endif
 
 	Mutex sessionLocker = createMutex();

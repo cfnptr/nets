@@ -23,6 +23,7 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #elif __APPLE__
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/event.h>
 #endif
@@ -357,38 +358,47 @@ NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamCli
 	streamClientInstance->wakeupEvent = wakeupEvent;
 
 	int eventPool = epoll_create1(EPOLL_CLOEXEC);
-	#elif __APPLE__
-	int eventPool = kqueue1(O_CLOEXEC);
-	#endif
-
-	#if __linux__ || __APPLE__
 	if (eventPool == -1)
 	{
 		destroyStreamClient(streamClientInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
 	streamClientInstance->eventPool = eventPool;
-	#endif
 
-	#if __linux__
 	struct epoll_event event;
 	event.events = EPOLLIN;
 	event.data.ptr = NULL;
-	int eventResult = epoll_ctl(eventPool, EPOLL_CTL_ADD, wakeupEvent, &event);
-	#elif __APPLE__
-	struct kevent event;
-	EV_SET(&events[0], 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, NULL);
-	int eventResult = kevent(eventPool, &event, 1, NULL, 0, NULL);
-	#elif _WIN32
-	// TODO: implement.
-	#endif
 
-	#if __linux__ || __APPLE__
-	if (eventResult == -1)
+	if (epoll_ctl(eventPool, EPOLL_CTL_ADD, wakeupEvent, &event) == -1)
 	{
 		destroyStreamClient(streamClientInstance);
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
+	#elif __APPLE__
+	int eventPool = kqueue();
+	if (eventPool == -1)
+	{
+		destroyStreamClient(streamClientInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	streamClientInstance->eventPool = eventPool;
+	
+	if (fcntl(eventPool, F_SETFD, FD_CLOEXEC) != 0)
+	{
+		destroyStreamClient(streamClientInstance);
+		return FAILED_TO_SET_FLAG_NETS_RESULT;
+	}
+
+	struct kevent event;
+	EV_SET(&events[0], 1, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, NULL);
+
+	if (kevent(eventPool, &event, 1, NULL, 0, NULL) == -1)
+	{
+		destroyStreamClient(streamClientInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	#elif _WIN32
+	// TODO: implement.
 	#endif
 
 	*streamClient = streamClientInstance;
