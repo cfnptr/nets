@@ -104,7 +104,7 @@ void terminateNetwork()
 		return;
 
 	#if _WIN32
-	WSACleanup()
+	WSACleanup();
 	#endif
 
 	#if NETS_SUPPORT_CURL
