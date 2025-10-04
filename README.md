@@ -52,6 +52,7 @@ git clone --recursive https://github.com/cfnptr/nets
 
 ## Third-party
 
+* [cURL](https://github.com/curl/curl) (curl License)
 * [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)
 * [mpio](https://github.com/cfnptr/mpio/) (Apache-2.0 License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache-2.0 License)

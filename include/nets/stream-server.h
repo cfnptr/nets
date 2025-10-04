@@ -130,7 +130,7 @@ uint8_t* getStreamServerReceiveBuffer(StreamServer streamServer);
  */
 Socket getStreamServerSocket(StreamServer streamServer);
 /**
- * @brief Returns true if stream server receive thread is running.
+ * @brief Returns true if stream server receive thread is running. (MT-Safe)
  * @param streamServer target stream server instance
  */
 bool isStreamServerRunning(StreamServer streamServer);
@@ -141,12 +141,12 @@ bool isStreamServerRunning(StreamServer streamServer);
 bool isStreamServerSecure(StreamServer streamServer);
 
 /***********************************************************************************************************************
- * @brief Locks stream server session buffer access.
+ * @brief Locks stream server session buffer access. (MT-Safe)
  * @param streamServer target stream server instance
  */
 void lockStreamServerSessions(StreamServer streamServer);
 /**
- * @brief Unlocks stream server session buffer access.
+ * @brief Unlocks stream server session buffer access. (MT-Safe)
  * @param streamServer target stream server instance
  */
 void unlockStreamServerSessions(StreamServer streamServer);
@@ -162,7 +162,6 @@ StreamSession* getStreamServerSessions(StreamServer streamServer);
  * @param streamServer target stream server instance
  */
 size_t getStreamServerSessionCount(StreamServer streamServer);
-
 
 /**
  * @brief Returns stream session socket instance.

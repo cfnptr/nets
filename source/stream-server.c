@@ -20,6 +20,7 @@
 
 #if __linux__
 #include <unistd.h>
+#include <signal.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #elif __APPLE__
@@ -49,7 +50,7 @@ struct StreamServer_T
 	size_t sessionCount;
 	Socket acceptSocket;
 	Mutex sessionLocker;
-	Thread receiveThread;
+	Thread receiveThread; // TODO: distribute clients accross different threads with separate event pools.
 	#if __linux__ || __APPLE__
 	int eventPool;
 	#endif
@@ -256,6 +257,10 @@ inline static void streamServerReceive(void* argument)
 {
 	setThreadName("RECV");
 	setThreadForegroundPriority();
+
+	#if __linux__ || __APPLE__
+	signal(SIGPIPE, SIG_IGN);
+	#endif
 
 	StreamServer streamServer = (StreamServer)argument;
 	Socket serverSocket = streamServer->acceptSocket;

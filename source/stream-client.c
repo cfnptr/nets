@@ -20,6 +20,7 @@
 #if __linux__
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #elif __APPLE__
@@ -220,6 +221,10 @@ inline static void streamClientReceive(void* argument)
 {
 	setThreadName("RECV");
 	setThreadForegroundPriority();
+
+	#if __linux__ || __APPLE__
+	signal(SIGPIPE, SIG_IGN);
+	#endif
 
 	StreamClientConnect* connectData = (StreamClientConnect*)argument;
 	StreamClient streamClient = connectData->byAddress.streamClient;
@@ -623,6 +628,11 @@ void disconnectStreamClient(StreamClient streamClient)
 		streamClient->socket = NULL;
 		streamClient->lastReceiveTime = 0.0;
 	}
+}
+void stopStreamClient(StreamClient streamClient)
+{
+	assert(streamClient);
+	streamClient->isRunning = streamClient->isConnected = false;
 }
 
 //**********************************************************************************************************************

@@ -646,6 +646,11 @@ public:
 	{
 		return socketSendTo(instance, &data, sizeof(T), remoteAddress.getInstance());
 	}
+
+	/**
+	 * @brief Disablea SIGPIPE signals on Linux for a current thread. 
+	 */
+	static void disableSigpipe() noexcept { ::disableSigpipe(); }
 };
 
 /***********************************************************************************************************************

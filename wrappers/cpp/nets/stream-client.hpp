@@ -174,11 +174,17 @@ public:
 		if (result != SUCCESS_NETS_RESULT)
 			throw Error(netsResultToString(result));
 	}
+
 	/**
 	 * @brief Disconnects stream client from the server.
 	 * @details See the @ref disconnectStreamClient().
 	 */
 	void disconnect() noexcept { disconnectStreamClient(instance); }
+	/**
+	 * @brief Stops stream client receive thread. (MT-Safe)
+	 * @details See the @ref stopStreamClient().
+	 */
+	void stop() noexcept { stopStreamClient(instance); }
 
 	/*******************************************************************************************************************
 	 * @brief Updates stream client state.

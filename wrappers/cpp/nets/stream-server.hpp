@@ -229,7 +229,7 @@ public:
 	 */
 	SocketView getSocket() const noexcept { return getStreamServerSocket(instance); }
 	/**
-	 * @brief Returns true if stream server receive thread is running.
+	 * @brief Returns true if stream server receive thread is running. (MT-Safe)
 	 * @details See the @ref isStreamServerRunning().
 	 */
 	bool isRunning() const noexcept { return isStreamServerRunning(instance); }
@@ -240,12 +240,12 @@ public:
 	bool isSecure() const noexcept { return isStreamServerSecure(instance); }
 
 	/*******************************************************************************************************************
-	 * @brief Locks stream server session buffer access.
+	 * @brief Locks stream server session buffer access. (MT-Safe)
 	 * @details See the @ref lockStreamServerSessions().
 	 */
 	void lockSessions() noexcept { lockStreamServerSessions(instance); }
 	/**
-	 * @brief Unlocks stream server session buffer access.
+	 * @brief Unlocks stream server session buffer access. (MT-Safe)
 	 * @details See the @ref unlockStreamServerSessions().
 	 */
 	void unlockSessions() noexcept { unlockStreamServerSessions(instance); }

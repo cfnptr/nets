@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -47,6 +48,9 @@ static WSADATA wsaData;
 #include "openssl/ssl.h"
 #else
 #define SSL_CTX void
+#endif
+#if NETS_SUPPORT_CURL
+#include "curl/curl.h"
 #endif
 
 struct Socket_T
@@ -79,8 +83,15 @@ bool initializeNetwork()
 	if (networkInitialized)
 		return false;
 
-	#if _WIN32
+	#if __linux__ || __APPLE__
+	signal(SIGPIPE, SIG_IGN);
+	#elif _WIN32
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+		return false;
+	#endif
+
+	#if NETS_SUPPORT_CURL
+	if (curl_global_init(CURL_GLOBAL_DEFAULT) != 0)
 		return false;
 	#endif
 
@@ -93,8 +104,11 @@ void terminateNetwork()
 		return;
 
 	#if _WIN32
-	if (WSACleanup() != 0)
-		abort(); // Note: network subsystem failure.
+	WSACleanup()
+	#endif
+
+	#if NETS_SUPPORT_CURL
+	curl_global_cleanup();
 	#endif
 
 	networkInitialized = false;
@@ -102,6 +116,13 @@ void terminateNetwork()
 bool isNetworkInitialized()
 {
 	return networkInitialized;
+}
+
+void disableSigpipe()
+{
+	#if __linux__ || __APPLE__
+	signal(SIGPIPE, SIG_IGN);
+	#endif
 }
 
 //**********************************************************************************************************************

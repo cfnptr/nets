@@ -35,18 +35,17 @@ set(CMAKE_C_STANDARD_REQUIRED TRUE)
 option(NETS_BUILD_EXAMPLES "Build Nets usage examples" ON)
 option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_ALLOW_DEPRECATED_SSL "Allow deprecated OpenSSL functions" OFF)
+option(NETS_USE_CURL "Use cURL for HTTP requests" ON)
 
 find_package(ZLIB REQUIRED)
 
 if(NETS_USE_OPENSSL)
 	find_package(OpenSSL)
-
 	if(OpenSSL_FOUND)
 		set(NETS_SUPPORT_OPENSSL 1)
 	else()
 		set(NETS_SUPPORT_OPENSSL 0)
 	endif()
-
 	if(NETS_ALLOW_DEPRECATED_SSL)
 		set(NETS_SUPPORT_DEPRECATED_SSL 1)
 	else()
@@ -55,6 +54,17 @@ if(NETS_USE_OPENSSL)
 else()
 	set(NETS_SUPPORT_OPENSSL 0)
 	set(NETS_SUPPORT_DEPRECATED_SSL 0)
+endif()
+
+if(NETS_USE_CURL)
+	find_package(CURL)
+	if(CURL_FOUND)
+		set(NETS_SUPPORT_CURL 1)
+	else()
+		set(NETS_SUPPORT_CURL 0)
+	endif()
+else()
+	set(NETS_SUPPORT_CURL 0)
 endif()
 
 include(TestBigEndian)
@@ -83,6 +93,9 @@ configure_file(cmake/defines.h.in include/nets/defines.h)
 
 if(NETS_USE_OPENSSL AND OpenSSL_FOUND)
 	list(APPEND NETS_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
+endif()
+if(NETS_USE_CURL AND CURL_FOUND)
+	list(APPEND NETS_LINK_LIBRARIES CURL::libcurl)
 endif()
 
 set(NETS_SOURCES source/datagram-client.c source/datagram-server.c source/socket.c 

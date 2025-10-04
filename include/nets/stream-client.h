@@ -103,12 +103,12 @@ SslContext getStreamClientSslContext(StreamClient streamClient);
 void setStreamClientSslContext(StreamClient streamClient, SslContext sslContext);
 
 /***********************************************************************************************************************
- * @brief Returns true if stream client receive thread is running.
+ * @brief Returns true if stream client receive thread is running. (MT-Safe)
  * @param streamClient target stream client instance
  */
 bool isStreamClientRunning(StreamClient streamClient);
 /**
- * @brief Returns true if stream client is connected to the server.
+ * @brief Returns true if stream client is connected to the server. (MT-Safe)
  * @param streamClient target stream client instance
  */
 bool isStreamClientConnected(StreamClient streamClient);
@@ -136,11 +136,17 @@ NetsResult connectStreamClientByAddress(StreamClient streamClient,
  */
 NetsResult connectStreamClientByHostname(StreamClient streamClient, 
 	const char* hostname, const char* service, bool noDelay, bool setSNI);
+
 /**
  * @brief Disconnects stream client from the server.
  * @param streamClient target stream client instance
  */
 void disconnectStreamClient(StreamClient streamClient);
+/**
+ * @brief Stops stream client receive thread. (MT-Safe)
+ * @param streamClient target stream client instance
+ */
+void stopStreamClient(StreamClient streamClient);
 
 /**
  * @brief Updates stream client state.
