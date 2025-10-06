@@ -41,6 +41,12 @@ find_package(ZLIB REQUIRED)
 
 if(NETS_USE_OPENSSL)
 	find_package(OpenSSL)
+	if(NOT OpenSSL_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+		set(OPENSSL_SSL_LIBRARY /usr/lib/libssl.so)
+		set(OPENSSL_CRYPTO_LIBRARY /usr/lib/libcrypto.so)
+	endif()
+
+	find_package(OpenSSL)
 	if(OpenSSL_FOUND)
 		set(NETS_SUPPORT_OPENSSL 1)
 	else()
