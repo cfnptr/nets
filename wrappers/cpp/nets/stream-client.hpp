@@ -32,8 +32,9 @@ namespace nets
 
 inline static void _onStreamClientConnection(StreamClient_T* streamClient, NetsResult result);
 inline static bool _onStreamClientReceive(StreamClient_T* streamClient, const uint8_t* receiveBuffer, size_t byteCount);
+inline static bool _onStreamClientDatagram(StreamClient_T* streamClient, const uint8_t* receiveBuffer, size_t byteCount);
 
-/***********************************************************************************************************************
+/**
  * @brief Stream client instance handle. (TCP)
  * @details See the @ref stream-client.h
  */
@@ -69,7 +70,7 @@ public:
 	IStreamClient(size_t bufferSize = UINT16_MAX + 1, double timeoutTime = 5.0, SslContextView sslContext = nullptr)
 	{
 		auto result = createStreamClient(bufferSize, timeoutTime, _onStreamClientConnection,
-			_onStreamClientReceive, this, sslContext.getInstance(), &instance);
+			_onStreamClientReceive, _onStreamClientDatagram, this, sslContext.getInstance(), &instance);
 		if (result != SUCCESS_NETS_RESULT)
 			throw Error(netsResultToString(result));
 	}
@@ -94,6 +95,24 @@ public:
 	 * @param byteCount received byte count
 	 */
 	virtual bool onStreamReceive(const uint8_t* receiveBuffer, size_t byteCount) = 0;
+	/**
+	 * @brief Stream client datagram receive function. (UDP)
+	 * @details Client stops receive thread on this function false return result.
+	 * @warning This function is called asynchronously from the receive thread!
+	 *
+	 * @param[in] receiveBuffer received data buffer
+	 * @param byteCount received byte count
+	 */
+	virtual bool onDatagramReceive(const uint8_t* receiveBuffer, size_t byteCount) = 0;
+
+	/**
+	 * @brief Converts reason value to string.
+	 * @param reason target reason value
+	 */
+	virtual string reasonToString(int reason)
+	{
+		return reason < NETS_RESULT_COUNT ? netsResultToString(reason) : to_string(reason);
+	}
 
 	/*******************************************************************************************************************
 	 * @brief Returns stream client handle instance.
@@ -129,6 +148,11 @@ public:
 	{
 		setStreamClientSslContext(instance, sslContext.getInstance());
 	}
+	/**
+	 * @brief Returns true if stream client use encrypted connection.
+	 * @details See the @ref getStreamClientSslContext().
+	 */
+	bool isSecure() const noexcept { return isStreamClientSecure(instance); }
 
 	/*******************************************************************************************************************
 	 * @brief Returns true if stream client receive thread is running.
@@ -200,23 +224,23 @@ public:
 	 * @details See the @ref streamClientSend().
 	 * @return The operation @ref NetsResult code.
 	 *
-	 * @param[in] sendBuffer data send buffer
+	 * @param[in] data send data buffer
 	 * @param byteCount data byte count to send
 	 */
-	NetsResult send(const void* sendBuffer, size_t byteCount) noexcept
+	NetsResult send(const void* data, size_t byteCount) noexcept
 	{
-		return streamClientSend(instance, sendBuffer, byteCount);
+		return streamClientSend(instance, data, byteCount);
 	}
 	/**
 	 * @brief Sends stream message to the server.
 	 * @details See the @ref streamClientSend().
 	 * @return The operation @ref NetsResult code.
-	 * @param[in] streamMessage stream message to send
+	 * @param[in] message stream message to send
 	 */
-	NetsResult send(const OutStreamMessage& streamMessage) noexcept
+	NetsResult send(const OutStreamMessage& message) noexcept
 	{
-		assert(streamMessage.isComplete());
-		return streamClientSend(instance, streamMessage.getBuffer(), streamMessage.getSize());
+		assert(message.isComplete());
+		return streamClientSend(instance, message.getBuffer(), message.getSize());
 	}
 };
 
@@ -229,6 +253,11 @@ inline static bool _onStreamClientReceive(StreamClient_T* streamClient, const ui
 {
 	auto client = (IStreamClient*)getStreamClientHandle(streamClient);
 	return client->onStreamReceive(receiveBuffer, byteCount);
+}
+inline static bool _onStreamClientDatagram(StreamClient_T* streamClient, const uint8_t* receiveBuffer, size_t byteCount)
+{
+	auto client = (IStreamClient*)getStreamClientHandle(streamClient);
+	return client->onDatagramReceive(receiveBuffer, byteCount);
 }
 
 } // nets

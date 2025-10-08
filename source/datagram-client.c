@@ -103,6 +103,11 @@ size_t getDatagramClientBufferSize(DatagramClient datagramClient)
 	assert(datagramClient);
 	return datagramClient->bufferSize;
 }
+uint8_t* getDatagramClientBuffer(DatagramClient datagramClient)
+{
+	assert(datagramClient);
+	return datagramClient->buffer;
+}
 OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient datagramClient)
 {
 	assert(datagramClient);
@@ -113,11 +118,7 @@ void* getDatagramClientHandle(DatagramClient datagramClient)
 	assert(datagramClient);
 	return datagramClient->handle;
 }
-uint8_t* getDatagramClientBuffer(DatagramClient datagramClient)
-{
-	assert(datagramClient);
-	return datagramClient->buffer;
-}
+
 Socket getDatagramClientSocket(DatagramClient datagramClient)
 {
 	assert(datagramClient);
@@ -140,8 +141,8 @@ NetsResult updateDatagramClient(DatagramClient datagramClient)
 	return SUCCESS_NETS_RESULT;
 }
 
-NetsResult datagramClientSend(DatagramClient datagramClient, const void* sendBuffer, size_t byteCount)
+NetsResult datagramClientSend(DatagramClient datagramClient, const void* data, size_t byteCount)
 {
 	assert(datagramClient);
-	return socketSend(datagramClient->socket, sendBuffer, byteCount);
+	return socketSend(datagramClient->socket, data, byteCount);
 }

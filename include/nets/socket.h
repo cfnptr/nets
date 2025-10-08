@@ -280,10 +280,10 @@ NetsResult socketReceive(Socket socket, void* receiveBuffer, size_t bufferSize, 
  * @return The operation @ref NetsResult code.
  *
  * @param socket target socket instance
- * @param[in] sendBuffer data send buffer
+ * @param[in] data send data buffer
  * @param byteCount data byte count to send
  */
-NetsResult socketSend(Socket socket, const void* sendBuffer, size_t byteCount);
+NetsResult socketSend(Socket socket, const void* data, size_t byteCount);
 
 /**
  * @brief Receives pending data from the remote socket.
@@ -302,11 +302,11 @@ NetsResult socketReceiveFrom(Socket socket, SocketAddress remoteAddress,
  * @return The operation @ref NetsResult code.
  *
  * @param socket target socket instance
- * @param[in] sendBuffer data send buffer
+ * @param[in] data send data buffer
  * @param byteCount data byte count to send
  * @param remoteAddress destination remote socket IP address
  */
-NetsResult socketSendTo(Socket socket, const void* sendBuffer, size_t byteCount, SocketAddress remoteAddress);
+NetsResult socketSendTo(Socket socket, const void* data, size_t byteCount, SocketAddress remoteAddress);
 
 // TODO: add async address resolve
 

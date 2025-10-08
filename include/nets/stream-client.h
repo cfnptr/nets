@@ -32,7 +32,7 @@ typedef StreamClient_T* StreamClient;         /**< Stream client instance. (TCP)
  */
 typedef void(*OnStreamClientConnection)(StreamClient streamClient, NetsResult result);
 /**
- * @brief Stream client receive function. (TCP)
+ * @brief Stream client data receive function. (TCP)
  * @details Client stops receive thread on this function false return result.
  * @warning This function is called asynchronously from the receive thread!
  *
@@ -41,6 +41,16 @@ typedef void(*OnStreamClientConnection)(StreamClient streamClient, NetsResult re
  * @param byteCount received byte count
  */
 typedef bool(*OnStreamClientReceive)(StreamClient streamClient, const uint8_t* receiveBuffer, size_t byteCount);
+/**
+ * @brief Stream client datagram receive function. (UDP)
+ * @details Client stops receive thread on this function false return result.
+ * @warning This function is called asynchronously from the receive thread!
+ *
+ * @param streamClient stream client instance
+ * @param[in] receiveBuffer received data buffer
+ * @param byteCount received byte count
+ */
+typedef bool(*OnStreamClientDatagram)(StreamClient streamClient, const uint8_t* receiveBuffer, size_t byteCount);
 
 /**
  * @brief Creates a new stream client instance. (TCP)
@@ -48,14 +58,16 @@ typedef bool(*OnStreamClientReceive)(StreamClient streamClient, const uint8_t* r
  *
  * @param bufferSize receive data buffer size in bytes
  * @param timeoutTime server timeout time in seconds
- * @param[in] onReceive on connection result function
+ * @param[in] onConnection on connection result function
  * @param[in] onReceive on data receive function
+ * @param[in] onDatagram on datagrtam receive function or NULL
  * @param[in] handle receive function argument or NULL
  * @param sslContext socket SSL context instance or NULL
  * @param[out] streamClient pointer to the stream client instance
  */
 NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamClientConnection onConnection,
-	OnStreamClientReceive onReceive, void* handle, SslContext sslContext, StreamClient* streamClient);
+	OnStreamClientReceive onReceive, OnStreamClientDatagram onDatagram, void* handle, 
+	SslContext sslContext, StreamClient* streamClient);
 
 /**
  * @brief Destroys stream client instance. (TCP)
@@ -74,10 +86,20 @@ size_t getStreamClientBufferSize(StreamClient streamClient);
  */
 double getStreamClientTimeoutTime(StreamClient streamClient);
 /**
- * @brief Returns stream client receive function.
+ * @brief Returns stream client connection result function.
+ * @param streamClient target stream client instance
+ */
+OnStreamClientConnection getStreamClientOnConnection(StreamClient streamClient);
+/**
+ * @brief Returns stream client data receive function.
  * @param streamClient target stream client instance
  */
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient);
+/**
+ * @brief Returns stream client datagram receive function.
+ * @param streamClient target stream client instance
+ */
+OnStreamClientDatagram getStreamClientOnDatagram(StreamClient streamClient);
 /**
  * @brief Returns stream client handle.
  * @param streamClient target stream client instance
@@ -101,6 +123,11 @@ SslContext getStreamClientSslContext(StreamClient streamClient);
  * @param sslContext socket SSL context instance or NULL
  */
 void setStreamClientSslContext(StreamClient streamClient, SslContext sslContext);
+/**
+ * @brief Returns true if stream client use encrypted connection.
+ * @param streamClient target stream client instance
+ */
+bool isStreamClientSecure(StreamClient streamClient);
 
 /***********************************************************************************************************************
  * @brief Returns true if stream client receive thread is running. (MT-Safe)
@@ -159,7 +186,7 @@ void updateStreamClient(StreamClient streamClient);
  * @return The operation @ref NetsResult code.
  *
  * @param streamClient target stream client instance
- * @param[in] sendBuffer data send buffer
+ * @param[in] data data send buffer
  * @param byteCount data byte count to send
  */
-NetsResult streamClientSend(StreamClient streamClient, const void* sendBuffer, size_t byteCount);
+NetsResult streamClientSend(StreamClient streamClient, const void* data, size_t byteCount);

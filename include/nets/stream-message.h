@@ -31,12 +31,12 @@ typedef struct StreamMessage
 } StreamMessage;
 
 /**
- * @brief Creates a new stream message. (TCP)
+ * @brief Creates a new stream message.
  *
  * @param[in,out] buffer message data buffer
  * @param[in,out] buffer message buffer in bytes
  * @param messageSize message size in bytes
- * @param lengthSize message header size in bytes
+ * @param lengthSize message header lenght size in bytes
  */
 inline static StreamMessage createStreamMessage(uint8_t* buffer, 
 	size_t bufferSize, size_t messageSize, uint8_t lengthSize)
@@ -392,103 +392,97 @@ inline static bool writeStreamMessageFloat64(StreamMessage* streamMessage, doubl
 }
 
 /***********************************************************************************************************************
- * @brief Reads string from the stream message and advances offset.
+ * @brief Reads data from the stream message and advances offset.
  * @return True if no more data to read, otherwise false.
  *
  * @param[in,out] streamMessage target stream message
- * @param[out] string pointer to the message string
- * @param[out] stringLength pointer to the string length
- * @param lengthSize length of the string size in bytes
+ * @param[out] data pointer to the message data
+ * @param[out] dataSize pointer to the data size in bytes
+ * @param lengthSize length of the data size in bytes
  */
-inline static bool readStreamMessageString(StreamMessage* streamMessage, 
-	const char** string, size_t* stringLength, uint8_t lengthSize)
+inline static bool readStreamMessageData(StreamMessage* streamMessage, 
+	const void** data, size_t* dataSize, uint8_t lengthSize)
 {
-	assert(string);
-	assert(stringLength);
+	assert(data);
+	assert(dataSize);
 
 	assert(lengthSize == sizeof(uint8_t) || lengthSize == sizeof(uint16_t) ||
 		lengthSize == sizeof(uint32_t) || lengthSize == sizeof(uint64_t));
-		
-	const void* data; size_t length;
+
 	if (lengthSize == sizeof(uint8_t))
 	{
-		if (readStreamMessage(streamMessage, &data, sizeof(uint8_t)))
+		uint8_t size;
+		if (readStreamMessageUint8(streamMessage, &size))
 			return true;
-		length = *((const uint8_t*)data);
+		*dataSize = size;
 	}
 	else if (lengthSize == sizeof(uint16_t))
 	{
-		if (readStreamMessage(streamMessage, &data, sizeof(uint16_t)))
+		uint16_t size;
+		if (readStreamMessageUint16(streamMessage, &size))
 			return true;
-		length = leToHost16(*((const uint16_t*)data));
+		*dataSize = size;
 	}
 	else if (lengthSize == sizeof(uint32_t))
 	{
-		if (readStreamMessage(streamMessage, &data, sizeof(uint32_t)))
+		uint32_t size;
+		if (readStreamMessageUint32(streamMessage, &size))
 			return true;
-		length = leToHost32(*((const uint32_t*)data));
+		*dataSize = size;
 	}
 	else if (lengthSize == sizeof(uint64_t))
 	{
-		if (readStreamMessage(streamMessage, &data, sizeof(uint64_t)))
+		uint64_t size;
+		if (readStreamMessageUint64(streamMessage, &size))
 			return true;
-		length = leToHost64(*((const uint64_t*)data));
+		*dataSize = size;
 	}
 	else abort();
 
-	if (readStreamMessage(streamMessage, &data, sizeof(uint8_t)))
-		return true;
-
-	*stringLength = length;
-	*string = (const char*)data;
-	return false;
+	return readStreamMessage(streamMessage, data, sizeof(uint8_t));
 }
 /**
- * @brief Writes string to the stream message and advances offset.
+ * @brief Writes data to the stream message and advances offset.
  * @return True if no more space to write data, otherwise false.
  *
  * @param[in,out] streamMessage target stream message
- * @param[in] string message string to write
- * @param stringLength string length to write
- * @param lengthSize length of the string size in bytes
+ * @param[in] data message data to write
+ * @param dataSize data size in bytes
+ * @param lengthSize length of the data size in bytes
  */
-inline static bool writeStreamMessageString(StreamMessage* streamMessage, 
-	const char* string, size_t stringLength, uint8_t lengthSize)
+inline static bool writeStreamMessageData(StreamMessage* streamMessage, 
+	const void* data, size_t dataSize, uint8_t lengthSize)
 {
-	assert(string);
+	assert(data);
 	assert(
-		(lengthSize == sizeof(uint8_t) && stringLength <= UINT8_MAX) ||
-		(lengthSize == sizeof(uint16_t) && stringLength <= UINT16_MAX) ||
-		(lengthSize == sizeof(uint32_t) && stringLength <= UINT32_MAX) ||
-		(lengthSize == sizeof(uint64_t) && stringLength <= UINT64_MAX));
+		(lengthSize == sizeof(uint8_t) && dataSize <= UINT8_MAX) ||
+		(lengthSize == sizeof(uint16_t) && dataSize <= UINT16_MAX) ||
+		(lengthSize == sizeof(uint32_t) && dataSize <= UINT32_MAX) ||
+		(lengthSize == sizeof(uint64_t) && dataSize <= UINT64_MAX));
 
 	if (lengthSize == sizeof(uint8_t))
 	{
-		uint8_t length = (uint8_t)stringLength;
-		if (writeStreamMessage(streamMessage, &length, sizeof(uint8_t)))
+		if (writeStreamMessageUint8(streamMessage, (uint8_t)dataSize))
 			return true;
 	}
 	else if (lengthSize == sizeof(uint16_t))
 	{
-		uint16_t length = hostToLE16(stringLength);
-		if (writeStreamMessage(streamMessage, &length, sizeof(uint16_t)))
+		if (writeStreamMessageUint16(streamMessage, (uint16_t)dataSize))
 			return true;
 	}
 	else if (lengthSize == sizeof(uint32_t))
 	{
-		uint32_t length = hostToLE32(stringLength);
-		if (writeStreamMessage(streamMessage, &length, sizeof(uint32_t)))
+		if (writeStreamMessageUint32(streamMessage, (uint32_t)dataSize))
 			return true;
 	}
 	else if (lengthSize == sizeof(uint64_t))
 	{
-		uint64_t length = hostToLE64(stringLength);
-		if (writeStreamMessage(streamMessage, &length, sizeof(uint64_t)))
+		if (writeStreamMessageUint64(streamMessage, (uint64_t)dataSize))
 			return true;
 	}
 	else abort();
 
-	return writeStreamMessage(streamMessage, string, stringLength);
+	return writeStreamMessage(streamMessage, data, dataSize);
 }
 
 /**

@@ -586,12 +586,12 @@ public:
 	 * @details See the @ref socketSend().
 	 * @return The operation @ref NetsResult code.
 	 *
-	 * @param[in] sendBuffer data send buffer
+	 * @param[in] data target data to send
 	 * @param byteCount data byte count to send
 	 */
-	NetsResult send(const void* sendBuffer, size_t byteCount)
+	NetsResult send(const void* data, size_t byteCount)
 	{
-		return socketSend(instance, sendBuffer, byteCount);
+		return socketSend(instance, data, byteCount);
 	}
 	/**
 	 * @brief Sends specified data to the remote socket.
@@ -624,13 +624,13 @@ public:
 	 * @details See the @ref socketSendTo().
 	 * @return The operation @ref NetsResult code.
 	 *
-	 * @param[in] sendBuffer data send buffer
+	 * @param[in] data send data buffer
 	 * @param byteCount data byte count to send
 	 * @param remoteAddress destination remote socket IP address
 	 */
-	NetsResult sendTo(const void* sendBuffer, size_t byteCount, SocketAddressView remoteAddress) noexcept
+	NetsResult sendTo(const void* data, size_t byteCount, SocketAddressView remoteAddress) noexcept
 	{
-		return socketSendTo(instance, sendBuffer, byteCount, remoteAddress.getInstance());
+		return socketSendTo(instance, data, byteCount, remoteAddress.getInstance());
 	}
 	/**
 	 * @brief Sends specified data to the remote socket.

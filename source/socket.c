@@ -796,16 +796,16 @@ NetsResult socketReceive(Socket socket, void* receiveBuffer, size_t bufferSize, 
 	*byteCount = (size_t)result;
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult socketSend(Socket socket, const void* sendBuffer, size_t byteCount)
+NetsResult socketSend(Socket socket, const void* data, size_t byteCount)
 {
 	assert(socket);
-	assert(sendBuffer);
+	assert(data);
 	assert(networkInitialized);
 
 	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
-		int result = SSL_write(socket->ssl, sendBuffer, (int)byteCount);
+		int result = SSL_write(socket->ssl, data, (int)byteCount);
 		if (result < 0)
 			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 		if (result != byteCount)
@@ -820,7 +820,7 @@ NetsResult socketSend(Socket socket, const void* sendBuffer, size_t byteCount)
 	const int flags = 0;
 	#endif
 
-	int64_t result = send(socket->handle, (const char*)sendBuffer, (int)byteCount, flags);
+	int64_t result = send(socket->handle, (const char*)data, (int)byteCount, flags);
 	if (result < 0)
 		return lastErrorToNetsResult();
 	if (result != byteCount)
@@ -856,10 +856,10 @@ NetsResult socketReceiveFrom(Socket socket, SocketAddress remoteAddress,
 	*byteCount = (size_t)count;
 	return SUCCESS_NETS_RESULT;
 }
-NetsResult socketSendTo(Socket socket, const void* sendBuffer, size_t byteCount, SocketAddress remoteAddress)
+NetsResult socketSendTo(Socket socket, const void* data, size_t byteCount, SocketAddress remoteAddress)
 {
 	assert(socket);
-	assert(sendBuffer);
+	assert(data);
 	assert(remoteAddress);
 	assert(networkInitialized);
 
@@ -882,7 +882,7 @@ NetsResult socketSendTo(Socket socket, const void* sendBuffer, size_t byteCount,
 	const int flags = 0;
 	#endif
 
-	int64_t result = sendto(socket->handle, (const char*)sendBuffer, (int)byteCount, 
+	int64_t result = sendto(socket->handle, (const char*)data, (int)byteCount, 
 		flags, (const struct sockaddr*)&remoteAddress->handle, length);
 	if (result < 0)
 		return lastErrorToNetsResult();
@@ -1511,8 +1511,10 @@ SslProtocol getSslContextProtocol(SslContext sslContext)
 	const SSL_METHOD* method = SSL_CTX_get_ssl_method(sslContext->handle);
 	if (method == TLS_method())
 		return TLS_SECURITY_PROTOCOL;
+	#if NETS_SUPPORT_DEPRECATED_SSL
 	if (method == TLSv1_2_method())
 		return TLS_1_2_SECURITY_PROTOCOL;
+	#endif
 	abort();
 	#else
 	abort(); // Note: OpenSSL support is disabled.

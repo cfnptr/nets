@@ -82,29 +82,29 @@ public:
 	}
 
 	/**
-	 * @brief Sends stream data to the specified session.
+	 * @brief Sends stream data to the specified session. (TCP)
 	 * @details See the @ref streamSessionSend().
 	 * @warning You should lock sessions before sending messages!
 	 * @return The operation @ref NetsResult code.
 	 *
-	 * @param[in] sendBuffer data send buffer
+	 * @param[in] data send data buffer
 	 * @param byteCount data byte count to send
 	 */
-	NetsResult send(const void* sendBuffer, size_t byteCount) noexcept
+	NetsResult send(const void* data, size_t byteCount) noexcept
 	{
-		return streamSessionSend(instance, sendBuffer, byteCount);
+		return streamSessionSend(instance, data, byteCount);
 	}
 	/**
-	 * @brief Sends stream message to the specified session.
+	 * @brief Sends stream message to the specified session. (TCP)
 	 * @details See the @ref streamSessionSend().
 	 * @warning You should lock sessions before sending messages!
 	 * @return The operation @ref NetsResult code.
-	 * @param[in] streamMessage stream message to send
+	 * @param[in] message stream message to send
 	 */
-	NetsResult send(const OutStreamMessage& streamMessage) noexcept
+	NetsResult send(const OutStreamMessage& message) noexcept
 	{
-		assert(streamMessage.isComplete());
-		return streamSessionSend(instance, streamMessage.getBuffer(), streamMessage.getSize());
+		assert(message.isComplete());
+		return streamSessionSend(instance, message.getBuffer(), message.getSize());
 	}
 };
 
@@ -112,6 +112,8 @@ inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSe
 inline static void _onStreamSessionDestroy(StreamServer_T* streamServer, StreamSession_T* streamSession, int reason);
 inline static int _onStreamSessionReceive(StreamServer_T* streamServer, 
 	StreamSession_T* streamSession, const uint8_t* receiveBuffer, size_t byteCount);
+inline static void _onStreamServerDatagram(StreamServer_T* streamServer, 
+	SocketAddress_T* remoteAddress, const uint8_t* receiveBuffer, size_t byteCount);
 
 /***********************************************************************************************************************
  * @brief Stream server instance handle. (TCP)
@@ -152,7 +154,7 @@ public:
 	{
 		auto result = createStreamServer(socketFamily, service, sessionBufferSize, connectionQueueSize, 
 			receiveBufferSize, timeoutTime, _onStreamSessionCreate, _onStreamSessionDestroy,
-			_onStreamSessionReceive, this, sslContext.getInstance(), &instance);
+			_onStreamSessionReceive, _onStreamServerDatagram, this, sslContext.getInstance(), &instance);
 		if (result != SUCCESS_NETS_RESULT)
 			throw Error(netsResultToString(result));
 	}
@@ -189,6 +191,15 @@ public:
 	 * @param byteCount received byte count
 	 */
 	virtual int onStreamReceive(StreamSessionView streamSession, const uint8_t* receiveBuffer, size_t byteCount) = 0;
+	/**
+	 * @brief Stream server datagram receive function. (UDP)
+	 * @warning This function is called asynchronously from the receive thread!
+	 *
+	 * @param remoteAddress sender remote socket address
+	 * @param[in] receiveBuffer received data buffer
+	 * @param byteCount received byte count
+	 */
+	virtual void onDatagramReceive(SocketAddressView remoteAddress, const uint8_t* receiveBuffer, size_t byteCount) = 0;
 
 	/**
 	 * @brief Converts reason value to string.
@@ -287,6 +298,35 @@ public:
 	{
 		closeStreamSession(instance, streamSession.getInstance(), reason);
 	}
+
+	/**
+	 * @brief Sends datagram to the specified stream session. (UDP)
+	 * @details See the @ref streamSessionSendDatagram().
+	 * @warning You should lock sessions before sending messages!
+	 * @return The operation @ref NetsResult code.
+	 *
+	 * @param streamSession target stream session instance
+	 * @param[in] data send data buffer
+	 * @param byteCount data byte count to send
+	 */
+	NetsResult sendDatagram(StreamSessionView streamSession, const void* data, size_t byteCount) noexcept
+	{
+		return streamSessionSendDatagram(instance, streamSession.getInstance(), data, byteCount);
+	}
+	/**
+	 * @brief Sends datagram to the specified session. (UDP)
+	 * @details See the @ref streamSessionSendDatagram().
+	 * @warning You should lock sessions before sending messages!
+	 * @return The operation @ref NetsResult code.
+
+	 * @param streamSession target stream session instance
+	 * @param[in] message datagram message to send
+	 */
+	NetsResult sendDatagram(StreamSessionView streamSession, const OutStreamMessage& message) noexcept
+	{
+		assert(message.isComplete());
+		return streamSessionSendDatagram(instance, streamSession.getInstance(), message.getBuffer(), message.getSize());
+	}
 };
 
 inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession, void** handle)
@@ -304,6 +344,12 @@ inline static int _onStreamSessionReceive(StreamServer_T* streamServer,
 {
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
 	return server->onStreamReceive(streamSession, receiveBuffer, byteCount);
+}
+inline static void _onStreamServerDatagram(StreamServer_T* streamServer, 
+	SocketAddress_T* remoteAddress, const uint8_t* receiveBuffer, size_t byteCount)
+{
+	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
+	server->onDatagramReceive(remoteAddress, receiveBuffer, byteCount);
 }
 
 } // nets

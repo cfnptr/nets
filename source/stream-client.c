@@ -34,11 +34,13 @@ struct StreamClient_T
 	double timeoutTime;
 	OnStreamClientConnection onConnection;
 	OnStreamClientReceive onReceive;
+	OnStreamClientDatagram onDatagram;
 	void* handle;
 	SslContext sslContext;
 	uint8_t* buffer;
 	size_t bufferSize;
-	Socket socket;
+	Socket streamSocket;
+	Socket datagramSocket;
 	double lastReceiveTime;
 	Thread receiveThread;
 	#if __linux__ || __APPLE__
@@ -122,14 +124,14 @@ inline static NetsResult connectStreamClientAddress(StreamClient streamClient,
 	Socket socket;
 	netsResult = createSocket(STREAM_SOCKET_TYPE, socketFamily,
 		socketAddress, false, false, streamClient->sslContext, &socket);
-	destroySocketAddress(socketAddress);
-
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
-		destroySocket(socket);
+		destroySocketAddress(socketAddress);
 		return netsResult;
 	}
+
 	setSocketNoDelay(socket, noDelay);
+	streamClient->streamSocket = socket;
 
 	double nextTimeout = getCurrentClock() + streamClient->timeoutTime;
 
@@ -144,18 +146,37 @@ inline static NetsResult connectStreamClientAddress(StreamClient streamClient,
 
 		if (netsResult != SUCCESS_NETS_RESULT && netsResult != ALREADY_CONNECTED_NETS_RESULT)
 		{
-			destroySocket(socket);
+			destroySocketAddress(socketAddress);
 			return netsResult;
 		}
 
 		netsResult = connectSslStreamClient(hostname, socket, nextTimeout);
 		if (netsResult != SUCCESS_NETS_RESULT)
 		{
-			destroySocket(socket);
+			destroySocketAddress(socketAddress);
 			return netsResult;
 		}
 
-		streamClient->socket = socket;
+		if (streamClient->onDatagram)
+		{
+			netsResult = createSocket(DATAGRAM_SOCKET_TYPE, socketFamily,
+				socketAddress, false, false, NULL, &socket);
+			if (netsResult != SUCCESS_NETS_RESULT)
+			{
+				destroySocketAddress(socketAddress);
+				return netsResult;
+			}
+			streamClient->datagramSocket = socket;
+
+			netsResult = connectSocket(socket, socketAddress);
+			if (netsResult != SUCCESS_NETS_RESULT)
+			{
+				destroySocketAddress(socketAddress);
+				return netsResult;
+			}
+		}
+		
+		destroySocketAddress(socketAddress);
 		streamClient->lastReceiveTime = getCurrentClock(); // Note: getting latest time here.
 		return SUCCESS_NETS_RESULT;
 	}
@@ -187,21 +208,15 @@ inline static NetsResult connectStreamClientHostname(StreamClient streamClient,
 //**********************************************************************************************************************
 inline static void processStreamClient(StreamClient streamClient)
 {
-	if (getCurrentClock() - streamClient->lastReceiveTime > streamClient->timeoutTime)
-	{
-		streamClient->isRunning = streamClient->isConnected = false;
-		return;
-	}
-
 	OnStreamClientReceive onReceive = streamClient->onReceive;
-	Socket socket = streamClient->socket;
+	Socket streamSocket = streamClient->streamSocket;
 	uint8_t* buffer = streamClient->buffer;
 	size_t bufferSize = streamClient->bufferSize;
 
 	size_t byteCount;
 	while (streamClient->isRunning)
 	{
-		NetsResult netsResult = socketReceive(socket, buffer, bufferSize, &byteCount);
+		NetsResult netsResult = socketReceive(streamSocket, buffer, bufferSize, &byteCount);
 		if (netsResult == IN_PROGRESS_NETS_RESULT)
 		{
 			streamClient->lastReceiveTime = getCurrentClock(); // Note: getting latest time here.
@@ -210,6 +225,29 @@ inline static void processStreamClient(StreamClient streamClient)
 
 		if (netsResult != SUCCESS_NETS_RESULT || byteCount == 0 ||
 			!onReceive(streamClient, buffer, byteCount))
+		{
+			streamClient->isRunning = streamClient->isConnected = false;
+			return;
+		}
+	}
+}
+inline static void processStreamDatagrams(StreamClient streamClient)
+{
+	OnStreamClientDatagram onDatagram = streamClient->onDatagram;
+	Socket datagramSocket = streamClient->datagramSocket;
+	uint8_t* receiveBuffer = streamClient->buffer;
+	size_t receiveBufferSize = streamClient->bufferSize;
+	size_t byteCount;
+
+	while (streamClient->isRunning)
+	{
+		NetsResult netsResult = socketReceive(datagramSocket, 
+			receiveBuffer, receiveBufferSize, &byteCount);
+		if (netsResult == IN_PROGRESS_NETS_RESULT)
+			return;
+
+		if (netsResult != SUCCESS_NETS_RESULT ||
+			!onDatagram(streamClient, receiveBuffer, byteCount))
 		{
 			streamClient->isRunning = streamClient->isConnected = false;
 			return;
@@ -260,21 +298,65 @@ inline static void streamClientReceive(void* argument)
 		return;
 	}
 
+	Socket streamSocket = streamClient->streamSocket;
+	Socket datagramSocket = streamClient->datagramSocket;
+
 	#if __linux__ || __APPLE__
 	int eventPool = streamClient->eventPool;
 
 	#if __linux__
-	struct epoll_event event;
+	{
+		struct epoll_event event;
+		event.events = EPOLLIN | EPOLLET;
+		event.data.ptr = streamSocket;
+		int socketHandle = (int)(size_t)getSocketHandle(streamSocket);
+
+		if (epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event) == -1)
+		{
+			streamClient->isRunning = streamClient->isConnected = false;
+			return;
+		}
+
+		if (datagramSocket)
+		{
+			event.data.ptr = datagramSocket;
+			socketHandle = (int)(size_t)getSocketHandle(datagramSocket);
+
+			if (epoll_ctl(eventPool, EPOLL_CTL_ADD, socketHandle, &event) == -1)
+			{
+				streamClient->isRunning = streamClient->isConnected = false;
+				return;
+			}
+		}
+	}
+	struct epoll_event events[4];
 	#elif __APPLE__
-	struct kevent event;
+	{
+		struct kevent events[2]; int eventCount = 1;
+		int socketHandle = (int)(size_t)getSocketHandle(streamSocket);
+		EV_SET(&events[0], socketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, streamSocket);
+
+		if (datagramSocket)
+		{
+			socketHandle = (int)(size_t)getSocketHandle(datagramSocket);
+			EV_SET(&events[eventCount++], socketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, datagramSocket);
+		}
+
+		if (kevent(eventPool, events, eventCount, NULL, 0, NULL) == -1)
+		{
+			streamClient->isRunning = streamClient->isConnected = false;
+			return;
+		}
+	}
+	struct kevent events[4];
 	#endif
 
 	while (streamClient->isRunning)
 	{
 		#if __linux__
-		int eventCount = epoll_wait(eventPool, &event, 1, -1);
+		int eventCount = epoll_wait(eventPool, events, 4, -1);
 		#elif __APPLE__
-		int eventCount = kevent(eventPool, NULL, 0, &event, 1, NULL);
+		int eventCount = kevent(eventPool, NULL, 0, events, 4, NULL);
 		#endif
 
 		if (eventCount == -1)
@@ -283,49 +365,73 @@ inline static void streamClientReceive(void* argument)
 			return;
 		}
 
-		#if __linux__
-		void* eventData = event.data.ptr;
-		#elif __APPLE__
-		void* eventData = event.udata;
-		#endif
-
-		if (eventData == NULL) // Note: client has been waked up.
+		for (int i = 0; i < eventCount; i++)
 		{
 			#if __linux__
-			uint64_t count;
-			if (read(streamClient->wakeupEvent, &count, sizeof(uint64_t)) != sizeof(uint64_t))
+			void* eventData = events[i].data.ptr;
+			#elif __APPLE__
+			void* eventData = events[i].udata;
+			#endif
+
+			if (eventData == streamSocket)
 			{
-				while (true)
-				{
-					ssize_t result = read(streamClient->wakeupEvent, &count, sizeof(uint64_t));
-					if (result == -1 && errno == EAGAIN)
-						break;
-				}
+				processStreamClient(streamClient);
+			}
+			else if (eventData == datagramSocket)
+			{
+				processStreamDatagrams(streamClient);
+			}
+			#if __APPLE__
+			else if (events[i].flags & (EV_EOF | EV_ERROR))
+			{
+				streamClient->isRunning = streamClient->isConnected = false;
+				return;
 			}
 			#endif
+			else if (eventData == NULL) // Note: client has been waked up.
+			{
+				#if __linux__
+				uint64_t count;
+				if (read(streamClient->wakeupEvent, &count, sizeof(uint64_t)) != sizeof(uint64_t))
+				{
+					while (true)
+					{
+						ssize_t result = read(streamClient->wakeupEvent, &count, sizeof(uint64_t));
+						if (result == -1 && errno == EAGAIN)
+							break;
+					}
+				}
+				#endif
+			}
 		}
-		#if __APPLE__
-		else if (event.flags & (EV_EOF | EV_ERROR))
+
+		if (getCurrentClock() - streamClient->lastReceiveTime > streamClient->timeoutTime)
 		{
 			streamClient->isRunning = streamClient->isConnected = false;
 			return;
 		}
-		#endif
-
-		processStreamClient(streamClient);
 	}
 	#elif _WIN32
 	while (streamClient->isRunning)
 	{
+		if (getCurrentClock() - streamClient->lastReceiveTime > streamClient->timeoutTime)
+		{
+			streamClient->isRunning = streamClient->isConnected = false;
+			return;
+		}
+
 		processStreamClient(streamClient);
+		if (streamClient->onDatagram)
+			processStreamDatagrams(streamClient);
 		sleepThread(0.001f); // TODO: suboptimal, use IOCP or RIO instead on Windows.
 	}
 	#endif
 }
 
 //**********************************************************************************************************************
-NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamClientConnection onConnection,
-	OnStreamClientReceive onReceive, void* handle, SslContext sslContext, StreamClient* streamClient)
+NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamClientConnection onConnection, 
+	OnStreamClientReceive onReceive, OnStreamClientDatagram onDatagram, 
+	void* handle, SslContext sslContext, StreamClient* streamClient)
 {
 	assert(bufferSize > 0);
 	assert(timeoutTime > 0.0);
@@ -340,6 +446,7 @@ NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamCli
 	streamClientInstance->timeoutTime = timeoutTime;
 	streamClientInstance->onConnection = onConnection;
 	streamClientInstance->onReceive = onReceive;
+	streamClientInstance->onDatagram = onDatagram;
 	streamClientInstance->handle = handle;
 	streamClientInstance->sslContext = sslContext;
 
@@ -449,9 +556,15 @@ void destroyStreamClient(StreamClient streamClient)
 		close(streamClient->eventPool);
 	#endif
 
-	if (streamClient->socket)
+	if (streamClient->datagramSocket)
 	{
-		Socket socket = streamClient->socket;
+		Socket socket = streamClient->datagramSocket;
+		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(socket);
+	}
+	if (streamClient->streamSocket)
+	{
+		Socket socket = streamClient->streamSocket;
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
 	}
@@ -471,10 +584,20 @@ double getStreamClientTimeoutTime(StreamClient streamClient)
 	assert(streamClient);
 	return streamClient->timeoutTime;
 }
+OnStreamClientConnection getStreamClientOnConnection(StreamClient streamClient)
+{
+	assert(streamClient);
+	return streamClient->onConnection;
+}
 OnStreamClientReceive getStreamClientOnReceive(StreamClient streamClient)
 {
 	assert(streamClient);
 	return streamClient->onReceive;
+}
+OnStreamClientDatagram getStreamClientOnDatagram(StreamClient streamClient)
+{
+	assert(streamClient);
+	return streamClient->onDatagram;
 }
 void* getStreamClientHandle(StreamClient streamClient)
 {
@@ -497,6 +620,11 @@ void setStreamClientSslContext(StreamClient streamClient, SslContext sslContext)
 	assert(streamClient);
 	assert(!streamClient->isRunning);
 	streamClient->sslContext = sslContext;
+}
+bool isStreamClientSecure(StreamClient streamClient)
+{
+	assert(streamClient);
+	return streamClient->sslContext != NULL;
 }
 
 //**********************************************************************************************************************
@@ -620,12 +748,19 @@ void disconnectStreamClient(StreamClient streamClient)
 		streamClient->receiveThread = NULL;
 	}
 
-	if (streamClient->socket)
+	if (streamClient->datagramSocket)
 	{
-		Socket socket = streamClient->socket;
+		Socket socket = streamClient->datagramSocket;
 		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(socket);
-		streamClient->socket = NULL;
+		streamClient->datagramSocket = NULL;
+	}
+	if (streamClient->streamSocket)
+	{
+		Socket socket = streamClient->streamSocket;
+		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(socket);
+		streamClient->streamSocket = NULL;
 		streamClient->lastReceiveTime = 0.0;
 	}
 }
@@ -641,12 +776,12 @@ void updateStreamClient(StreamClient streamClient)
 	wakeUpStreamClient(streamClient);
 }
 
-NetsResult streamClientSend(StreamClient streamClient, const void* sendBuffer, size_t byteCount)
+NetsResult streamClientSend(StreamClient streamClient, const void* data, size_t byteCount)
 {
 	assert(streamClient);
 	if (!streamClient->isConnected)
 		return CONNECTION_IS_CLOSED_NETS_RESULT;
-	NetsResult netsResult = socketSend(streamClient->socket, sendBuffer, byteCount);
+	NetsResult netsResult = socketSend(streamClient->streamSocket, data, byteCount);
 	if (netsResult != SUCCESS_NETS_RESULT)
 		return netsResult;
 	return SUCCESS_NETS_RESULT;

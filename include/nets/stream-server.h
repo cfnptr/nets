@@ -45,7 +45,7 @@ typedef bool(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession st
  */
 typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession streamSession, int reason);
 /**
- * @brief Stream session receive function. (TCP)
+ * @brief Stream session data receive function. (TCP)
  * @details Server destroys session on this function non zero return result.
  * @warning This function is called asynchronously from the receive thread!
  *
@@ -56,6 +56,17 @@ typedef void(*OnStreamSessionDestroy)(StreamServer streamServer, StreamSession s
  */
 typedef int(*OnStreamSessionReceive)(StreamServer streamServer, 
 	StreamSession streamSession, const uint8_t* receiveBuffer, size_t byteCount);
+/**
+ * @brief Stream server datagram receive function. (UDP)
+ * @warning This function is called asynchronously from the receive thread!
+ *
+ * @param streamServer stream server instance
+ * @param remoteAddress sender socket remote address
+ * @param[in] receiveBuffer received data buffer
+ * @param byteCount received byte count
+ */
+typedef void(*OnStreamServerDatagram)(StreamServer streamServer, 
+	SocketAddress remoteAddress, const uint8_t* receiveBuffer, size_t byteCount);
 
 /***********************************************************************************************************************
  * @brief Creates a new stream server instance. (TCP)
@@ -70,13 +81,14 @@ typedef int(*OnStreamSessionReceive)(StreamServer streamServer,
  * @param[in] onCreate on session create function
  * @param[in] onDestroy on session destroy function
  * @param[in] onReceive on session data receive function
+ * @param[in] onDatagram on datagram receive function or NULL
  * @param[in] handle receive function argument or NULL
  * @param sslContext socket SSL context instance or NULL
  * @param[out] streamServer pointer to the stream server instance
  */
-NetsResult createStreamServer(SocketFamily socketFamily, const char* service, 
-	size_t sessionBufferSize, size_t connectionQueueSize, size_t receiveBufferSize, double timeoutTime, 
-	OnStreamSessionCreate onCreate, OnStreamSessionDestroy onDestroy, OnStreamSessionReceive onReceive, 
+NetsResult createStreamServer(SocketFamily socketFamily, const char* service, size_t sessionBufferSize, 
+	size_t connectionQueueSize, size_t receiveBufferSize, double timeoutTime, OnStreamSessionCreate onCreate, 
+	OnStreamSessionDestroy onDestroy, OnStreamSessionReceive onReceive, OnStreamServerDatagram onDatagram, 
 	void* handle, SslContext sslContext, StreamServer* streamServer);
 /**
  * @brief Destroys stream server instance. (TCP)
@@ -105,10 +117,15 @@ OnStreamSessionCreate getStreamServerOnCreate(StreamServer streamServer);
  */
 OnStreamSessionDestroy getStreamServerOnDestroy(StreamServer streamServer);
 /**
- * @brief Returns stream server session receive function.
+ * @brief Returns stream server session data receive function.
  * @param streamServer target stream server instance
  */
 OnStreamSessionReceive getStreamServerOnReceive(StreamServer streamServer);
+/**
+ * @brief Returns stream server datagram receive function.
+ * @param streamServer target stream server instance
+ */
+OnStreamServerDatagram getStreamServerOnDatagram(StreamServer streamServer);
 /**
  * @brief Returns stream server session timeout time. (in seconds)
  * @param streamServer target stream server instance
@@ -129,6 +146,11 @@ uint8_t* getStreamServerReceiveBuffer(StreamServer streamServer);
  * @param streamServer target stream server instance
  */
 Socket getStreamServerSocket(StreamServer streamServer);
+/**
+ * @brief Returns stream server datagram socket instance.
+ * @param streamServer target stream server instance
+ */
+Socket getStreamServerDatagramSocket(StreamServer streamServer);
 /**
  * @brief Returns true if stream server receive thread is running. (MT-Safe)
  * @param streamServer target stream server instance
@@ -199,13 +221,26 @@ int updateStreamSession(StreamServer streamServer, StreamSession streamSession, 
  * @param reason stream session destruction reason
  */
 void closeStreamSession(StreamServer streamServer, StreamSession streamSession, int reason);
+
 /**
- * @brief Sends stream data to the specified session.
+ * @brief Sends stream data to the specified session. (TCP)
  * @warning You should lock sessions before sending messages!
  * @return The operation @ref NetsResult code.
  *
  * @param streamSession target stream session instance
- * @param[in] sendBuffer data send buffer
+ * @param[in] data send data buffer
  * @param byteCount data byte count to send
  */
-NetsResult streamSessionSend(StreamSession streamSession, const void* sendBuffer, size_t byteCount);
+NetsResult streamSessionSend(StreamSession streamSession, const void* data, size_t byteCount);
+/**
+ * @brief Sends datagram to the specified stream session. (UDP)
+ * @warning You should lock sessions before sending messages!
+ * @return The operation @ref NetsResult code.
+ *
+ * @param streamServer stream server instance
+ * @param streamSession target stream session instance
+ * @param[in] data send data buffer
+ * @param byteCount data byte count to send
+ */
+NetsResult streamSessionSendDatagram(StreamServer streamServer, 
+	StreamSession streamSession, const void* data, size_t byteCount);

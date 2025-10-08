@@ -56,6 +56,11 @@ void destroyDatagramClient(DatagramClient datagramClient);
  */
 size_t getDatagramClientBufferSize(DatagramClient datagramClient);
 /**
+ * @brief Returns datagram client receive data buffer.
+ * @param datagramClient target datagram client instance
+ */
+uint8_t* getDatagramClientBuffer(DatagramClient datagramClient);
+/**
  * @brief Returns datagram client receive function.
  * @param datagramClient target datagram client instance
  */
@@ -65,11 +70,6 @@ OnDatagramClientReceive getDatagramClientOnReceive(DatagramClient datagramClient
  * @param datagramClient target datagram client instance
  */
 void* getDatagramClientHandle(DatagramClient datagramClient);
-/**
- * @brief Returns datagram client data buffer.
- * @param datagramClient target datagram client instance
- */
-uint8_t* getDatagramClientBuffer(DatagramClient datagramClient);
 /**
  * @brief Returns datagram client socket instance.
  * @param datagramClient target datagram client instance
@@ -88,7 +88,7 @@ NetsResult updateDatagramClient(DatagramClient datagramClient);
  * @return The operation @ref NetsResult code.
  *
  * @param datagramClient target datagram client instance
- * @param sendBuffer message send buffer
- * @param byteCount message byte count to send
+ * @param data send data buffer
+ * @param byteCount data byte count to send
  */
-NetsResult datagramClientSend(DatagramClient datagramClient, const void* sendBuffer, size_t byteCount);
+NetsResult datagramClientSend(DatagramClient datagramClient, const void* data, size_t byteCount);

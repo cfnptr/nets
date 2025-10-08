@@ -27,7 +27,7 @@ typedef DatagramServer_T* DatagramServer;         /**< Datagram server instance.
  * @brief Datagram server receive function. (UDP)
  *
  * @param datagramServer datagram server instance
- * @param remoteAddress remote client IP address
+ * @param remoteAddress sender remote socket IP address
  * @param receiveBuffer received data buffer
  * @param byteCount received byte count
  */
@@ -59,6 +59,11 @@ void destroyDatagramServer(DatagramServer datagramServer);
  */
 size_t getDatagramServerBufferSize(DatagramServer datagramServer);
 /**
+ * @brief Returns datagram server receive data buffer.
+ * @param datagramServer target datagram server instance
+ */
+uint8_t* getDatagramServerBuffer(DatagramServer datagramServer);
+/**
  * @brief Returns datagram server receive function.
  * @param datagramServer target datagram server instance
  */
@@ -85,9 +90,9 @@ NetsResult updateDatagramServer(DatagramServer datagramServer);
  * @return The operation @ref NetsResult code.
  *
  * @param datagramServer target datagram server instance
- * @param[in] sendBuffer message send buffer
+ * @param[in] data send data buffer
  * @param byteCount message byte count to send
  * @param remoteAddress destination remote socket IP address
  */
 NetsResult datagramServerSend(DatagramServer datagramServer, 
-	const void* sendBuffer, size_t byteCount, SocketAddress remoteAddress);
+	const void* data, size_t byteCount, SocketAddress remoteAddress);

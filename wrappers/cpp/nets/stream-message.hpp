@@ -19,6 +19,8 @@
  */
 
 #pragma once
+#include <array>
+#include <vector>
 #include <string_view>
 
 extern "C"
@@ -161,10 +163,10 @@ public:
 	 */
 	bool read(std::string_view& value, uint8_t lengthSize) noexcept
 	{
-		const char* data; size_t length;
-		if (readStreamMessageString(this, &data, &length, lengthSize))
+		const void* data; size_t length;
+		if (readStreamMessageData(this, &data, &length, lengthSize))
 			return true;
-		value = std::string_view(data, length);
+		value = std::string_view((const char*)data, length);
 		return false;
 	}
 	/**
@@ -174,6 +176,25 @@ public:
 	 * @param[out] value reference to the boolean value
 	 */
 	bool read(bool& value) noexcept { return readStreamMessageBool(this, &value); }
+
+	/**
+	 * @brief Reads data from the stream message and advances offset.
+	 * @details See the @ref readStreamMessageString().
+	 * @return True if no more data to read, otherwise false.
+	 *
+	 * @param[out] value reference to the message data
+	 * @param lengthSize length of the data size in bytes
+	 */
+	template<class T>
+	bool read(std::vector<T>& data, uint8_t lengthSize) noexcept
+	{
+		const void* messageData; size_t size;
+		if (readStreamMessageData(this, &messageData, &size, lengthSize))
+			return true;
+		data.resize(size / sizeof(T));
+		memcpy(data.data(), messageData, size);
+		return false;
+	}
 };
 
 /***********************************************************************************************************************
@@ -193,12 +214,27 @@ public:
 	 * @param[in,out] buffer message data buffer
 	 * @param bufferSize message buffer size in bytes
 	 * @param messageSize message size in bytes
-	 * @param lengthSize message header size in bytes
+	 * @param lengthSize message header length size in bytes
 	 */
 	OutStreamMessage(uint8_t* buffer, size_t bufferSize, size_t messageSize, uint8_t lengthSize) noexcept :
 		buffer(buffer), size(messageSize + lengthSize)
 	{
 		auto message = createStreamMessage(buffer, bufferSize, messageSize, lengthSize);
+		iter = message.iter; end = message.end;
+	}
+	/**
+	 * @brief Creates a new output stream message. (TCP)
+	 * @details See the @ref createStreamMessage().
+	 *
+	 * @param[in,out] buffer message data buffer
+	 * @param messageSize message size in bytes
+	 * @param lengthSize message header size in bytes
+	 */
+	OutStreamMessage(std::vector<uint8_t>& buffer, size_t messageSize, uint8_t lengthSize) noexcept :
+		buffer(buffer.data()), size(messageSize + lengthSize)
+	{
+		buffer.resize(size);
+		auto message = createStreamMessage(buffer.data(), buffer.size(), messageSize, lengthSize);
 		iter = message.iter; end = message.end;
 	}
 	/**
@@ -308,7 +344,7 @@ public:
 	 */
 	bool write(std::string_view value, uint8_t lengthSize) noexcept
 	{
-		return writeStreamMessageString(this, value.data(), value.length(), lengthSize);
+		return writeStreamMessageData(this, value.data(), value.length(), lengthSize);
 	}
 	/**
 	 * @brief Writes boolean value to the stream message and advances offset.
@@ -317,6 +353,36 @@ public:
 	 * @param value boolean value to write
 	 */
 	bool write(bool value) noexcept { return writeStreamMessageBool(this, value); }
+
+	/**
+	 * @brief Writes vector data to the stream message and advances offset.
+	 * @details See the @ref writeStreamMessageString().
+	 * @return True if no more space to write data, otherwise false.
+	 *
+	 * @tparam T type of the vector data
+	 * @param[in] data message data to write
+	 * @param lengthSize length of the data size in bytes
+	 */
+	template<class T>
+	bool write(const std::vector<T>& data, uint8_t lengthSize) noexcept
+	{
+		return writeStreamMessageData(this, data.data(), data.size() * sizeof(T), lengthSize);
+	}
+	/**
+	 * @brief Writes array data to the stream message and advances offset.
+	 * @details See the @ref writeStreamMessageString().
+	 * @return True if no more space to write data, otherwise false.
+	 *
+	 * @tparam T type of the array data
+	 * @tparam S size of the array
+	 * @param[in] data message data to write
+	 * @param lengthSize length of the data size in bytes
+	 */
+	template<class T, size_t N>
+	bool write(const std::array<T, N>& data, uint8_t lengthSize) noexcept
+	{
+		return writeStreamMessageData(this, data.data(), data.size() * sizeof(T), lengthSize);
+	}
 };
 
 } // nets

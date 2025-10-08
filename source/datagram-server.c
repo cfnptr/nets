@@ -93,10 +93,15 @@ void destroyDatagramServer(DatagramServer datagramServer)
 }
 
 //**********************************************************************************************************************
-size_t getDatagramServerReceiveBufferSize(DatagramServer datagramServer)
+size_t getDatagramServerBufferSize(DatagramServer datagramServer)
 {
 	assert(datagramServer);
 	return datagramServer->bufferSize;
+}
+uint8_t* getDatagramServerBuffer(DatagramServer datagramServer)
+{
+	assert(datagramServer);
+	return datagramServer->buffer;
 }
 OnDatagramServerReceive getDatagramServerOnReceive(DatagramServer datagramServer)
 {
@@ -130,8 +135,8 @@ NetsResult updateDatagramServer(DatagramServer datagramServer)
 }
 
 NetsResult datagramServerSend(DatagramServer datagramServer, 
-	const void* sendBuffer, size_t byteCount, SocketAddress remoteAddress)
+	const void* data, size_t byteCount, SocketAddress remoteAddress)
 {
 	assert(datagramServer);
-	return socketSendTo(datagramServer->socket, sendBuffer, byteCount, remoteAddress);
+	return socketSendTo(datagramServer->socket, data, byteCount, remoteAddress);
 }
