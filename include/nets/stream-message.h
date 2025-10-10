@@ -409,37 +409,41 @@ inline static bool readStreamMessageData(StreamMessage* streamMessage,
 	assert(lengthSize == sizeof(uint8_t) || lengthSize == sizeof(uint16_t) ||
 		lengthSize == sizeof(uint32_t) || lengthSize == sizeof(uint64_t));
 
+	size_t length;
 	if (lengthSize == sizeof(uint8_t))
 	{
 		uint8_t size;
 		if (readStreamMessageUint8(streamMessage, &size))
 			return true;
-		*dataSize = size;
+		length = size;
 	}
 	else if (lengthSize == sizeof(uint16_t))
 	{
 		uint16_t size;
 		if (readStreamMessageUint16(streamMessage, &size))
 			return true;
-		*dataSize = size;
+		length = size;
 	}
 	else if (lengthSize == sizeof(uint32_t))
 	{
 		uint32_t size;
 		if (readStreamMessageUint32(streamMessage, &size))
 			return true;
-		*dataSize = size;
+		length = size;
 	}
 	else if (lengthSize == sizeof(uint64_t))
 	{
 		uint64_t size;
 		if (readStreamMessageUint64(streamMessage, &size))
 			return true;
-		*dataSize = size;
+		length = size;
 	}
 	else abort();
 
-	return readStreamMessage(streamMessage, data, sizeof(uint8_t));
+	if (readStreamMessage(streamMessage, data, length))
+		return true;
+	*dataSize = length;
+	return false;
 }
 /**
  * @brief Writes data to the stream message and advances offset.

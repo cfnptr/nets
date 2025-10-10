@@ -106,6 +106,18 @@ public:
 		assert(message.isComplete());
 		return streamSessionSend(instance, message.getBuffer(), message.getSize());
 	}
+
+	/**
+	 * @brief Shutdowns part of the full-duplex socket connection.
+	 * @details See the @ref shutdownStreamSession().
+	 * @warning You should lock sessions before shutting down!
+	 * @return The operation @ref NetsResult code.
+	 * @param shutdown socket connection shutdown mode
+	 */
+	NetsResult shutdown(SocketShutdown shutdown = RECEIVE_SEND_SOCKET_SHUTDOWN) noexcept
+	{
+		return shutdownStreamSession(instance, shutdown);
+	}
 };
 
 inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession, void** handle);

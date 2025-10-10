@@ -21,6 +21,7 @@
 #pragma once
 #include <array>
 #include <vector>
+#include <string>
 #include <string_view>
 
 extern "C"
@@ -66,7 +67,7 @@ public:
 
 	/**
 	 * @brief Returns true if stream message is not empty and complete, otherwise false.
-	 * @details See the @ref isStreamMessageValid().
+	 * @details See the @ref isStreamMessageComplete().
 	 */
 	bool isComplete() const noexcept { return isStreamMessageComplete(*this); }
 
@@ -155,7 +156,7 @@ public:
 
 	/**
 	 * @brief Reads string from the stream message and advances offset.
-	 * @details See the @ref readStreamMessageString().
+	 * @details See the @ref readStreamMessageData().
 	 * @return True if no more data to read, otherwise false.
 	 *
 	 * @param[out] value reference to the message string
@@ -170,6 +171,23 @@ public:
 		return false;
 	}
 	/**
+	 * @brief Reads string from the stream message and advances offset.
+	 * @details See the @ref readStreamMessageData().
+	 * @return True if no more data to read, otherwise false.
+	 *
+	 * @param[out] value reference to the message string
+	 * @param lengthSize length of the string size in bytes
+	 */
+	bool read(std::string& value, uint8_t lengthSize) noexcept
+	{
+		const void* data; size_t length;
+		if (readStreamMessageData(this, &data, &length, lengthSize))
+			return true;
+		value = std::string((const char*)data, length);
+		return false;
+	}
+
+	/**
 	 * @brief Reads boolean value from the stream message and advances offset.
 	 * @details See the @ref readStreamMessageBool().
 	 * @return True if no more data to read, otherwise false.
@@ -179,10 +197,24 @@ public:
 
 	/**
 	 * @brief Reads data from the stream message and advances offset.
-	 * @details See the @ref readStreamMessageString().
+	 * @details See the @ref readStreamMessageData().
 	 * @return True if no more data to read, otherwise false.
 	 *
-	 * @param[out] value reference to the message data
+	 * @param[out] data reference to the message data
+	 * @param[out] dataSize reference to the data size in bytes
+	 * @param lengthSize length of the data size in bytes
+	 */
+	bool read(const void*& data, size_t& dataSize, uint8_t lengthSize) noexcept
+	{
+		return readStreamMessageData(this, &data, &dataSize, lengthSize);
+	}
+	/**
+	 * @brief Reads vector data from the stream message and advances offset.
+	 * @details See the @ref readStreamMessageData().
+	 * @return True if no more data to read, otherwise false.
+	 *
+	 * @tparam T type of the vector data
+	 * @param[out] data reference to the message data vector
 	 * @param lengthSize length of the data size in bytes
 	 */
 	template<class T>
@@ -231,9 +263,9 @@ public:
 	 * @param lengthSize message header size in bytes
 	 */
 	OutStreamMessage(std::vector<uint8_t>& buffer, size_t messageSize, uint8_t lengthSize) noexcept :
-		buffer(buffer.data()), size(messageSize + lengthSize)
+		size(messageSize + lengthSize)
 	{
-		buffer.resize(size);
+		buffer.resize(size); this->buffer = buffer.data();
 		auto message = createStreamMessage(buffer.data(), buffer.size(), messageSize, lengthSize);
 		iter = message.iter; end = message.end;
 	}
@@ -336,7 +368,7 @@ public:
 
 	/**
 	 * @brief Writes string to the stream message and advances offset.
-	 * @details See the @ref writeStreamMessageString().
+	 * @details See the @ref writeStreamMessageData().
 	 * @return True if no more space to write data, otherwise false.
 	 *
 	 * @param value message string to write
@@ -355,12 +387,25 @@ public:
 	bool write(bool value) noexcept { return writeStreamMessageBool(this, value); }
 
 	/**
+	 * @brief Writes data to the stream message and advances offset.
+	 * @details See the @ref writeStreamMessageData().
+	 * @return True if no more space to write data, otherwise false.
+	 *
+	 * @param[in] data message data to write
+	 * @param dataSize size of the data in bytes
+	 * @param lengthSize length of the data size in bytes
+	 */
+	bool write(const void* data, size_t dataSize, uint8_t lengthSize) noexcept
+	{
+		return writeStreamMessageData(this, data, dataSize, lengthSize);
+	}
+	/**
 	 * @brief Writes vector data to the stream message and advances offset.
-	 * @details See the @ref writeStreamMessageString().
+	 * @details See the @ref writeStreamMessageData().
 	 * @return True if no more space to write data, otherwise false.
 	 *
 	 * @tparam T type of the vector data
-	 * @param[in] data message data to write
+	 * @param[in] data message data vector to write
 	 * @param lengthSize length of the data size in bytes
 	 */
 	template<class T>
@@ -370,12 +415,12 @@ public:
 	}
 	/**
 	 * @brief Writes array data to the stream message and advances offset.
-	 * @details See the @ref writeStreamMessageString().
+	 * @details See the @ref writeStreamMessageData().
 	 * @return True if no more space to write data, otherwise false.
 	 *
 	 * @tparam T type of the array data
 	 * @tparam S size of the array
-	 * @param[in] data message data to write
+	 * @param[in] data message data array to write
 	 * @param lengthSize length of the data size in bytes
 	 */
 	template<class T, size_t N>

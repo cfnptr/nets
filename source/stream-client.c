@@ -24,6 +24,7 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #elif __APPLE__
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/event.h>
@@ -361,6 +362,8 @@ inline static void streamClientReceive(void* argument)
 
 		if (eventCount == -1)
 		{
+			if (errno == EINTR)
+				continue;
 			streamClient->isRunning = streamClient->isConnected = false;
 			return;
 		}
@@ -781,8 +784,5 @@ NetsResult streamClientSend(StreamClient streamClient, const void* data, size_t 
 	assert(streamClient);
 	if (!streamClient->isConnected)
 		return CONNECTION_IS_CLOSED_NETS_RESULT;
-	NetsResult netsResult = socketSend(streamClient->streamSocket, data, byteCount);
-	if (netsResult != SUCCESS_NETS_RESULT)
-		return netsResult;
-	return SUCCESS_NETS_RESULT;
+	return socketSend(streamClient->streamSocket, data, byteCount);
 }

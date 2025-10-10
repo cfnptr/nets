@@ -244,3 +244,12 @@ NetsResult streamSessionSend(StreamSession streamSession, const void* data, size
  */
 NetsResult streamSessionSendDatagram(StreamServer streamServer, 
 	StreamSession streamSession, const void* data, size_t byteCount);
+
+/**
+ * @brief Shutdowns part of the full-duplex socket connection.
+ * @return The operation @ref NetsResult code.
+ *
+ * @param streamSession target stream session instance
+ * @param shutdown socket connection shutdown mode
+ */
+NetsResult shutdownStreamSession(StreamSession streamSession, SocketShutdown shutdown);

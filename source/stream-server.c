@@ -19,11 +19,13 @@
 #include <string.h>
 
 #if __linux__
+#include <errno.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #elif __APPLE__
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/event.h>
@@ -314,6 +316,8 @@ inline static void streamServerReceive(void* argument)
 
 		if (eventCount == -1)
 		{
+			if (errno == EINTR)
+				continue;
 			streamServer->isRunning = false;
 			return;
 		}
@@ -825,4 +829,12 @@ NetsResult streamSessionSendDatagram(StreamServer streamServer,
 		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	return socketSendTo(streamServer->datagramSocket, data, 
 		byteCount, streamSession->remoteAddress);
+}
+
+NetsResult shutdownStreamSession(StreamSession streamSession, SocketShutdown shutdown)
+{
+	assert(streamSession);
+	if (!streamSession->receiveSocket)
+		return CONNECTION_IS_CLOSED_NETS_RESULT;
+	return shutdownSocket(streamSession->receiveSocket, shutdown);
 }
