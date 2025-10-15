@@ -32,25 +32,33 @@ typedef StreamClient_T* StreamClient;         /**< Stream client instance. (TCP)
  */
 typedef void(*OnStreamClientConnection)(StreamClient streamClient, NetsResult result);
 /**
+ * @brief Stream client on server disconnect function. (TCP)
+ * @warning This function is called asynchronously from the receive thread!
+ *
+ * @param streamClient stream client instance
+ * @param reason server disconnection reason
+ */
+typedef void(*OnStreamClientDisconnect)(StreamClient streamClient, int reason);
+/**
  * @brief Stream client data receive function. (TCP)
- * @details Client stops receive thread on this function false return result.
+ * @details Client stops receive thread on this function non zero return result.
  * @warning This function is called asynchronously from the receive thread!
  *
  * @param streamClient stream client instance
  * @param[in] receiveBuffer received data buffer
  * @param byteCount received byte count
  */
-typedef bool(*OnStreamClientReceive)(StreamClient streamClient, const uint8_t* receiveBuffer, size_t byteCount);
+typedef int(*OnStreamClientReceive)(StreamClient streamClient, const uint8_t* receiveBuffer, size_t byteCount);
 /**
  * @brief Stream client datagram receive function. (UDP)
- * @details Client stops receive thread on this function false return result.
+ * @details Client stops receive thread on this function non zero return result.
  * @warning This function is called asynchronously from the receive thread!
  *
  * @param streamClient stream client instance
  * @param[in] receiveBuffer received data buffer
  * @param byteCount received byte count
  */
-typedef bool(*OnStreamClientDatagram)(StreamClient streamClient, const uint8_t* receiveBuffer, size_t byteCount);
+typedef int(*OnStreamClientDatagram)(StreamClient streamClient, const uint8_t* receiveBuffer, size_t byteCount);
 
 /**
  * @brief Creates a new stream client instance. (TCP)
@@ -59,6 +67,7 @@ typedef bool(*OnStreamClientDatagram)(StreamClient streamClient, const uint8_t* 
  * @param bufferSize receive data buffer size in bytes
  * @param timeoutTime server timeout time in seconds
  * @param[in] onConnection on connection result function
+ * @param[in] onDisconnect on server disconnect function
  * @param[in] onReceive on data receive function
  * @param[in] onDatagram on datagrtam receive function or NULL
  * @param[in] handle receive function argument or NULL
@@ -66,8 +75,8 @@ typedef bool(*OnStreamClientDatagram)(StreamClient streamClient, const uint8_t* 
  * @param[out] streamClient pointer to the stream client instance
  */
 NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamClientConnection onConnection,
-	OnStreamClientReceive onReceive, OnStreamClientDatagram onDatagram, void* handle, 
-	SslContext sslContext, StreamClient* streamClient);
+	OnStreamClientDisconnect onDisconnect, OnStreamClientReceive onReceive, OnStreamClientDatagram onDatagram, 
+	void* handle, SslContext sslContext, StreamClient* streamClient);
 
 /**
  * @brief Destroys stream client instance. (TCP)
@@ -169,11 +178,6 @@ NetsResult connectStreamClientByHostname(StreamClient streamClient,
  * @param streamClient target stream client instance
  */
 void disconnectStreamClient(StreamClient streamClient);
-/**
- * @brief Stops stream client receive thread. (MT-Safe)
- * @param streamClient target stream client instance
- */
-void stopStreamClient(StreamClient streamClient);
 
 /**
  * @brief Updates stream client state.
@@ -182,7 +186,8 @@ void stopStreamClient(StreamClient streamClient);
 void updateStreamClient(StreamClient streamClient);
 
 /**
- * @brief Sends stream data to the server.
+ * @brief Sends stream data to the server. (TCP)
+ * @details Internally synchronized. (MT-Safe)
  * @return The operation @ref NetsResult code.
  *
  * @param streamClient target stream client instance
@@ -190,3 +195,13 @@ void updateStreamClient(StreamClient streamClient);
  * @param byteCount data byte count to send
  */
 NetsResult streamClientSend(StreamClient streamClient, const void* data, size_t byteCount);
+/**
+ * @brief Sends datagram to the server. (UDP)
+ * @details Internally synchronized. (MT-Safe)
+ * @return The operation @ref NetsResult code.
+ *
+ * @param streamClient target stream client instance
+ * @param[in] data send data buffer
+ * @param byteCount data byte count to send
+ */
+NetsResult streamClientSendDatagram(StreamClient streamClient, const void* data, size_t byteCount);

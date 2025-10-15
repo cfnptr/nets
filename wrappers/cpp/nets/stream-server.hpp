@@ -108,6 +108,11 @@ public:
 	}
 
 	/**
+	 * @brief Resets stream session timeout time.
+	 * @warning You should lock sessions before aliving!
+	 */
+	void alive() noexcept { aliveStreamSession(instance); }
+	/**
 	 * @brief Shutdowns part of the full-duplex socket connection.
 	 * @details See the @ref shutdownStreamSession().
 	 * @warning You should lock sessions before shutting down!

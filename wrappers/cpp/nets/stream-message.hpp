@@ -64,12 +64,18 @@ public:
 	 * @brief Returns stream message end pointer.
 	 */
 	const uint8_t* getEnd() const noexcept { return end; }
+	
 
 	/**
 	 * @brief Returns true if stream message is not empty and complete, otherwise false.
 	 * @details See the @ref isStreamMessageComplete().
 	 */
 	bool isComplete() const noexcept { return isStreamMessageComplete(*this); }
+	/**
+	 * @brief Returns stream message byte count left to read or write.
+	 * @details See the @ref getStreamMessageLeft().
+	 */
+	size_t getLeft() const noexcept { return getStreamMessageLeft(*this); }
 
 	/**
 	 * @brief Reads data from the stream message and advances offset.

@@ -75,6 +75,7 @@ inline static StreamMessage createStreamMessage(uint8_t* buffer,
 	streamMessage.end = streamMessage.iter + messageSize;
 	return streamMessage;
 }
+
 /**
  * @brief Returns true if stream message is not empty and complete, otherwise false.
  * @param streamMessage target stream message to validate
@@ -82,6 +83,14 @@ inline static StreamMessage createStreamMessage(uint8_t* buffer,
 inline static bool isStreamMessageComplete(StreamMessage streamMessage)
 {
 	return streamMessage.iter && streamMessage.iter == streamMessage.end;
+}
+/**
+ * @brief Returns stream message byte count left to read or write.
+ * @param streamMessage target stream message
+ */
+inline static size_t getStreamMessageLeft(StreamMessage streamMessage)
+{
+	return streamMessage.end - streamMessage.iter;
 }
 
 /***********************************************************************************************************************

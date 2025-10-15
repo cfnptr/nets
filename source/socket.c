@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "nets/socket.h"
+#include "mpmt/sync.h"
 #include <string.h>
 
 #if __linux__ || __APPLE__
@@ -64,6 +65,7 @@ struct Socket_T
 	#if NETS_SUPPORT_OPENSSL
 	SslContext sslContext;
 	SSL* ssl;
+	Mutex sslLocker;
 	#endif
 };
 struct SocketAddress_T
@@ -398,8 +400,6 @@ NetsResult createSocket(SocketType type, SocketFamily family, SocketAddress loca
 			destroySocket(socketInstance);
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
-
-		socketInstance->sslContext = sslContext;
 		socketInstance->ssl = ssl;
 
 		if (SSL_set_fd(ssl, (int)handle) != 1)
@@ -407,10 +407,15 @@ NetsResult createSocket(SocketType type, SocketFamily family, SocketAddress loca
 			destroySocket(socketInstance);
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
-	}
-	else
-	{
-		socketInstance->sslContext = NULL;
+
+		Mutex sslLocker = createMutex();
+		if (!sslLocker)
+		{
+			destroySocket(socketInstance);
+			return OUT_OF_MEMORY_NETS_RESULT;
+		}
+		socketInstance->sslLocker = sslLocker;
+		socketInstance->sslContext = sslContext;
 	}
 	#endif
 
@@ -425,8 +430,8 @@ void destroySocket(Socket socket)
 	assert(networkInitialized);
 
 	#if NETS_SUPPORT_OPENSSL
-	if (socket->sslContext)
-		SSL_free(socket->ssl);
+	destroyMutex(socket->sslLocker);
+	SSL_free(socket->ssl);
 	#endif
 
 	if (socket->handle)
@@ -648,8 +653,6 @@ NetsResult acceptSocket(Socket socket, Socket* accepted)
 			destroySocket(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
-
-		acceptedInstance->sslContext = socket->sslContext;
 		acceptedInstance->ssl = ssl;
 
 		if (SSL_set_fd(ssl, (int)handle) != 1)
@@ -657,14 +660,18 @@ NetsResult acceptSocket(Socket socket, Socket* accepted)
 			destroySocket(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
-	}
-	else
-	{
-		acceptedInstance->sslContext = NULL;
+
+		Mutex sslLocker = createMutex();
+		if (!sslLocker)
+		{
+			destroySocket(acceptedInstance);
+			return OUT_OF_MEMORY_NETS_RESULT;
+		}
+		acceptedInstance->sslLocker = sslLocker;
+		acceptedInstance->sslContext = socket->sslContext;
 	}
 	#endif
 
-	acceptedInstance->queueSize = 0;
 	acceptedInstance->type = socket->type;
 	acceptedInstance->isBlocking = socket->isBlocking;
 	acceptedInstance->isOnlyIPv6 = socket->isOnlyIPv6;
@@ -678,8 +685,12 @@ NetsResult acceptSslSocket(Socket socket)
 
 	#if NETS_SUPPORT_OPENSSL
 	assert(socket->sslContext);
+	Mutex sslLocker = socket->sslLocker;
 
+	lockMutex(sslLocker);
 	int result = SSL_accept(socket->ssl);
+	unlockMutex(sslLocker);
+
 	if (result != 1)
 		return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	return SUCCESS_NETS_RESULT;
@@ -715,18 +726,25 @@ NetsResult connectSslSocket(Socket socket, const char* hostname)
 
 	#if NETS_SUPPORT_OPENSSL
 	assert(socket->sslContext);
+	Mutex sslLocker = socket->sslLocker;
 
 	if (hostname)
 	{
 		assert(strlen(hostname) > 0);
 		assert(strlen(hostname) <= UINT8_MAX);
 
+		lockMutex(sslLocker);
 		int result = SSL_set_tlsext_host_name(socket->ssl, hostname);
+		unlockMutex(sslLocker);
+
 		if (result != 1)
 			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	}
 
+	lockMutex(sslLocker);
 	int result = SSL_connect(socket->ssl);
+	unlockMutex(sslLocker);
+
 	if (result != 1)
 		return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 	return SUCCESS_NETS_RESULT;
@@ -780,10 +798,13 @@ NetsResult socketReceive(Socket socket, void* receiveBuffer, size_t bufferSize, 
 	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
+		Mutex sslLocker = socket->sslLocker;
+		lockMutex(sslLocker);
 		int result = SSL_read(socket->ssl, receiveBuffer, (int)bufferSize);
+		unlockMutex(sslLocker);
+
 		if (result < 0)
 			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
-
 		*byteCount = (size_t)result;
 		return SUCCESS_NETS_RESULT;
 	}
@@ -805,7 +826,11 @@ NetsResult socketSend(Socket socket, const void* data, size_t byteCount)
 	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
+		Mutex sslLocker = socket->sslLocker;
+		lockMutex(sslLocker);
 		int result = SSL_write(socket->ssl, data, (int)byteCount);
+		unlockMutex(sslLocker);
+
 		if (result < 0)
 			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
 		if (result != byteCount)

@@ -221,6 +221,12 @@ int updateStreamSession(StreamServer streamServer, StreamSession streamSession, 
  * @param reason stream session destruction reason
  */
 void closeStreamSession(StreamServer streamServer, StreamSession streamSession, int reason);
+/**
+ * @brief Resets specified stream server session timeout time.
+ * @warning You should lock sessions before aliving!
+ * @param streamSession target stream session instance
+ */
+void aliveStreamSession(StreamSession streamSession);
 
 /**
  * @brief Sends stream data to the specified session. (TCP)

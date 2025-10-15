@@ -35,8 +35,8 @@ struct StreamSession_T
 {
 	Socket receiveSocket;
 	SocketAddress remoteAddress;
-	void* handle;
 	double lastReceiveTime;
+	void* handle;
 };
 struct StreamServer_T
 {
@@ -223,6 +223,7 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 		}
 	}
 
+
 	OnStreamSessionReceive onReceive = streamServer->onReceive;
 	uint8_t* receiveBuffer = streamServer->receiveBuffer;
 	size_t receiveBufferSize = streamServer->receiveBufferSize;
@@ -314,7 +315,7 @@ inline static void streamServerReceive(void* argument)
 		int eventCount = kevent(eventPool, NULL, 0, events, 64, NULL);
 		#endif
 
-		if (eventCount == -1)
+		if (eventCount == -1 || !streamServer->isRunning)
 		{
 			if (errno == EINTR)
 				continue;
@@ -809,6 +810,11 @@ void closeStreamSession(StreamServer streamServer, StreamSession streamSession, 
 	
 	streamServer->disconnectSessions = true;
 	streamServer->onDestroy(streamServer, streamSession, reason);
+}
+void aliveStreamSession(StreamSession streamSession)
+{
+	assert(streamSession);
+	streamSession->lastReceiveTime = getCurrentClock();
 }
 
 NetsResult streamSessionSend(StreamSession streamSession, const void* data, size_t byteCount)
