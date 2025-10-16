@@ -220,6 +220,11 @@ public:
 	 * @param byteCount data byte count to send
 	 */
 	void update() noexcept { return updateStreamClient(instance); }
+	/**
+	 * @brief Resets stream client server timeout time.
+	 * @details See the @ref aliveStreamClient().
+	 */
+	void alive() noexcept { aliveStreamClient(instance); }
 
 	/**
 	 * @brief Sends stream data to the server. (TCP)
@@ -261,9 +266,7 @@ public:
 	 * @brief Sends datagram message to the server. (UDP)
 	 * @details See the @ref streamClientSendDatagram().
 	 * @return The operation @ref NetsResult code.
-	 *
-	 * @param[in] data send data buffer
-	 * @param byteCount data byte count to send
+	 * @param[in] message datagram message to send
 	 */
 	NetsResult sendDatagram(const OutStreamMessage& message) noexcept
 	{

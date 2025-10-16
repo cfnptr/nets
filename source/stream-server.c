@@ -824,17 +824,13 @@ NetsResult streamSessionSend(StreamSession streamSession, const void* data, size
 		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	return socketSend(streamSession->receiveSocket, data, byteCount);
 }
-NetsResult streamSessionSendDatagram(StreamServer streamServer, 
-	StreamSession streamSession, const void* data, size_t byteCount)
+NetsResult streamServerSendDatagram(StreamServer streamServer, 
+	SocketAddress remoteAddress, const void* data, size_t byteCount)
 {
 	assert(streamServer);
-	assert(streamSession);
+	assert(remoteAddress);
 	assert(streamServer->datagramSocket);
-
-	if (!streamSession->receiveSocket)
-		return CONNECTION_IS_CLOSED_NETS_RESULT;
-	return socketSendTo(streamServer->datagramSocket, data, 
-		byteCount, streamSession->remoteAddress);
+	return socketSendTo(streamServer->datagramSocket, data, byteCount, remoteAddress);
 }
 
 NetsResult shutdownStreamSession(StreamSession streamSession, SocketShutdown shutdown)

@@ -184,6 +184,11 @@ void disconnectStreamClient(StreamClient streamClient);
  * @param streamClient target stream client instance
  */
 void updateStreamClient(StreamClient streamClient);
+/**
+ * @brief Resets stream client server timeout time.
+ * @param streamClient target stream client instance
+ */
+void aliveStreamClient(StreamClient streamClient);
 
 /**
  * @brief Sends stream data to the server. (TCP)

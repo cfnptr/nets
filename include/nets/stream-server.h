@@ -239,17 +239,16 @@ void aliveStreamSession(StreamSession streamSession);
  */
 NetsResult streamSessionSend(StreamSession streamSession, const void* data, size_t byteCount);
 /**
- * @brief Sends datagram to the specified stream session. (UDP)
- * @warning You should lock sessions before sending messages!
+ * @brief Sends datagram to the specified socket address. (UDP)
  * @return The operation @ref NetsResult code.
  *
  * @param streamServer stream server instance
- * @param streamSession target stream session instance
+ * @param remoteAddress target remote socket IP address
  * @param[in] data send data buffer
  * @param byteCount data byte count to send
  */
-NetsResult streamSessionSendDatagram(StreamServer streamServer, 
-	StreamSession streamSession, const void* data, size_t byteCount);
+NetsResult streamServerSendDatagram(StreamServer streamServer, 
+	SocketAddress remoteAddress, const void* data, size_t byteCount);
 
 /**
  * @brief Shutdowns part of the full-duplex socket connection.

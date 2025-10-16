@@ -179,6 +179,8 @@ inline static NetsResult errorToNetsResult(int error)
 		return TIMED_OUT_NETS_RESULT;
 	case EINTR:
 		return INTERRUPTED_NETS_RESULT;
+	case EMSGSIZE:
+		return MESSAGE_IS_TOO_BIG_RESULT;
 	}
 	#elif _WIN32
 	switch (error)
@@ -225,6 +227,8 @@ inline static NetsResult errorToNetsResult(int error)
 		return TIMED_OUT_NETS_RESULT;
 	case WSAEINTR:
 		return INTERRUPTED_NETS_RESULT;
+	case WSAEMSGSIZE:
+		return MESSAGE_IS_TOO_BIG_RESULT;
 	}
 	#endif
 }

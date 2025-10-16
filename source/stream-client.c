@@ -175,7 +175,7 @@ inline static NetsResult connectStreamClientAddress(StreamClient streamClient,
 			destroySocket(streamClient->datagramSocket);
 			streamClient->datagramSocket = socket;
 
-			netsResult = connectSocket(socket, socketAddress);
+			netsResult = connectSocket(socket, remoteAddress);
 			if (netsResult != SUCCESS_NETS_RESULT)
 			{
 				shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
@@ -214,6 +214,8 @@ inline static NetsResult connectStreamClientHostname(StreamClient streamClient,
 
 inline static void shutdownStreamClient(StreamClient streamClient, int reason)
 {
+	if (!streamClient->isRunning)
+		return;
 	streamClient->isRunning = streamClient->isConnected = false;
 	shutdownSocket(streamClient->datagramSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 	streamClient->onDisconnect(streamClient, reason);
@@ -319,13 +321,14 @@ inline static void streamClientReceive(void* argument)
 	}
 	destroyStreamClientConnect(connectData);
 
+	streamClient->isConnected = true;
 	streamClient->onConnection(streamClient, netsResult);
+
 	if (netsResult != SUCCESS_NETS_RESULT)
 	{
-		streamClient->isRunning = false;
+		streamClient->isRunning = streamClient->isConnected = false;
 		return;
 	}
-	streamClient->isConnected = true;
 
 	Socket streamSocket = streamClient->streamSocket;
 	Socket datagramSocket = streamClient->datagramSocket;
@@ -479,6 +482,7 @@ NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamCli
 
 	streamClientInstance->timeoutTime = timeoutTime;
 	streamClientInstance->onConnection = onConnection;
+	streamClientInstance->onDisconnect = onDisconnect;
 	streamClientInstance->onReceive = onReceive;
 	streamClientInstance->onDatagram = onDatagram;
 	streamClientInstance->handle = handle;
@@ -799,6 +803,10 @@ void disconnectStreamClient(StreamClient streamClient)
 void updateStreamClient(StreamClient streamClient)
 {
 	wakeUpStreamClient(streamClient);
+}
+void aliveStreamClient(StreamClient streamClient)
+{
+	streamClient->lastReceiveTime = getCurrentClock();
 }
 
 NetsResult streamClientSend(StreamClient streamClient, const void* data, size_t byteCount)

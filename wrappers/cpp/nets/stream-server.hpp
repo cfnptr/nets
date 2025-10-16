@@ -109,9 +109,11 @@ public:
 
 	/**
 	 * @brief Resets stream session timeout time.
+	 * @details See the @ref aliveStreamSession().
 	 * @warning You should lock sessions before aliving!
 	 */
 	void alive() noexcept { aliveStreamSession(instance); }
+
 	/**
 	 * @brief Shutdowns part of the full-duplex socket connection.
 	 * @details See the @ref shutdownStreamSession().
@@ -318,31 +320,29 @@ public:
 
 	/**
 	 * @brief Sends datagram to the specified stream session. (UDP)
-	 * @details See the @ref streamSessionSendDatagram().
-	 * @warning You should lock sessions before sending messages!
+	 * @details See the @ref streamServerSendDatagram().
 	 * @return The operation @ref NetsResult code.
 	 *
-	 * @param streamSession target stream session instance
+	 * @param remoteAddress target remote socket IP address
 	 * @param[in] data send data buffer
 	 * @param byteCount data byte count to send
 	 */
-	NetsResult sendDatagram(StreamSessionView streamSession, const void* data, size_t byteCount) noexcept
+	NetsResult sendDatagram(SocketAddressView remoteAddress, const void* data, size_t byteCount) noexcept
 	{
-		return streamSessionSendDatagram(instance, streamSession.getInstance(), data, byteCount);
+		return streamServerSendDatagram(instance, remoteAddress.getInstance(), data, byteCount);
 	}
 	/**
 	 * @brief Sends datagram to the specified session. (UDP)
-	 * @details See the @ref streamSessionSendDatagram().
-	 * @warning You should lock sessions before sending messages!
+	 * @details See the @ref streamServerSendDatagram().
 	 * @return The operation @ref NetsResult code.
 
-	 * @param streamSession target stream session instance
+	 * @param remoteAddress target remote socket IP address
 	 * @param[in] message datagram message to send
 	 */
-	NetsResult sendDatagram(StreamSessionView streamSession, const OutStreamMessage& message) noexcept
+	NetsResult sendDatagram(SocketAddressView remoteAddress, const OutStreamMessage& message) noexcept
 	{
 		assert(message.isComplete());
-		return streamSessionSendDatagram(instance, streamSession.getInstance(), message.getBuffer(), message.getSize());
+		return streamServerSendDatagram(instance, remoteAddress.getInstance(), message.getBuffer(), message.getSize());
 	}
 };
 
