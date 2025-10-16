@@ -25,6 +25,7 @@
 #include "nets/defines.h"
 
 #include <limits.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #define ANY_IP_ADDRESS_V4 "0.0.0.0"        /**< Internet Protocol v4 any address. */

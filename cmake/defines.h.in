@@ -19,7 +19,6 @@
 
 #pragma once
 #include <stdint.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
 
@@ -107,12 +106,13 @@ typedef enum NetsResult_T
 	HOST_IS_NOT_REACHABLE_NETS_RESULT = 17,
 	TIMED_OUT_NETS_RESULT = 18,
 	INTERRUPTED_NETS_RESULT = 19,
-	FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT = 20,
-	FAILED_TO_CREATE_SSL_NETS_RESULT = 21,
-	FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT = 22,
-	NO_OPENSSL_SUPPORT_NETS_RESULT = 23,
-	UNKNOWN_ERROR_NETS_RESULT = 24,
-	NETS_RESULT_COUNT = 25,
+	MESSAGE_IS_TOO_BIG_RESULT = 20,
+	FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT = 21,
+	FAILED_TO_CREATE_SSL_NETS_RESULT = 22,
+	FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT = 23,
+	NO_OPENSSL_SUPPORT_NETS_RESULT = 24,
+	UNKNOWN_ERROR_NETS_RESULT = 25,
+	NETS_RESULT_COUNT = 26,
 } NetsResult_T;
 typedef uint8_t NetsResult; /**< Nets result type. */
 
@@ -140,6 +140,7 @@ static const char* const netsResultStrings[NETS_RESULT_COUNT] = {
 	"Host is not reachable",
 	"Timed out",
 	"Interrupted",
+	"Message is too big",
 	"Failed to resolve address",
 	"Failed to create SSL",
 	"Failed to load certificate",

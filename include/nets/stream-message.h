@@ -19,6 +19,8 @@
 
 #pragma once
 #include "nets/defines.h"
+
+#include <stdlib.h>
 #include <string.h>
 
 /**
