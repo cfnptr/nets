@@ -330,7 +330,7 @@ NetsResult createSocketAddress(const char* host, const char* service, SocketAddr
 NetsResult createAnySocketAddress(SocketFamily family, SocketAddress* socketAddress);
 
 /**
- * @brief Create a new socket IP address copy instance.
+ * @brief Creates a new socket IP address copy instance.
  * @return A new socket address instance on success, otherwise NULL.
  * @param socketAddress target socket address instance to copy
  */
@@ -481,7 +481,7 @@ void getSocketAddressHostService(SocketAddress socketAddress, char* host,
 	size_t hostLength, char* service, size_t serviceLength);
 
 /**
- * @brief Create a new public socket SSL context.
+ * @brief Creates a new public socket SSL context.
  * @return The operation @ref NetsResult code.
  *
  * @param sslProtocol socket SSL security protocol type
@@ -492,7 +492,7 @@ void getSocketAddressHostService(SocketAddress socketAddress, char* host,
 NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certificateFilePath, 
 	const char* certificatesDirectory, SslContext* sslContext);
 /**
- * @brief Create a new private socket SSL context.
+ * @brief Creates a new private socket SSL context.
  * @return The operation @ref NetsResult code.
  *
  * @param sslProtocol socket SSL security protocol type

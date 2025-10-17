@@ -214,7 +214,7 @@ inline static NetsResult connectStreamClientHostname(StreamClient streamClient,
 
 inline static void shutdownStreamClient(StreamClient streamClient, int reason)
 {
-	if (!streamClient->isRunning)
+	if (!streamClient->isConnected)
 		return;
 	streamClient->isRunning = streamClient->isConnected = false;
 	shutdownSocket(streamClient->datagramSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);

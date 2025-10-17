@@ -291,7 +291,7 @@ struct SocketAddress final : public SocketAddressView
 	~SocketAddress() { destroySocketAddress(instance); }
 
 	/**
-	 * @brief Create a new socket IP address copy instance.
+	 * @brief Creates a new socket IP address copy instance.
 	 * @details See the @ref createSocketAddressCopy().
 	 */
 	SocketAddress createCopy() const noexcept
@@ -357,7 +357,11 @@ struct SslContext final : public SslContextView
 	}
 
 	/**
-	 * @brief Create a new public socket SSL context.
+	 * @brief Creates a new empty socket SSL context.
+	 */
+	SslContext() noexcept : SslContextView(nullptr) { }
+	/**
+	 * @brief Creates a new public socket SSL context.
 	 * @details See the @ref createPublicSslContext().
 	 *
 	 * @param sslProtocol socket SSL security protocol type
@@ -366,7 +370,7 @@ struct SslContext final : public SslContextView
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
-	SslContext(SslProtocol sslProtocol = TLS_SECURITY_PROTOCOL, const char* certificateFilePath = nullptr, 
+	SslContext(SslProtocol sslProtocol, const char* certificateFilePath = nullptr, 
 		const char* certificatesDirectory = nullptr) : SslContextView(nullptr)
 	{
 		auto result = createPublicSslContext(sslProtocol, certificateFilePath, certificatesDirectory, &instance);
@@ -374,7 +378,7 @@ struct SslContext final : public SslContextView
 			throw Error(netsResultToString(result));
 	}
 	/**
-	 * @brief Create a new private socket SSL context.
+	 * @brief Creates a new private socket SSL context.
 	 * @details See the @ref createPrivateSslContext().
 	 *
 	 * @param sslProtocol socket SSL security protocol type
@@ -671,6 +675,10 @@ struct Socket final : public SocketView
 		return *this;
 	}
 
+	/**
+	 * @brief Creates a new empty netwown socket.
+	 */
+	Socket() noexcept : SocketView(nullptr) { }
 	/**
 	 * @brief Creates a new network socket instance.
 	 * @details See the @ref createSocket().
