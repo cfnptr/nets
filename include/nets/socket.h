@@ -80,17 +80,6 @@ typedef enum SocketShutdown_T
 } SocketShutdown_T;
 typedef uint8_t SocketShutdown; /**< Socket connection shutdown mode. */
 
-/**
- * @brief Socket SSL security protocol type.
- */
-typedef enum SslProtocol_T
-{
-	TLS_SECURITY_PROTOCOL = 0,     /**< Use highest supported TLS security protocol version. */
-	TLS_1_2_SECURITY_PROTOCOL = 1, /**< Use TLS 1.2 security protocol version. */
-	SSL_PROTOCOL_COUNT = 2,        /**< Socket SSL security protocol type count. */
-} SslProtocol_T;
-typedef uint8_t SslProtocol; /**< Socket SSL security protocol type. */
-
 /***********************************************************************************************************************
  * @brief Initializes network subsystems.
  * @warning You should call this function before using sockets!
@@ -484,24 +473,22 @@ void getSocketAddressHostService(SocketAddress socketAddress, char* host,
  * @brief Creates a new public socket SSL context.
  * @return The operation @ref NetsResult code.
  *
- * @param sslProtocol socket SSL security protocol type
  * @param[in] certificateFilePath certificate file path string or NULL
  * @param[in] certificatesDirectory certificates directory path string or NULL
  * @param[out] sslContext pointer to the SSL context instance
  */
-NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certificateFilePath, 
+NetsResult createPublicSslContext(const char* certificateFilePath, 
 	const char* certificatesDirectory, SslContext* sslContext);
 /**
  * @brief Creates a new private socket SSL context.
  * @return The operation @ref NetsResult code.
  *
- * @param sslProtocol socket SSL security protocol type
  * @param[in] certificateFilePath certificates file path string
  * @param[in] privateKeyFilePath private key file path string
  * @param certificateChain file path is certificate chain
  * @param[out] sslContext pointer to the SSL context instance
  */
-NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certificateFilePath, 
+NetsResult createPrivateSslContext(const char* certificateFilePath, 
 	const char* privateKeyFilePath, bool certificateChain, SslContext* sslContext);
 
 /**
@@ -509,9 +496,3 @@ NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certific
  * @param sslContext target SSL context instance or NULL
  */
 void destroySslContext(SslContext sslContext);
-
-/**
- * @brief Returns socket SSL context security protocol type.
- * @param sslContext target SSL context instance
- */
-SslProtocol getSslContextProtocol(SslContext sslContext);

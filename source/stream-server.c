@@ -83,7 +83,7 @@ inline static void destroyStreamSession(StreamSession streamSession)
 	free(streamSession);
 }
 inline static bool acceptStreamSession(StreamServer streamServer, 
-	Socket acceptedSocket, StreamSession* _streamSession, bool useSSL)
+	Socket acceptedSocket, StreamSession* streamSession, bool useSSL)
 {
 	if (streamServer->sessionCount >= streamServer->sessionBufferSize)
 	{
@@ -92,42 +92,44 @@ inline static bool acceptStreamSession(StreamServer streamServer,
 		return false;
 	}
 
-	StreamSession streamSession = calloc(1, sizeof(StreamSession_T));
-	if (!streamSession)
+	StreamSession streamSessionInstance = calloc(1, sizeof(StreamSession_T));
+	if (!streamSessionInstance)
 		return false;
-	streamSession->receiveSocket = acceptedSocket;
+	streamSessionInstance->receiveSocket = acceptedSocket;
 
 	SocketAddress remoteAddress;
 	if (createAnySocketAddress(IP_V6_SOCKET_FAMILY, &remoteAddress) != SUCCESS_NETS_RESULT)
 	{
-		destroyStreamSession(streamSession);
+		destroyStreamSession(streamSessionInstance);
 		return false;
 	}
-	streamSession->remoteAddress = remoteAddress;
+	streamSessionInstance->remoteAddress = remoteAddress;
 
 	if (!getSocketRemoteAddress(acceptedSocket, remoteAddress))
 	{
-		destroyStreamSession(streamSession);
+		destroyStreamSession(streamSessionInstance);
 		return false;
 	}
 
-	void* sessionHandle = NULL;
-	if (!streamServer->onCreate(streamServer, streamSession, &sessionHandle))
+	if (!useSSL)
 	{
-		destroyStreamSession(streamSession);
-		return false;
+		void* sessionHandle = streamServer->onCreate(streamServer, streamSessionInstance);
+		if (!sessionHandle)
+		{
+			destroyStreamSession(streamSessionInstance);
+			return false;
+		}
+		streamSessionInstance->handle = sessionHandle;
 	}
 
-	streamSession->handle = sessionHandle;
-	streamSession->lastReceiveTime = getCurrentClock(); // Note: getting latest time here.
-
+	streamSessionInstance->lastReceiveTime = getCurrentClock(); // Note: getting latest time here.
 	#if NETS_SUPPORT_OPENSSL
 	if (useSSL) // Note: indicates if we should also establish SSL connection.
-		streamSession->lastReceiveTime = -streamSession->lastReceiveTime;
+		streamSessionInstance->lastReceiveTime = -streamSessionInstance->lastReceiveTime;
 	#endif
 
-	streamServer->sessionBuffer[streamServer->sessionCount++] = streamSession;
-	*_streamSession = streamSession;
+	streamServer->sessionBuffer[streamServer->sessionCount++] = streamSessionInstance;
+	*streamSession = streamSessionInstance;
 	return true;
 }
 
@@ -151,7 +153,8 @@ inline static void disconnectStreamSession(StreamServer streamServer, StreamSess
 	unlockMutex(sessionLocker);
 	streamServer->disconnectSessions = true;
 	
-	streamServer->onDestroy(streamServer, streamSession, reason);
+	if (streamSession->handle)
+		streamServer->onDestroy(streamServer, streamSession, reason);
 }
 inline static void disconnectStreamSessions(StreamServer streamServer)
 {
@@ -211,7 +214,16 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 			disconnectStreamSession(streamServer, streamSession, netsResult);
 			return;
 		}
-		streamSession->lastReceiveTime = currentTime;
+
+		void* sessionHandle = streamServer->onCreate(streamServer, streamSession);
+		if (!sessionHandle)
+		{
+			disconnectStreamSession(streamServer, streamSession, netsResult);
+			return;
+		}
+		streamSession->handle = sessionHandle;
+
+		streamSession->lastReceiveTime = getCurrentClock();
 	}
 	else
 	#endif
@@ -222,7 +234,6 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 			return;
 		}
 	}
-
 
 	OnStreamSessionReceive onReceive = streamServer->onReceive;
 	uint8_t* receiveBuffer = streamServer->receiveBuffer;

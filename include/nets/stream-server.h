@@ -27,14 +27,13 @@ typedef StreamSession_T* StreamSession;         /**< Stream server session insta
 
 /**
  * @brief Stream session create function. (TCP)
- * @details Server destroys session on this function false return result.
  * @warning This function is called asynchronously from the receive thread!
+ * @return Custom stream session handle on success, otherwise NULL.
  *
  * @param streamServer stream server instance
  * @param streamSession a new accepted stream session instance
- * @param[out] handle pointer to the custom session handle
  */
-typedef bool(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession streamSession, void** handle);
+typedef void*(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession streamSession);
 /**
  * @brief Stream session destroy function. (TCP)
  * @warning This function is called asynchronously from the receive thread!

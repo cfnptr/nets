@@ -127,7 +127,7 @@ public:
 	}
 };
 
-inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession, void** handle);
+inline static void* _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession);
 inline static void _onStreamSessionDestroy(StreamServer_T* streamServer, StreamSession_T* streamSession, int reason);
 inline static int _onStreamSessionReceive(StreamServer_T* streamServer, 
 	StreamSession_T* streamSession, const uint8_t* receiveBuffer, size_t byteCount);
@@ -185,13 +185,13 @@ public:
 
 	/**
 	 * @brief Stream session create function. (TCP)
-	 * @details Server destroys session on this function false return result.
 	 * @warning This function is called asynchronously from the receive thread!
+	 * @return Custom stream session handle on success, otherwise NULL.
 	 *
 	 * @param streamSession a new accepted stream session instance
 	 * @param[out] handle reference to the custom session handle
 	 */
-	virtual bool onSessionCreate(StreamSessionView streamSession, void*& handle) = 0;
+	virtual void* onSessionCreate(StreamSessionView streamSession) = 0;
 	/**
 	 * @brief Stream session destroy function. (TCP)
 	 * @warning This function is called asynchronously from the receive thread!
@@ -346,10 +346,10 @@ public:
 	}
 };
 
-inline static bool _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession, void** handle)
+inline static void* _onStreamSessionCreate(StreamServer_T* streamServer, StreamSession_T* streamSession)
 {
 	auto server = (IStreamServer*)getStreamServerHandle(streamServer);
-	return server->onSessionCreate(streamSession, *handle);
+	return server->onSessionCreate(streamSession);
 }
 inline static void _onStreamSessionDestroy(StreamServer_T* streamServer, StreamSession_T* streamSession, int reason)
 {

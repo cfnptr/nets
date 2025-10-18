@@ -59,7 +59,6 @@ typedef struct ConnectByAddress_T
 {
 	StreamClient streamClient;
 	bool isByAddress;
-	bool noDelay;
 	char* hostname;
 	SocketAddress remoteAddress;
 } ConnectByAddress;
@@ -67,7 +66,6 @@ typedef struct ConnectByHostname_T
 {
 	StreamClient streamClient;
 	bool isByAddress;
-	bool noDelay;
 	bool setSNI;
 	char* hostname;
 	char* service;
@@ -107,16 +105,13 @@ inline static NetsResult connectSslStreamClient(const char* hostname, Socket soc
 			sleepThread(0.001);
 			continue;
 		}
-
-		if (netsResult != SUCCESS_NETS_RESULT)
-			return netsResult;
-		return SUCCESS_NETS_RESULT;
+		return netsResult;
 	}
 
 	return TIMED_OUT_NETS_RESULT;
 }
 inline static NetsResult connectStreamClientAddress(StreamClient streamClient, 
-	SocketAddress remoteAddress, const char* hostname, bool noDelay, SocketFamily socketFamily)
+	SocketAddress remoteAddress, const char* hostname, SocketFamily socketFamily)
 {
 	SocketAddress socketAddress;
 	NetsResult netsResult = createAnySocketAddress(socketFamily, &socketAddress);
@@ -131,7 +126,7 @@ inline static NetsResult connectStreamClientAddress(StreamClient streamClient,
 		destroySocketAddress(socketAddress);
 		return netsResult;
 	}
-	setSocketNoDelay(socket, noDelay);
+	setSocketNoDelay(socket, true);
 
 	destroySocket(streamClient->streamSocket);
 	streamClient->streamSocket = socket;
@@ -192,7 +187,7 @@ inline static NetsResult connectStreamClientAddress(StreamClient streamClient,
 	return TIMED_OUT_NETS_RESULT;
 }
 inline static NetsResult connectStreamClientHostname(StreamClient streamClient, 
-	const char* hostname, const char* service, bool noDelay, bool setSNI, SocketFamily socketFamily)
+	const char* hostname, const char* service, bool setSNI, SocketFamily socketFamily)
 {
 	SocketAddress* resolvedAddresses; size_t resolvedAddressCount;
 	NetsResult netsResult = resolveSocketAddresses(hostname, service,
@@ -203,7 +198,7 @@ inline static NetsResult connectStreamClientHostname(StreamClient streamClient,
 	const char* sni = setSNI ? hostname : NULL;
 	for (size_t i = 0; i < resolvedAddressCount; i++)
 	{
-		netsResult = connectStreamClientAddress(streamClient, resolvedAddresses[i], sni, noDelay, socketFamily);
+		netsResult = connectStreamClientAddress(streamClient, resolvedAddresses[i], sni, socketFamily);
 		if (netsResult == SUCCESS_NETS_RESULT)
 			break;
 	}
@@ -304,19 +299,17 @@ inline static void streamClientReceive(void* argument)
 	if (connectData->byAddress.isByAddress)
 	{
 		SocketFamily socketFamily = getSocketAddressFamily(connectData->byAddress.remoteAddress);
-		netsResult = connectStreamClientAddress(streamClient, connectData->byAddress.remoteAddress, 
-			connectData->byAddress.hostname, connectData->byAddress.noDelay, socketFamily);
+		netsResult = connectStreamClientAddress(streamClient, 
+			connectData->byAddress.remoteAddress, connectData->byAddress.hostname, socketFamily);
 	}
 	else
 	{
-		netsResult = connectStreamClientHostname(
-			streamClient, connectData->byHostname.hostname, connectData->byHostname.service, 
-			connectData->byHostname.noDelay, connectData->byHostname.setSNI, IP_V6_SOCKET_FAMILY);
+		netsResult = connectStreamClientHostname(streamClient, connectData->byHostname.hostname, 
+			connectData->byHostname.service, connectData->byHostname.setSNI, IP_V6_SOCKET_FAMILY);
 		if (netsResult != SUCCESS_NETS_RESULT)
 		{
-			netsResult = connectStreamClientHostname(
-				streamClient, connectData->byHostname.hostname, connectData->byHostname.service, 
-				connectData->byHostname.noDelay, connectData->byHostname.setSNI, IP_V4_SOCKET_FAMILY);
+			netsResult = connectStreamClientHostname(streamClient, connectData->byHostname.hostname, 
+				connectData->byHostname.service, connectData->byHostname.setSNI, IP_V4_SOCKET_FAMILY);
 		}
 	}
 	destroyStreamClientConnect(connectData);
@@ -675,8 +668,7 @@ bool isStreamClientConnected(StreamClient streamClient)
 	return streamClient->isConnected;
 }
 
-NetsResult connectStreamClientByAddress(StreamClient streamClient, 
-	SocketAddress remoteAddress, const char* hostname, bool noDelay)
+NetsResult connectStreamClientByAddress(StreamClient streamClient, SocketAddress remoteAddress, const char* hostname)
 {
 	assert(streamClient);
 	assert(remoteAddress);
@@ -688,7 +680,6 @@ NetsResult connectStreamClientByAddress(StreamClient streamClient,
 
 	connectData->byAddress.streamClient = streamClient;
 	connectData->byAddress.isByAddress = true;
-	connectData->byAddress.noDelay = noDelay;
 
 	if (hostname)
 	{
@@ -732,7 +723,7 @@ NetsResult connectStreamClientByAddress(StreamClient streamClient,
 
 //**********************************************************************************************************************
 NetsResult connectStreamClientByHostname(StreamClient streamClient, 
-	const char* hostname, const char* service, bool noDelay, bool setSNI)
+	const char* hostname, const char* service, bool setSNI)
 {
 	assert(streamClient);
 	assert(hostname);
@@ -745,7 +736,6 @@ NetsResult connectStreamClientByHostname(StreamClient streamClient,
 
 	connectData->byHostname.streamClient = streamClient;
 	connectData->byHostname.isByAddress = false;
-	connectData->byHostname.noDelay = noDelay;
 	connectData->byHostname.setSNI = setSNI;
 
 	size_t hostnameLenght = strlen(hostname);

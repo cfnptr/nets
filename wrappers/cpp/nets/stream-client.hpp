@@ -178,13 +178,12 @@ public:
 	 *
 	 * @param remoteAddress remote server IP address
 	 * @param[in] hostname remote server hostname or NULL
-	 * @param noDelay stream socket no delay flag value
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
-	void connect(SocketAddressView remoteAddress, const char* hostname = nullptr, bool noDelay = true)
+	void connect(SocketAddressView remoteAddress, const char* hostname = nullptr)
 	{
-		auto result = connectStreamClientByAddress(instance, remoteAddress.getInstance(), hostname, noDelay);
+		auto result = connectStreamClientByAddress(instance, remoteAddress.getInstance(), hostname);
 		if (result != SUCCESS_NETS_RESULT)
 			throw Error(netsResultToString(result));
 	}
@@ -194,14 +193,13 @@ public:
 	 *
 	 * @param[in] hostname server hostname string
 	 * @param[in] service server service string (port)
-	 * @param noDelay stream socket no delay flag value
 	 * @param setSNI set SSL server SNI hostname
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
-	void connect(const char* hostname, const char* service, bool noDelay = true, bool setSNI = true)
+	void connect(const char* hostname, const char* service, bool setSNI = true)
 	{
-		auto result = connectStreamClientByHostname(instance, hostname, service, noDelay, setSNI);
+		auto result = connectStreamClientByHostname(instance, hostname, service, setSNI);
 		if (result != SUCCESS_NETS_RESULT)
 			throw Error(netsResultToString(result));
 	}

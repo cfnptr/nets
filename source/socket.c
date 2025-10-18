@@ -264,6 +264,31 @@ inline static NetsResult sslErrorToNetsResult(int error)
 	#endif
 }
 
+static void sslInfoCallback(const SSL *ssl, int type, int val)
+{
+	const char *str; int w = type & ~SSL_ST_MASK;
+	if (w & SSL_ST_CONNECT) str = "SSL_connect";
+	else if (w & SSL_ST_ACCEPT) str = "SSL_accept";
+	else str = "undefined";
+
+	if (type & SSL_CB_LOOP)
+	{
+		printf("OpenSSL::%s: %s\n", str, SSL_state_string_long(ssl));
+	}
+	else if (type & SSL_CB_ALERT)
+	{
+		str = (type & SSL_CB_READ) ? "read" : "write";
+		printf("OpenSSL alert: %s:%s:%s\n", str, SSL_alert_type_string_long(val), SSL_alert_desc_string_long(val));
+	}
+	else if (type & SSL_CB_EXIT)
+	{
+		if (val == 0)
+			printf("OpenSSL::%s: failed in %s\n", str, SSL_state_string_long(ssl));
+		else if (val < 0)
+			printf("OpenSSL::%s: error in %s\n", str, SSL_state_string_long(ssl));
+	}
+}
+
 //**********************************************************************************************************************
 inline static NetsResult createSocketHandle(SocketType socketType, SocketFamily socketFamily,
 	SocketAddress socketAddress, bool isBlocking, bool isOnlyIPv6, SOCKET* handle)
@@ -406,11 +431,19 @@ NetsResult createSocket(SocketType type, SocketFamily family, SocketAddress loca
 		}
 		socketInstance->ssl = ssl;
 
-		if (SSL_set_fd(ssl, (int)handle) != 1)
+		#if 0
+		SSL_set_info_callback(ssl, sslInfoCallback);
+		#endif
+
+		BIO* bio = BIO_new(BIO_s_socket());
+		if (!bio)
 		{
 			destroySocket(socketInstance);
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
+
+		BIO_set_fd(bio, (int)handle, BIO_NOCLOSE);
+		SSL_set_bio(ssl, bio, bio);
 
 		Mutex sslLocker = createMutex();
 		if (!sslLocker)
@@ -659,11 +692,19 @@ NetsResult acceptSocket(Socket socket, Socket* accepted)
 		}
 		acceptedInstance->ssl = ssl;
 
-		if (SSL_set_fd(ssl, (int)handle) != 1)
+		#if 0
+		SSL_set_info_callback(ssl, sslInfoCallback);
+		#endif
+
+		BIO* bio = BIO_new(BIO_s_socket());
+		if (!bio)
 		{
 			destroySocket(acceptedInstance);
 			return FAILED_TO_CREATE_SSL_NETS_RESULT;
 		}
+
+		BIO_set_fd(bio, (int)handle, BIO_NOCLOSE);
+		SSL_set_bio(ssl, bio, bio);
 
 		Mutex sslLocker = createMutex();
 		if (!sslLocker)
@@ -739,6 +780,13 @@ NetsResult connectSslSocket(Socket socket, const char* hostname)
 
 		lockMutex(sslLocker);
 		int result = SSL_set_tlsext_host_name(socket->ssl, hostname);
+		if (result != 1)
+		{
+			unlockMutex(sslLocker);
+			return sslErrorToNetsResult(SSL_get_error(socket->ssl, result));
+		}
+
+		result = SSL_set1_host(socket->ssl, hostname);
 		unlockMutex(sslLocker);
 
 		if (result != 1)
@@ -1380,11 +1428,10 @@ void getSocketAddressHostService(SocketAddress socketAddress, char* host,
 }
 
 //**********************************************************************************************************************
-NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certificateFilePath,
+NetsResult createPublicSslContext(const char* certificateFilePath,
 	const char* certificatesDirectory, SslContext* sslContext)
 {
 	#if NETS_SUPPORT_OPENSSL
-	assert(sslProtocol < SSL_PROTOCOL_COUNT);
 	assert(sslContext);
 
 	if (!networkInitialized)
@@ -1394,29 +1441,15 @@ NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certifica
 	if (!sslContextInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
-	SSL_CTX* handle;
-	switch (sslProtocol)
-	{
-	case TLS_SECURITY_PROTOCOL:
-		handle = SSL_CTX_new(TLS_method());
-		break;
-	case TLS_1_2_SECURITY_PROTOCOL:
-		#if NETS_SUPPORT_DEPRECATED_SSL
-		handle = SSL_CTX_new(TLSv1_2_method());
-		break;
-		#else
-		abort(); // Note: TLS 1.2 support is deprecated!
-		#endif
-	default: abort();
-	}
-
+	SSL_CTX* handle = SSL_CTX_new(TLS_client_method());
 	if (!handle)
 	{
 		destroySslContext(sslContextInstance);
 		return FAILED_TO_CREATE_SSL_NETS_RESULT;
 	}
-
 	sslContextInstance->handle = handle;
+
+	SSL_CTX_set_verify(handle, SSL_VERIFY_PEER, NULL);
 
 	int result;
 	if (certificateFilePath || certificatesDirectory)
@@ -1429,8 +1462,13 @@ NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certifica
 	{
 		result = SSL_CTX_set_default_verify_paths(handle);
 	}
-
 	if (result != 1)
+	{
+		destroySslContext(sslContextInstance);
+		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
+	}
+
+	if (SSL_CTX_set_min_proto_version(handle, TLS1_2_VERSION) != 1)
 	{
 		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
@@ -1444,11 +1482,10 @@ NetsResult createPublicSslContext(SslProtocol sslProtocol, const char* certifica
 }
 
 //**********************************************************************************************************************
-NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certificateFilePath,
+NetsResult createPrivateSslContext(const char* certificateFilePath,
 	const char* privateKeyFilePath, bool certificateChain, SslContext* sslContext)
 {
 	#if NETS_SUPPORT_OPENSSL
-	assert(sslProtocol < SSL_PROTOCOL_COUNT);
 	assert(certificateFilePath);
 	assert(strlen(certificateFilePath) > 0);
 	assert(privateKeyFilePath);
@@ -1462,29 +1499,22 @@ NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certific
 	if (!sslContextInstance)
 		return OUT_OF_MEMORY_NETS_RESULT;
 
-	SSL_CTX* handle;
-	switch (sslProtocol)
-	{
-	case TLS_SECURITY_PROTOCOL:
-		handle = SSL_CTX_new(TLS_method());
-		break;
-	case TLS_1_2_SECURITY_PROTOCOL:
-		#if NETS_SUPPORT_DEPRECATED_SSL
-		handle = SSL_CTX_new(TLSv1_2_method());
-		break;
-		#else
-		abort(); // Note: TLS 1.2 support is deprecated!
-		#endif
-	default: abort();
-	}
-
+	SSL_CTX* handle = SSL_CTX_new(TLS_server_method());
 	if (!handle)
 	{
 		destroySslContext(sslContextInstance);
 		return FAILED_TO_CREATE_SSL_NETS_RESULT;
 	}
-
 	sslContextInstance->handle = handle;
+
+	if (SSL_CTX_set_min_proto_version(handle, TLS1_3_VERSION) != 1)
+	{
+		destroySslContext(sslContextInstance);
+		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
+	}
+
+    SSL_CTX_set_options(handle, SSL_OP_IGNORE_UNEXPECTED_EOF | 
+		SSL_OP_NO_RENEGOTIATION | SSL_OP_CIPHER_SERVER_PREFERENCE);
 
 	int result;
 	if (certificateChain)
@@ -1497,7 +1527,7 @@ NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certific
 		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
-
+	
 	if (SSL_CTX_use_PrivateKey_file(handle, privateKeyFilePath, SSL_FILETYPE_PEM) != 1)
 	{
 		destroySslContext(sslContextInstance);
@@ -1509,6 +1539,8 @@ NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certific
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
+	SSL_CTX_set_verify(handle, SSL_VERIFY_NONE, NULL);
+
 	*sslContext = sslContextInstance;
 	return SUCCESS_NETS_RESULT;
 	#else
@@ -1516,7 +1548,6 @@ NetsResult createPrivateSslContext(SslProtocol sslProtocol, const char* certific
 	#endif
 }
 
-//**********************************************************************************************************************
 void destroySslContext(SslContext sslContext)
 {
 	#if NETS_SUPPORT_OPENSSL
@@ -1526,25 +1557,6 @@ void destroySslContext(SslContext sslContext)
 	assert(networkInitialized);
 	SSL_CTX_free(sslContext->handle);
 	free(sslContext);
-	#else
-	abort(); // Note: OpenSSL support is disabled.
-	#endif
-}
-
-SslProtocol getSslContextProtocol(SslContext sslContext)
-{
-	#if NETS_SUPPORT_OPENSSL
-	assert(sslContext);
-	assert(networkInitialized);
-
-	const SSL_METHOD* method = SSL_CTX_get_ssl_method(sslContext->handle);
-	if (method == TLS_method())
-		return TLS_SECURITY_PROTOCOL;
-	#if NETS_SUPPORT_DEPRECATED_SSL
-	if (method == TLSv1_2_method())
-		return TLS_1_2_SECURITY_PROTOCOL;
-	#endif
-	abort();
 	#else
 	abort(); // Note: OpenSSL support is disabled.
 	#endif

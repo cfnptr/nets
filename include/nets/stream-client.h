@@ -156,10 +156,9 @@ bool isStreamClientConnected(StreamClient streamClient);
  * @param streamClient target stream client instance
  * @param remoteAddress remote server IP address
  * @param[in] hostname remote server hostname or NULL
- * @param noDelay stream socket no delay flag value
  */
 NetsResult connectStreamClientByAddress(StreamClient streamClient, 
-	SocketAddress remoteAddress, const char* hostname, bool noDelay);
+	SocketAddress remoteAddress, const char* hostname);
 /**
  * @brief Initiates stream client connection to the server with specified hostname and service.
  * @return The operation @ref NetsResult code.
@@ -167,11 +166,10 @@ NetsResult connectStreamClientByAddress(StreamClient streamClient,
  * @param streamClient target stream client instance
  * @param[in] hostname server hostname string
  * @param[in] service server service string (port)
- * @param noDelay stream socket no delay flag value
  * @param setSNI set SSL server SNI hostname
  */
 NetsResult connectStreamClientByHostname(StreamClient streamClient, 
-	const char* hostname, const char* service, bool noDelay, bool setSNI);
+	const char* hostname, const char* service, bool setSNI);
 
 /**
  * @brief Disconnects stream client from the server.

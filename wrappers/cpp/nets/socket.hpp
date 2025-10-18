@@ -331,11 +331,6 @@ public:
 	 * @brief Returns socket SSL context view instance.
 	 */
 	SslContext_T* getInstance() const noexcept { return instance; }
-	/**
-	 * @brief Returns socket SSL context security protocol type.
-	 * @details See the @ref getSslContextProtocol().
-	 */
-	SslProtocol getProtocol() const noexcept { return getSslContextProtocol(instance); }
 };
 
 /***********************************************************************************************************************
@@ -364,16 +359,15 @@ struct SslContext final : public SslContextView
 	 * @brief Creates a new public socket SSL context.
 	 * @details See the @ref createPublicSslContext().
 	 *
-	 * @param sslProtocol socket SSL security protocol type
 	 * @param[in] certificateFilePath certificate file path string or nullptr
 	 * @param[in] certificatesDirectory certificates directory path string or nullptr
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
-	SslContext(SslProtocol sslProtocol, const char* certificateFilePath = nullptr, 
+	SslContext(const char* certificateFilePath, 
 		const char* certificatesDirectory = nullptr) : SslContextView(nullptr)
 	{
-		auto result = createPublicSslContext(sslProtocol, certificateFilePath, certificatesDirectory, &instance);
+		auto result = createPublicSslContext(certificateFilePath, certificatesDirectory, &instance);
 		if (result != SUCCESS_NETS_RESULT)
 			throw Error(netsResultToString(result));
 	}
@@ -381,18 +375,16 @@ struct SslContext final : public SslContextView
 	 * @brief Creates a new private socket SSL context.
 	 * @details See the @ref createPrivateSslContext().
 	 *
-	 * @param sslProtocol socket SSL security protocol type
 	 * @param[in] certificateFilePath certificates file path string
 	 * @param[in] privateKeyFilePath private key file path string
 	 * @param certificateChain file path is certificate chain
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
-	SslContext(SslProtocol sslProtocol, const char* certificateFilePath, 
-		const char* privateKeyFilePath, bool certificateChain = false) : SslContextView(nullptr)
+	SslContext(const char* certificateFilePath, const char* privateKeyFilePath, 
+		bool certificateChain = false) : SslContextView(nullptr)
 	{
-		auto result = createPrivateSslContext(sslProtocol, certificateFilePath, 
-			privateKeyFilePath, certificateChain, &instance);
+		auto result = createPrivateSslContext(certificateFilePath, privateKeyFilePath, certificateChain, &instance);
 		if (result != SUCCESS_NETS_RESULT)
 			throw Error(netsResultToString(result));
 	}
