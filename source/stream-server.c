@@ -167,7 +167,7 @@ inline static void disconnectStreamSessions(StreamServer streamServer)
 	StreamSession* sessionBuffer = streamServer->sessionBuffer;
 	size_t sessionCount = streamServer->sessionCount;
 	
-	for (int64_t i = sessionCount - 1; i >= 0; i--)
+	for (size_t i = 0; i < sessionCount; i++)
 	{
 		StreamSession streamSession = sessionBuffer[i];
 		if (streamSession->receiveSocket)
@@ -176,9 +176,8 @@ inline static void disconnectStreamSessions(StreamServer streamServer)
 		destroySocketAddress(streamSession->remoteAddress);
 		free(streamSession);
 
-		for (size_t j = i + 1; j < sessionCount; j++)
-			sessionBuffer[j - 1] = sessionBuffer[j];
 		sessionCount--;
+		sessionBuffer[i] = sessionBuffer[sessionCount];
 	}
 	streamServer->sessionCount = sessionCount;
 
