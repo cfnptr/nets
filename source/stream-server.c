@@ -341,7 +341,12 @@ inline static void streamServerReceive(void* argument)
 			void* eventData = events[i].udata;
 			#endif
 
-			if (eventData == streamSocket)
+			if (eventData == NULL) // Note: server has been stopped.
+			{
+				streamServer->isRunning = false;
+				return;
+			}
+			else if (eventData == streamSocket)
 			{
 				while (streamServer->isRunning)
 				{
@@ -381,11 +386,6 @@ inline static void streamServerReceive(void* argument)
 				disconnectStreamSession(streamServer, (StreamSession)eventData, CONNECTION_IS_CLOSED_NETS_RESULT);
 			}
 			#endif
-			else if (eventData == NULL) // Note: server has been stopped.
-			{
-				streamServer->isRunning = false;
-				return;
-			}
 			else
 			{
 				processStreamSession(streamServer, (StreamSession)eventData);

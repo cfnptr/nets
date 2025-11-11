@@ -28,6 +28,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/event.h>
+#elif _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
 #endif
 
 struct StreamClient_T
@@ -50,6 +53,9 @@ struct StreamClient_T
 	#endif
 	#if __linux__
 	int wakeupEvent;
+	#elif _WIN32
+	Socket sleepingSocket;
+	Socket wakeupSocket;
 	#endif
 	volatile bool isRunning;
 	volatile bool isConnected;
@@ -89,6 +95,22 @@ inline static void destroyStreamClientConnect(StreamClientConnect* connectData)
 		free(connectData->byHostname.service);
 	}
 	free(connectData);
+}
+
+// Note: we need to do this because we may ignore received wakeup event.
+inline static void flushWakeupEvent(StreamClient streamClient)
+{
+	uint64_t count;
+	#if __linux__
+	int wakeupEvent = streamClient->wakeupEvent; ssize_t result;
+	do { result = read(wakeupEvent, &count, sizeof(uint64_t)); }
+	while (!(result == -1 && errno == EAGAIN));
+	#elif _WIN32
+	Socket sleepingSocket = streamClient->sleepingSocket;
+	NetsResult netsResult; size_t byteCount;
+	do { netsResult = socketReceive(sleepingSocket, &count, sizeof(uint64_t), &byteCount); }
+	while (netsResult == SUCCESS_NETS_RESULT);
+	#endif
 }
 
 //**********************************************************************************************************************
@@ -212,7 +234,9 @@ inline static void shutdownStreamClient(StreamClient streamClient, int reason)
 	if (!streamClient->isConnected)
 		return;
 	streamClient->isRunning = streamClient->isConnected = false;
-	shutdownSocket(streamClient->datagramSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+	shutdownSocket(streamClient->streamSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+	if (streamClient->datagramSocket)
+		shutdownSocket(streamClient->datagramSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 	streamClient->onDisconnect(streamClient, reason);
 }
 
@@ -376,8 +400,30 @@ inline static void streamClientReceive(void* argument)
 	struct kevent events[4];
 	#endif
 
+	#elif _WIN32
+	WSAPOLLFD descriptors[3]; uint8_t descriptorCount = 2;
+	{
+		WSAPOLLFD descriptor;
+		descriptor.fd = (SOCKET)(size_t)getSocketHandle(streamClient->sleepingSocket);
+		descriptor.events = POLLRDNORM;
+		descriptor.revents = 0;
+		descriptors[0] = descriptor;
+
+		descriptor.fd = (SOCKET)(size_t)getSocketHandle(streamSocket);
+		descriptors[1] = descriptor;
+
+		if (datagramSocket)
+		{
+			descriptor.fd = (SOCKET)(size_t)getSocketHandle(datagramSocket);
+			descriptors[descriptorCount++] = descriptor;
+		}
+	}
+	#endif
+
 	while (streamClient->isRunning)
 	{
+		#if __linux__ || __APPLE__
+
 		#if __linux__
 		int eventCount = epoll_wait(eventPool, events, 4, -1);
 		#elif __APPLE__
@@ -400,7 +446,11 @@ inline static void streamClientReceive(void* argument)
 			void* eventData = events[i].udata;
 			#endif
 
-			if (eventData == streamSocket)
+			if (eventData == NULL) // Note: client has been waked up.
+			{
+				flushWakeupEvent(streamClient);
+			}
+			else if (eventData == streamSocket)
 			{
 				processStreamClient(streamClient);
 			}
@@ -415,22 +465,48 @@ inline static void streamClientReceive(void* argument)
 				return;
 			}
 			#endif
-			else if (eventData == NULL) // Note: client has been waked up.
+		}
+		#elif _WIN32
+		int eventCount = WSAPoll(descriptors, descriptorCount, -1);
+		if (eventCount == SOCKET_ERROR || !streamClient->isRunning)
+		{
+			shutdownStreamClient(streamClient, UNKNOWN_ERROR_NETS_RESULT);
+			return;
+		}
+
+		if (eventCount == 0)
+			continue;
+
+		for (int i = 0; i < descriptorCount; i++)
+		{
+			uint32_t events = descriptors[i].revents;
+			if (events == 0)
+				continue;
+			descriptors[i].revents = 0;
+
+			if (events & (POLLERR | POLLHUP | POLLNVAL))
 			{
-				#if __linux__
-				uint64_t count;
-				if (read(streamClient->wakeupEvent, &count, sizeof(uint64_t)) != sizeof(uint64_t))
+				shutdownStreamClient(streamClient, events & POLLHUP ?
+					CONNECTION_IS_CLOSED_NETS_RESULT : UNKNOWN_ERROR_NETS_RESULT);
+				return;
+			}
+			else if (events & POLLRDNORM)
+			{
+				if (i == 0) // Note: client has been waked up.
 				{
-					while (true)
-					{
-						ssize_t result = read(streamClient->wakeupEvent, &count, sizeof(uint64_t));
-						if (result == -1 && errno == EAGAIN)
-							break;
-					}
+					flushWakeupEvent(streamClient);
 				}
-				#endif
+				else if (i == 1)
+				{
+					processStreamClient(streamClient);
+				}
+				else if (i == 2 && datagramSocket)
+				{
+					processStreamDatagrams(streamClient);
+				}
 			}
 		}
+		#endif
 
 		if (getCurrentClock() - streamClient->lastReceiveTime > streamClient->timeoutTime)
 		{
@@ -438,21 +514,6 @@ inline static void streamClientReceive(void* argument)
 			return;
 		}
 	}
-	#elif _WIN32
-	while (streamClient->isRunning)
-	{
-		if (getCurrentClock() - streamClient->lastReceiveTime > streamClient->timeoutTime)
-		{
-			shutdownStreamClient(streamClient, TIMED_OUT_NETS_RESULT);
-			return;
-		}
-
-		processStreamClient(streamClient);
-		if (streamClient->onDatagram)
-			processStreamDatagrams(streamClient);
-		sleepThread(0.001f); // TODO: suboptimal, use IOCP or RIO instead on Windows.
-	}
-	#endif
 
 	shutdownStreamClient(streamClient, CONNECTION_IS_CLOSED_NETS_RESULT);
 }
@@ -541,7 +602,66 @@ NetsResult createStreamClient(size_t bufferSize, double timeoutTime, OnStreamCli
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
 	#elif _WIN32
-	// TODO: implement.
+	SocketAddress socketAddress;
+	NetsResult netsResult = createAnySocketAddress(IP_V4_SOCKET_FAMILY, &socketAddress);
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroyStreamClient(streamClientInstance);
+		return netsResult;
+	}
+
+	Socket sleepingSocket;
+	netsResult = createSocket(DATAGRAM_SOCKET_TYPE, IP_V4_SOCKET_FAMILY,
+		socketAddress, false, false, NULL, &sleepingSocket);
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroySocketAddress(socketAddress);
+		destroyStreamClient(streamClientInstance);
+		return netsResult;
+	}
+	streamClientInstance->sleepingSocket = sleepingSocket;
+
+	Socket wakeupSocket;
+	netsResult = createSocket(DATAGRAM_SOCKET_TYPE, IP_V4_SOCKET_FAMILY,
+		socketAddress, false, false, NULL, &wakeupSocket);
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroySocketAddress(socketAddress);
+		destroyStreamClient(streamClientInstance);
+		return netsResult;
+	}
+	streamClientInstance->wakeupSocket = wakeupSocket;
+
+	if (!getSocketLocalAddress(sleepingSocket, socketAddress))
+	{
+		destroySocketAddress(socketAddress);
+		destroyStreamClient(streamClientInstance);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+
+	netsResult = connectSocket(wakeupSocket, socketAddress);
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroySocketAddress(socketAddress);
+		destroyStreamClient(streamClientInstance);
+		return netsResult;
+	}
+
+	if (!getSocketLocalAddress(wakeupSocket, socketAddress))
+	{
+		destroySocketAddress(socketAddress);
+		destroyStreamClient(streamClientInstance);
+		return OUT_OF_MEMORY_NETS_RESULT;
+	}
+
+	netsResult = connectSocket(sleepingSocket, socketAddress);
+	destroySocketAddress(socketAddress);
+
+	if (netsResult != SUCCESS_NETS_RESULT)
+	{
+		destroyStreamClient(streamClientInstance);
+		return netsResult;
+	}
 	#endif
 
 	*streamClient = streamClientInstance;
@@ -559,6 +679,9 @@ static void wakeUpStreamClient(StreamClient streamClient)
 	struct kevent event;
 	EV_SET(&event, 1, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
 	kevent(streamClient->eventPool, &event, 1, NULL, 0, NULL);
+	#elif _WIN32
+	uint8_t wakeupData = 1;
+	socketSend(streamClient->wakeupSocket, &wakeupData, sizeof(uint8_t));
 	#endif
 }
 void destroyStreamClient(StreamClient streamClient)
@@ -568,8 +691,11 @@ void destroyStreamClient(StreamClient streamClient)
 
 	if (streamClient->receiveThread)
 	{
-		streamClient->isRunning = streamClient->isConnected = false;
-		wakeUpStreamClient(streamClient);
+		if (streamClient->isConnected)
+		{
+			streamClient->isRunning = streamClient->isConnected = false;
+			wakeUpStreamClient(streamClient);
+		}
 
 		Thread receiveThread = streamClient->receiveThread;
 		joinThread(receiveThread);
@@ -583,6 +709,19 @@ void destroyStreamClient(StreamClient streamClient)
 	#if __linux__ || __APPLE__
 	if (streamClient->eventPool > 0)
 		close(streamClient->eventPool);
+	#elif _WIN32
+	if (streamClient->sleepingSocket)
+	{
+		Socket socket = streamClient->sleepingSocket;
+		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(socket);
+	}
+	if (streamClient->wakeupSocket)
+	{
+		Socket socket = streamClient->wakeupSocket;
+		shutdownSocket(socket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+		destroySocket(socket);
+	}
 	#endif
 
 	if (streamClient->datagramSocket)
@@ -709,6 +848,8 @@ NetsResult connectStreamClientByAddress(StreamClient streamClient, SocketAddress
 		destroyThread(receiveThread);
 	}
 
+	flushWakeupEvent(streamClient);
+
 	streamClient->isRunning = true;
 	Thread receiveThread = createThread(streamClientReceive, connectData);
 	if (receiveThread == NULL)
@@ -767,6 +908,8 @@ NetsResult connectStreamClientByHostname(StreamClient streamClient,
 		destroyThread(receiveThread);
 	}
 
+	flushWakeupEvent(streamClient);
+
 	streamClient->isRunning = true;
 	Thread receiveThread = createThread(streamClientReceive, connectData);
 	if (receiveThread == NULL)
@@ -782,7 +925,7 @@ NetsResult connectStreamClientByHostname(StreamClient streamClient,
 void disconnectStreamClient(StreamClient streamClient)
 {
 	assert(streamClient);
-	if (streamClient->isRunning)
+	if (streamClient->isConnected)
 	{
 		streamClient->isRunning = streamClient->isConnected = false;
 		wakeUpStreamClient(streamClient);
