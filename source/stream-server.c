@@ -325,7 +325,7 @@ inline static void streamServerReceive(void* argument)
 			#if __APPLE__
 			else if (events[i].flags & (EV_EOF | EV_ERROR))
 			{
-				destroyStreamServerSession(streamServer, (StreamSession)eventData, CONNECTION_IS_CLOSED_NETS_RESULT);
+				destroyStreamSession(streamServer, (StreamSession)eventData, CONNECTION_IS_CLOSED_NETS_RESULT);
 			}
 			#endif
 			else
