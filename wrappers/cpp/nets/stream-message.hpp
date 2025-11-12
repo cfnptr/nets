@@ -245,6 +245,8 @@ protected:
 	uint8_t* buffer = nullptr;
 	size_t size = 0;
 public:
+	static constexpr uint8_t maxLengthSize = sizeof(uint64_t);
+
 	/**
 	 * @brief Creates a new output stream message. (TCP)
 	 * @details See the @ref createStreamMessage().

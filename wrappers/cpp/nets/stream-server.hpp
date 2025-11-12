@@ -306,17 +306,23 @@ public:
 		return updateStreamSession(instance, streamSession.getInstance(), currentTime);
 	}
 	/**
-	 * @brief Closes specified stream server session.
-	 * @details See the @ref closeStreamSession().
+	 * @brief Destroys specified stream server session.
+	 * @details See the @ref destroyStreamSession().
 	 * @warning You should lock sessions before closing!
 	 *
 	 * @param streamSession stream session instance to close
 	 * @param reason stream session destruction reason
 	 */
-	void closeSession(StreamSessionView streamSession, int reason) noexcept
+	void destroySession(StreamSessionView streamSession, int reason) noexcept
 	{
-		closeStreamSession(instance, streamSession.getInstance(), reason);
+		destroyStreamSession(instance, streamSession.getInstance(), reason);
 	}
+	/**
+	 * @brief Flushes destroyed stream server sessions.
+	 * @details See the @ref flushStreamSessions().
+	 * @warning You should lock sessions before closing!
+	 */
+	void flushSessions() noexcept { flushStreamSessions(instance); }
 
 	/**
 	 * @brief Sends datagram to the specified stream session. (UDP)

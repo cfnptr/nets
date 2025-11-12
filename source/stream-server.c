@@ -62,23 +62,15 @@ struct StreamServer_T
 	#if __linux__
 	int wakeupEvent;
 	#endif
-	volatile bool disconnectSessions;
 	volatile bool isRunning;
 };
 
 //**********************************************************************************************************************
-inline static void destroyStreamSession(StreamSession streamSession)
+inline static void destroyNewStreamSession(StreamSession streamSession)
 {
-	if (!streamSession)
-		return;
-
-	if (streamSession->receiveSocket)
-	{
-		Socket receiveSocket = streamSession->receiveSocket;
-		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
-		destroySocket(receiveSocket);
-	}
-
+	Socket receiveSocket = streamSession->receiveSocket;
+	shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+	destroySocket(receiveSocket);
 	destroySocketAddress(streamSession->remoteAddress);
 	free(streamSession);
 }
@@ -100,14 +92,14 @@ inline static bool acceptStreamSession(StreamServer streamServer,
 	SocketAddress remoteAddress;
 	if (createAnySocketAddress(IP_V6_SOCKET_FAMILY, &remoteAddress) != SUCCESS_NETS_RESULT)
 	{
-		destroyStreamSession(streamSessionInstance);
+		destroyNewStreamSession(streamSessionInstance);
 		return false;
 	}
 	streamSessionInstance->remoteAddress = remoteAddress;
 
 	if (!getSocketRemoteAddress(acceptedSocket, remoteAddress))
 	{
-		destroyStreamSession(streamSessionInstance);
+		destroyNewStreamSession(streamSessionInstance);
 		return false;
 	}
 
@@ -116,7 +108,7 @@ inline static bool acceptStreamSession(StreamServer streamServer,
 		void* sessionHandle = streamServer->onCreate(streamServer, streamSessionInstance);
 		if (!sessionHandle)
 		{
-			destroyStreamSession(streamSessionInstance);
+			destroyNewStreamSession(streamSessionInstance);
 			return false;
 		}
 		streamSessionInstance->handle = sessionHandle;
@@ -134,64 +126,9 @@ inline static bool acceptStreamSession(StreamServer streamServer,
 }
 
 //**********************************************************************************************************************
-inline static void disconnectStreamSession(StreamServer streamServer, StreamSession streamSession, int reason)
-{
-	Mutex sessionLocker = streamServer->sessionLocker;
-	lockMutex(sessionLocker);
-
-	if (!streamSession->receiveSocket) // Note: stream session is already disconnected.
-	{
-		unlockMutex(sessionLocker);
-		return;
-	}
-
-	Socket receiveSocket = streamSession->receiveSocket;
-	streamSession->receiveSocket = NULL;
-	shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
-	destroySocket(receiveSocket);
-	
-	unlockMutex(sessionLocker);
-	streamServer->disconnectSessions = true;
-	
-	if (streamSession->handle)
-		streamServer->onDestroy(streamServer, streamSession, reason);
-}
-inline static void disconnectStreamSessions(StreamServer streamServer)
-{
-	if (!streamServer->disconnectSessions)
-		return;
-
-	Mutex sessionLocker = streamServer->sessionLocker;
-	lockMutex(sessionLocker);
-
-	StreamSession* sessionBuffer = streamServer->sessionBuffer;
-	size_t sessionCount = streamServer->sessionCount;
-	
-	for (size_t i = 0; i < sessionCount; i++)
-	{
-		StreamSession streamSession = sessionBuffer[i];
-		if (streamSession->receiveSocket)
-			continue;
-
-		destroySocketAddress(streamSession->remoteAddress);
-		free(streamSession);
-
-		sessionCount--;
-		sessionBuffer[i] = sessionBuffer[sessionCount];
-	}
-	streamServer->sessionCount = sessionCount;
-
-	unlockMutex(sessionLocker);
-	streamServer->disconnectSessions = false;
-}
-
-//**********************************************************************************************************************
 inline static void processStreamSession(StreamServer streamServer, StreamSession streamSession)
 {
 	Socket receiveSocket = streamSession->receiveSocket;
-	if (!receiveSocket) // Note: stream session is disconnected.
-		return;
-
 	double lastReceiveTime = streamSession->lastReceiveTime;
 	double currentTime = getCurrentClock();
 
@@ -200,7 +137,7 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 	{
 		if (currentTime + lastReceiveTime > streamServer->timeoutTime)
 		{
-			disconnectStreamSession(streamServer, streamSession, TIMED_OUT_NETS_RESULT);
+			destroyStreamSession(streamServer, streamSession, TIMED_OUT_NETS_RESULT);
 			return;
 		}
 
@@ -210,14 +147,14 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 
 		if (netsResult != SUCCESS_NETS_RESULT)
 		{
-			disconnectStreamSession(streamServer, streamSession, netsResult);
+			destroyStreamSession(streamServer, streamSession, netsResult);
 			return;
 		}
 
 		void* sessionHandle = streamServer->onCreate(streamServer, streamSession);
 		if (!sessionHandle)
 		{
-			disconnectStreamSession(streamServer, streamSession, netsResult);
+			destroyStreamSession(streamServer, streamSession, netsResult);
 			return;
 		}
 		streamSession->handle = sessionHandle;
@@ -229,7 +166,7 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 	{
 		if (currentTime - lastReceiveTime > streamServer->timeoutTime)
 		{
-			disconnectStreamSession(streamServer, streamSession, TIMED_OUT_NETS_RESULT);
+			destroyStreamSession(streamServer, streamSession, TIMED_OUT_NETS_RESULT);
 			return;
 		}
 	}
@@ -250,19 +187,19 @@ inline static void processStreamSession(StreamServer streamServer, StreamSession
 
 		if (netsResult != SUCCESS_NETS_RESULT)
 		{
-			disconnectStreamSession(streamServer, streamSession, netsResult);
+			destroyStreamSession(streamServer, streamSession, netsResult);
 			return;
 		}
 		if (byteCount == 0)
 		{
-			disconnectStreamSession(streamServer, streamSession, CONNECTION_IS_CLOSED_NETS_RESULT);
+			destroyStreamSession(streamServer, streamSession, CONNECTION_IS_CLOSED_NETS_RESULT);
 			return;
 		}
 
 		int reason = onReceive(streamServer, streamSession, receiveBuffer, byteCount);
 		if (reason != SUCCESS_NETS_RESULT)
 		{
-			disconnectStreamSession(streamServer, streamSession, reason);
+			destroyStreamSession(streamServer, streamSession, reason);
 			return;
 		}
 	}
@@ -300,6 +237,7 @@ inline static void streamServerReceive(void* argument)
 	StreamServer streamServer = (StreamServer)argument;
 	Socket streamSocket = streamServer->streamSocket;
 	Socket datagramSocket = streamServer->datagramSocket;
+	Mutex sessionLocker = streamServer->sessionLocker;
 	Socket acceptedSocket; StreamSession streamSession;
 
 	#if NETS_SUPPORT_OPENSSL
@@ -333,6 +271,8 @@ inline static void streamServerReceive(void* argument)
 			return;
 		}
 
+		lockMutex(sessionLocker);
+
 		for (int i = 0; i < eventCount; i++)
 		{
 			#if __linux__
@@ -344,6 +284,8 @@ inline static void streamServerReceive(void* argument)
 			if (eventData == NULL) // Note: server has been stopped.
 			{
 				streamServer->isRunning = false;
+				flushStreamSessions(streamServer);
+				unlockMutex(sessionLocker);
 				return;
 			}
 			else if (eventData == streamSocket)
@@ -371,7 +313,7 @@ inline static void streamServerReceive(void* argument)
 
 					if (eventResult == -1)
 					{
-						disconnectStreamSession(streamServer, streamSession, OUT_OF_MEMORY_NETS_RESULT);
+						destroyStreamSession(streamServer, streamSession, OUT_OF_MEMORY_NETS_RESULT);
 						continue;
 					}
 				}
@@ -383,7 +325,7 @@ inline static void streamServerReceive(void* argument)
 			#if __APPLE__
 			else if (events[i].flags & (EV_EOF | EV_ERROR))
 			{
-				disconnectStreamSession(streamServer, (StreamSession)eventData, CONNECTION_IS_CLOSED_NETS_RESULT);
+				destroyStreamServerSession(streamServer, (StreamSession)eventData, CONNECTION_IS_CLOSED_NETS_RESULT);
 			}
 			#endif
 			else
@@ -392,11 +334,14 @@ inline static void streamServerReceive(void* argument)
 			}
 		}
 
-		disconnectStreamSessions(streamServer);
+		flushStreamSessions(streamServer);
+		unlockMutex(sessionLocker);
 	}
 	#elif _WIN32
 	while (streamServer->isRunning)
 	{
+		lockMutex(sessionLocker);
+
 		while (streamServer->isRunning)
 		{
 			NetsResult netsResult = acceptSocket(streamSocket, &acceptedSocket);
@@ -408,14 +353,15 @@ inline static void streamServerReceive(void* argument)
 				continue;
 		}
 		
-		StreamSession* sessionBuffer = streamServer->sessionBuffer;
-		size_t sessionCount = streamServer->sessionCount;
-		for (size_t i = 0; i < sessionCount; i++)
-			processStreamSession(streamServer, sessionBuffer[i]);
-
-		disconnectStreamSessions(streamServer);
+		// TODO: now after session destruction we will skip one, fix this with WSAPoll.
+		for (size_t i = 0; i < streamServer->sessionCount; i++) // Note: do not optimize!
+			processStreamSession(streamServer, streamServer->sessionBuffer[i]);
 		if (streamServer->onDatagram)
 			processStreamDatagrams(streamServer);
+
+		flushStreamSessions(streamServer);
+		unlockMutex(sessionLocker);
+
 		sleepThread(0.001f); // TODO: suboptimal, use IOCP or RIO instead on Windows.
 	}
 	#endif
@@ -469,8 +415,6 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service, si
 
 	streamServerInstance->sessionBufferSize = sessionBufferSize;
 	streamServerInstance->sessionBuffer = sessionBuffer;
-	streamServerInstance->sessionCount = 0;
-	streamServerInstance->disconnectSessions = false;
 
 	SocketAddress socketAddress;
 	NetsResult netsResult = createSocketAddress(socketFamily == IP_V4_SOCKET_FAMILY ?
@@ -651,14 +595,11 @@ void destroyStreamServer(StreamServer streamServer)
 	for (size_t i = 0; i < sessionCount; i++)
 	{
 		StreamSession streamSession = sessionBuffer[i];
-		if (!streamSession->receiveSocket)
-			continue;
+		onDestroy(streamServer, streamSession, CONNECTION_IS_CLOSED_NETS_RESULT);
 
 		Socket receiveSocket = streamSession->receiveSocket;
 		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 		destroySocket(receiveSocket);
-	
-		onDestroy(streamServer, streamSession, CONNECTION_IS_CLOSED_NETS_RESULT);
 		destroySocketAddress(streamSession->remoteAddress);
 		free(streamSession);
 	}
@@ -805,22 +746,46 @@ int updateStreamSession(StreamServer streamServer, StreamSession streamSession, 
 		return TIMED_OUT_NETS_RESULT;
 	return SUCCESS_NETS_RESULT;
 }
-void closeStreamSession(StreamServer streamServer, StreamSession streamSession, int reason)
+void destroyStreamSession(StreamServer streamServer, StreamSession streamSession, int reason)
 {
 	assert(streamServer);
 	assert(streamSession);
 
-	if (!streamSession->receiveSocket) // Note: stream session is already closed.
-		return;
+	if (!streamSession->receiveSocket)
+		return; // Note: already destroyed.
+	if (streamSession->handle)
+		streamServer->onDestroy(streamServer, streamSession, reason);
 
 	Socket receiveSocket = streamSession->receiveSocket;
-	streamSession->receiveSocket = NULL;
 	shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(receiveSocket);
-	
-	streamServer->disconnectSessions = true;
-	streamServer->onDestroy(streamServer, streamSession, reason);
+	destroySocketAddress(streamSession->remoteAddress);
+	streamSession->receiveSocket = NULL;
 }
+void flushStreamSessions(StreamServer streamServer)
+{
+	assert(streamServer);
+
+	StreamSession* sessionBuffer = streamServer->sessionBuffer;
+	size_t sessionCount = streamServer->sessionCount;
+
+	for (size_t i = 0; i < sessionCount; i++)
+	{
+		StreamSession streamSession = sessionBuffer[i];
+		if (streamSession->receiveSocket)
+			continue;
+		free(streamSession);
+
+		sessionCount--;
+		streamSession = sessionBuffer[sessionCount];
+		sessionBuffer[i] = streamSession;
+
+		if (!streamSession->receiveSocket)
+			i--;
+	}
+	streamServer->sessionCount = sessionCount;
+}
+
 void aliveStreamSession(StreamSession streamSession)
 {
 	assert(streamSession);
@@ -830,8 +795,6 @@ void aliveStreamSession(StreamSession streamSession)
 NetsResult streamSessionSend(StreamSession streamSession, const void* data, size_t byteCount)
 {
 	assert(streamSession);
-	if (!streamSession->receiveSocket)
-		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	return socketSend(streamSession->receiveSocket, data, byteCount);
 }
 NetsResult streamServerSendDatagram(StreamServer streamServer, 
@@ -846,7 +809,5 @@ NetsResult streamServerSendDatagram(StreamServer streamServer,
 NetsResult shutdownStreamSession(StreamSession streamSession, SocketShutdown shutdown)
 {
 	assert(streamSession);
-	if (!streamSession->receiveSocket)
-		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	return shutdownSocket(streamSession->receiveSocket, shutdown);
 }

@@ -162,12 +162,12 @@ bool isStreamServerRunning(StreamServer streamServer);
 bool isStreamServerSecure(StreamServer streamServer);
 
 /***********************************************************************************************************************
- * @brief Locks stream server session buffer access. (MT-Safe)
+ * @brief Locks stream server sessions access. (MT-Safe)
  * @param streamServer target stream server instance
  */
 void lockStreamServerSessions(StreamServer streamServer);
 /**
- * @brief Unlocks stream server session buffer access. (MT-Safe)
+ * @brief Unlocks stream server sessions access. (MT-Safe)
  * @param streamServer target stream server instance
  */
 void unlockStreamServerSessions(StreamServer streamServer);
@@ -212,14 +212,20 @@ void* getStreamSessionHandle(StreamSession streamSession);
  */
 int updateStreamSession(StreamServer streamServer, StreamSession streamSession, double currentTime);
 /**
- * @brief Closes specified stream server session.
+ * @brief Destroyes specified stream server session.
  * @warning You should lock sessions before closing!
  *
  * @param streamServer target stream server instance
  * @param streamSession stream session instance to close
  * @param reason stream session destruction reason
  */
-void closeStreamSession(StreamServer streamServer, StreamSession streamSession, int reason);
+void destroyStreamSession(StreamServer streamServer, StreamSession streamSession, int reason);
+/**
+ * @brief Flushes destroyed stream server sessions.
+ * @warning You should lock sessions before closing!
+ * @param streamServer target stream server instance
+ */
+void flushStreamSessions(StreamServer streamServer);
 /**
  * @brief Resets specified stream server session timeout time.
  * @warning You should lock sessions before aliving!
