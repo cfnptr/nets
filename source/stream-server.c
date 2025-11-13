@@ -129,6 +129,9 @@ inline static bool acceptStreamSession(StreamServer streamServer,
 inline static void processStreamSession(StreamServer streamServer, StreamSession streamSession)
 {
 	Socket receiveSocket = streamSession->receiveSocket;
+	if (!receiveSocket)
+		return; // Note: already destroyed.
+
 	double lastReceiveTime = streamSession->lastReceiveTime;
 	double currentTime = getCurrentClock();
 
@@ -777,11 +780,12 @@ void flushStreamSessions(StreamServer streamServer)
 		free(streamSession);
 
 		sessionCount--;
-		streamSession = sessionBuffer[sessionCount];
-		sessionBuffer[i] = streamSession;
-
-		if (!streamSession->receiveSocket)
-			i--;
+		if (sessionCount > 0)
+		{
+			streamSession = sessionBuffer[sessionCount];
+			sessionBuffer[i] = streamSession;
+			if (!streamSession->receiveSocket) i--;
+		}
 	}
 	streamServer->sessionCount = sessionCount;
 }
