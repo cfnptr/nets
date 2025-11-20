@@ -53,7 +53,7 @@ Or
 
 ## 7. Install required packages
 
-1. Run ```vcpkg install zlib:x64-windows-static openssl:x64-windows-static curl:x64-windows-static``` using **Terminal** or **CMD** app
+1. Run ```vcpkg install openssl:x64-windows-static curl:x64-windows-static``` using **Terminal** or **CMD** app
 
 
 # Ubuntu (22.04/24.04)
@@ -66,7 +66,7 @@ Or
 ## 2. Install required packages
 
 1. Run ```sudo apt-get update``` command using **Terminal** app
-2. And ```sudo apt-get install git cmake gcc g++ zlib1g-dev libssl-dev libcurl4-openssl-dev```
+2. And ```sudo apt-get install git cmake gcc g++ libssl-dev libcurl4-openssl-dev```
 
 
 # macOS (14/15)
@@ -80,7 +80,7 @@ Or
 
 1. Install **Homebrew** package manager from [brew.sh](https://brew.sh)
 2. Run ```brew update``` command using **Terminal** app
-3. And ```brew install git cmake zlib openssl curl```
+3. And ```brew install git cmake openssl curl```
 
 
 # Build Project

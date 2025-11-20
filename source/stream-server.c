@@ -772,20 +772,18 @@ void flushStreamSessions(StreamServer streamServer)
 	StreamSession* sessionBuffer = streamServer->sessionBuffer;
 	size_t sessionCount = streamServer->sessionCount;
 
-	for (size_t i = 0; i < sessionCount; i++)
+	for (size_t i = 0; i < sessionCount;)
 	{
 		StreamSession streamSession = sessionBuffer[i];
 		if (streamSession->receiveSocket)
-			continue;
-		free(streamSession);
-
-		sessionCount--;
-		if (sessionCount > 0)
 		{
-			streamSession = sessionBuffer[sessionCount];
-			sessionBuffer[i] = streamSession;
-			if (!streamSession->receiveSocket) i--;
+			i++;
+			continue;
 		}
+	
+		free(streamSession);
+		sessionCount--;
+		sessionBuffer[i] = sessionBuffer[sessionCount];
 	}
 	streamServer->sessionCount = sessionCount;
 }

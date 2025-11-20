@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 set(CURL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 
@@ -59,7 +58,6 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
 	endif()
 
 	if(NOT DEFINED CMAKE_PREFIX_PATH)
-		set(CMAKE_PREFIX_PATH ${HOMEBREW_PREFIX}/opt/zlib 
-			${HOMEBREW_PREFIX}/opt/openssl@3 ${HOMEBREW_PREFIX}/opt/curl)
+		set(CMAKE_PREFIX_PATH ${HOMEBREW_PREFIX}/opt/openssl@3 ${HOMEBREW_PREFIX}/opt/curl)
 	endif()
 endif()

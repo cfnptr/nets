@@ -33,15 +33,15 @@ jobs:
 
     - name: Install Ubuntu packages
       if: matrix.os == 'ubuntu-latest' 
-      run: sudo apt-get update && sudo apt-get install zlib1g-dev libssl-dev
+      run: sudo apt-get update && sudo apt-get install libssl-dev libcurl4-openssl-dev
 
     - name: Install macOS packages
       if: matrix.os == 'macos-latest' 
-      run: brew update && brew install zlib openssl curl
+      run: brew update && brew install openssl curl
         
     - name: Install Windows packages
       if: ${{matrix.os == 'windows-latest' && steps.vcpkg-cache.outputs.cache-hit != 'true'}}
-      run: vcpkg install zlib:x64-windows-static openssl:x64-windows-static curl:x64-windows-static
+      run: vcpkg install openssl:x64-windows-static curl:x64-windows-static
 
     - name: Create build environment
       run: cmake -E make_directory ${{runner.workspace}}/build

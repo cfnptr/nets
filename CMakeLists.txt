@@ -36,8 +36,6 @@ option(NETS_BUILD_EXAMPLES "Build Nets usage examples" ON)
 option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_USE_CURL "Use cURL for HTTP requests" ON)
 
-find_package(ZLIB REQUIRED)
-
 if(NETS_USE_OPENSSL)
 	find_package(OpenSSL)
 	if(NOT OpenSSL_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -75,9 +73,9 @@ else()
 	set(NETS_LITTLE_ENDIAN 1)
 endif()
 
-set(NETS_INCLUDE_DIRECTORIES ${ZLIB_INCLUDE_DIRS} ${PROJECT_BINARY_DIR}/include
+set(NETS_INCLUDE_DIRECTORIES ${PROJECT_BINARY_DIR}/include
 	${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/wrappers/cpp)
-set(NETS_LINK_LIBRARIES mpmt-static mpio-static ZLIB::ZLIB)
+set(NETS_LINK_LIBRARIES mpmt-static mpio-static)
 
 set(MPMT_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(MPMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)

@@ -56,11 +56,11 @@ git clone --recursive https://github.com/cfnptr/nets
 * [mpmt](https://github.com/cfnptr/mpmt/) (Apache-2.0 License)
 * [mpio](https://github.com/cfnptr/mpio/) (Apache-2.0 License)
 * [OpenSSL](https://github.com/openssl/openssl/) (Apache-2.0 License)
-* [zlib](https://github.com/madler/zlib) (zlib License)
 
 ### Inspired by
 
 * [asio](https://github.com/boostorg/asio/)
 * [libuv](https://github.com/libuv/libuv/)
+* [nginx](https://github.com/nginx/nginx)
 
 ### Special thanks to Gigaflops.
