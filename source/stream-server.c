@@ -760,6 +760,19 @@ void destroyStreamSession(StreamServer streamServer, StreamSession streamSession
 		streamServer->onDestroy(streamServer, streamSession, reason);
 
 	Socket receiveSocket = streamSession->receiveSocket;
+
+	#if __linux__ || __APPLE__
+	int socketHandle = (int)(size_t)getSocketHandle(receiveSocket);
+	#if __linux__
+	struct epoll_event event;
+	epoll_ctl(streamServer->eventPool, EPOLL_CTL_DEL, socketHandle, &event);
+	#elif __APPLE__
+	struct kevent event;
+	EV_SET(&event, socketHandle, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	kevent(streamServer->eventPool, &event, 1, NULL, 0, NULL);
+	#endif
+	#endif
+
 	shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(receiveSocket);
 	destroySocketAddress(streamSession->remoteAddress);

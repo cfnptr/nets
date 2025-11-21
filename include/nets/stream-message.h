@@ -591,7 +591,7 @@ inline static int handleStreamMessage(const uint8_t* receiveBuffer, size_t byteC
 		else abort();
 
 		if (messageSize > messageBufferSize - messageLengthSize)
-			return OUT_OF_MEMORY_NETS_RESULT; // Received message is bigger than buffer
+			return BAD_DATA_NETS_RESULT; // Received message is bigger than buffer
 
 		size_t neededPartSize = messageSize - (_messageByteCount - messageLengthSize);
 		if (neededPartSize > byteCount - pointer) 
@@ -636,7 +636,7 @@ inline static int handleStreamMessage(const uint8_t* receiveBuffer, size_t byteC
 		else abort();
 
 		if (messageSize > messageBufferSize - messageLengthSize)
-			return OUT_OF_MEMORY_NETS_RESULT; // Received message is bigger than buffer
+			return BAD_DATA_NETS_RESULT; // Received message is bigger than buffer
 
 		if (messageSize > (byteCount - pointer) - messageLengthSize)
 		{

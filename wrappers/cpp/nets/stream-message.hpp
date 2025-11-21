@@ -39,7 +39,6 @@ namespace nets
 class StreamMessage : public ::StreamMessage
 {
 protected:
-    using ::StreamMessage::iter;
 	using ::StreamMessage::end;
 public:
 	/**
@@ -57,14 +56,9 @@ public:
 	}
 
 	/**
-	 * @brief Returns stream message iterator pointer.
-	 */
-	const uint8_t* getIter() const noexcept { return iter; }
-	/**
 	 * @brief Returns stream message end pointer.
 	 */
 	const uint8_t* getEnd() const noexcept { return end; }
-	
 
 	/**
 	 * @brief Returns true if stream message is not empty and complete, otherwise false.
@@ -273,7 +267,7 @@ public:
 	OutStreamMessage(std::vector<uint8_t>& buffer, size_t messageSize, uint8_t lengthSize) noexcept :
 		size(messageSize + lengthSize)
 	{
-		buffer.resize(size); this->buffer = buffer.data();
+		if (buffer.size() < size) buffer.resize(size); this->buffer = buffer.data();
 		auto message = createStreamMessage(buffer.data(), buffer.size(), messageSize, lengthSize);
 		iter = message.iter; end = message.end;
 	}
