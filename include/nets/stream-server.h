@@ -36,7 +36,7 @@ typedef StreamSession_T* StreamSession;         /**< Stream server session insta
 typedef void*(*OnStreamSessionCreate)(StreamServer streamServer, StreamSession streamSession);
 /**
  * @brief Stream session destroy function. (TCP)
- * @warning This function is called asynchronously from the receive thread!
+ * @note This function is called synchronously.
  *
  * @param streamServer stream server instance
  * @param streamSession stream session instance

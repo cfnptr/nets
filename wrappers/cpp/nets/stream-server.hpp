@@ -194,7 +194,7 @@ public:
 	virtual void* onSessionCreate(StreamSessionView streamSession) = 0;
 	/**
 	 * @brief Stream session destroy function. (TCP)
-	 * @warning This function is called asynchronously from the receive thread!
+	 * @note This function is called synchronously.
 	 *
 	 * @param streamSession stream session instance
 	 * @param reason stream session destruction reason

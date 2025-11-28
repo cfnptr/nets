@@ -37,6 +37,7 @@ struct StreamSession_T
 	SocketAddress remoteAddress;
 	double lastReceiveTime;
 	void* handle;
+	int reason;
 };
 struct StreamServer_T
 {
@@ -287,7 +288,6 @@ inline static void streamServerReceive(void* argument)
 			if (eventData == NULL) // Note: server has been stopped.
 			{
 				streamServer->isRunning = false;
-				flushStreamSessions(streamServer);
 				unlockMutex(sessionLocker);
 				return;
 			}
@@ -337,7 +337,6 @@ inline static void streamServerReceive(void* argument)
 			}
 		}
 
-		flushStreamSessions(streamServer);
 		unlockMutex(sessionLocker);
 	}
 	#elif _WIN32
@@ -356,15 +355,12 @@ inline static void streamServerReceive(void* argument)
 				continue;
 		}
 		
-		// TODO: now after session destruction we will skip one, fix this with WSAPoll.
 		for (size_t i = 0; i < streamServer->sessionCount; i++) // Note: do not optimize!
 			processStreamSession(streamServer, streamServer->sessionBuffer[i]);
 		if (streamServer->onDatagram)
 			processStreamDatagrams(streamServer);
 
-		flushStreamSessions(streamServer);
 		unlockMutex(sessionLocker);
-
 		sleepThread(0.001f); // TODO: suboptimal, use IOCP or RIO instead on Windows.
 	}
 	#endif
@@ -600,9 +596,13 @@ void destroyStreamServer(StreamServer streamServer)
 		StreamSession streamSession = sessionBuffer[i];
 		onDestroy(streamServer, streamSession, CONNECTION_IS_CLOSED_NETS_RESULT);
 
-		Socket receiveSocket = streamSession->receiveSocket;
-		shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
-		destroySocket(receiveSocket);
+		if (streamSession->receiveSocket)
+		{
+			Socket receiveSocket = streamSession->receiveSocket;
+			shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
+			destroySocket(receiveSocket);
+		}
+
 		destroySocketAddress(streamSession->remoteAddress);
 		free(streamSession);
 	}
@@ -756,10 +756,9 @@ void destroyStreamSession(StreamServer streamServer, StreamSession streamSession
 
 	if (!streamSession->receiveSocket)
 		return; // Note: already destroyed.
-	if (streamSession->handle)
-		streamServer->onDestroy(streamServer, streamSession, reason);
 
 	Socket receiveSocket = streamSession->receiveSocket;
+	streamSession->reason = reason;
 
 	#if __linux__ || __APPLE__
 	int socketHandle = (int)(size_t)getSocketHandle(receiveSocket);
@@ -794,7 +793,10 @@ void flushStreamSessions(StreamServer streamServer)
 			continue;
 		}
 	
+		if (streamSession->handle)
+			streamServer->onDestroy(streamServer, streamSession, streamSession->reason);
 		free(streamSession);
+
 		sessionCount--;
 		sessionBuffer[i] = sessionBuffer[sessionCount];
 	}
@@ -810,6 +812,8 @@ void aliveStreamSession(StreamSession streamSession)
 NetsResult streamSessionSend(StreamSession streamSession, const void* data, size_t byteCount)
 {
 	assert(streamSession);
+	if (!streamSession->receiveSocket)
+		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	return socketSend(streamSession->receiveSocket, data, byteCount);
 }
 NetsResult streamServerSendDatagram(StreamServer streamServer, 
@@ -824,5 +828,7 @@ NetsResult streamServerSendDatagram(StreamServer streamServer,
 NetsResult shutdownStreamSession(StreamSession streamSession, SocketShutdown shutdown)
 {
 	assert(streamSession);
+	if (!streamSession->receiveSocket)
+		return CONNECTION_IS_CLOSED_NETS_RESULT;
 	return shutdownSocket(streamSession->receiveSocket, shutdown);
 }
