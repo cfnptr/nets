@@ -774,7 +774,6 @@ void destroyStreamSession(StreamServer streamServer, StreamSession streamSession
 
 	shutdownSocket(receiveSocket, RECEIVE_SEND_SOCKET_SHUTDOWN);
 	destroySocket(receiveSocket);
-	destroySocketAddress(streamSession->remoteAddress);
 	streamSession->receiveSocket = NULL;
 }
 void flushStreamSessions(StreamServer streamServer)
@@ -795,6 +794,7 @@ void flushStreamSessions(StreamServer streamServer)
 	
 		if (streamSession->handle)
 			streamServer->onDestroy(streamServer, streamSession, streamSession->reason);
+		destroySocketAddress(streamSession->remoteAddress);
 		free(streamSession);
 
 		sessionCount--;
