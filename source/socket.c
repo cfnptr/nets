@@ -1449,6 +1449,12 @@ NetsResult createPublicSslContext(const char* certificateFilePath,
 	}
 	sslContextInstance->handle = handle;
 
+	if (SSL_CTX_set_min_proto_version(handle, TLS1_3_VERSION) != 1)
+	{
+		destroySslContext(sslContextInstance);
+		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
+	}
+
 	SSL_CTX_set_verify(handle, SSL_VERIFY_PEER, NULL);
 
 	int result;
@@ -1463,12 +1469,6 @@ NetsResult createPublicSslContext(const char* certificateFilePath,
 		result = SSL_CTX_set_default_verify_paths(handle);
 	}
 	if (result != 1)
-	{
-		destroySslContext(sslContextInstance);
-		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
-	}
-
-	if (SSL_CTX_set_min_proto_version(handle, TLS1_2_VERSION) != 1)
 	{
 		destroySslContext(sslContextInstance);
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
