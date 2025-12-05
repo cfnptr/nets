@@ -23,6 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define STREAM_MESSAGE_MAX_LENGTH_SIZE sizeof(uint64_t) /**< Maximum size of the stream message length in bytes. */
+#define MAX_DATAGRAM_MESSAGE_SIZE 1200 /**< Safe maximum UDP datagram size in bytes. (Includes IP and VPN overhead) */
+
 /**
  * @brief Stream message structure.
  */

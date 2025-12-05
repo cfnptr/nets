@@ -42,6 +42,15 @@ protected:
 	using ::StreamMessage::end;
 public:
 	/**
+	 * @brief Maximum size of the stream message length in bytes.
+	 */
+	static constexpr uint8_t maxLengthSize = STREAM_MESSAGE_MAX_LENGTH_SIZE;
+	/**
+	 * @brief Safe maximum UDP datagram size in bytes. (Includes IP and VPN overhead)
+	 */
+	static constexpr uint16_t maxDatagramSize = MAX_DATAGRAM_MESSAGE_SIZE;
+
+	/**
 	 * @brief Creates a new empty stream message.
 	 */
 	StreamMessage() noexcept { iter = nullptr; end = nullptr; }
@@ -239,8 +248,6 @@ protected:
 	uint8_t* buffer = nullptr;
 	size_t size = 0;
 public:
-	static constexpr uint8_t maxLengthSize = sizeof(uint64_t);
-
 	/**
 	 * @brief Creates a new output stream message. (TCP)
 	 * @details See the @ref createStreamMessage().
