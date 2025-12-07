@@ -197,6 +197,7 @@ Socket getStreamSessionSocket(StreamSession streamSession);
 SocketAddress getStreamSessionRemoteAddress(StreamSession streamSession);
 /**
  * @brief Returns stream session handle.
+ * @warning Handle may be null if socket is not fully connected!
  * @param streamSession target stream session instance
  */
 void* getStreamSessionHandle(StreamSession streamSession);

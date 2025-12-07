@@ -183,6 +183,11 @@ public:
 		host.resize(strlen(host.c_str())); service.resize(strlen(service.c_str()));
 	}
 
+	/**
+	 * @brief Returns true if socket IP address view is not null.
+	 */
+	explicit operator bool() const noexcept { return instance; }
+
 	/*******************************************************************************************************************
 	 * @brief Resolves a new socket IP address array. (Blocking call)
 	 * @details See the @ref resolveSocketAddresses().
@@ -331,6 +336,10 @@ public:
 	 * @brief Returns socket SSL context view instance.
 	 */
 	SslContext_T* getInstance() const noexcept { return instance; }
+	/**
+	 * @brief Returns true if socket SSL context view is not null.
+	 */
+	explicit operator bool() const noexcept { return instance; }
 };
 
 /***********************************************************************************************************************
@@ -642,6 +651,11 @@ public:
 	{
 		return socketSendTo(instance, &data, sizeof(T), remoteAddress.getInstance());
 	}
+
+	/**
+	 * @brief Returns true if socket view is not null.
+	 */
+	explicit operator bool() const noexcept { return instance; }
 
 	/**
 	 * @brief Disablea SIGPIPE signals on Linux for a current thread. 

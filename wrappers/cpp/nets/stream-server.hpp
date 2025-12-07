@@ -61,6 +61,7 @@ public:
 	SocketAddressView getRemoteAddress() const noexcept { return getStreamSessionRemoteAddress(instance); }
 	/**
 	 * @brief Returns stream session handle.
+	 * @warning Handle may be null if socket is not fully connected!
 	 * @details See the @ref createStreamServer().
 	 */
 	void* getHandle() const noexcept { return getStreamSessionHandle(instance); }

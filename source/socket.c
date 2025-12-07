@@ -718,6 +718,7 @@ NetsResult acceptSocket(Socket socket, Socket* accepted)
 	#endif
 
 	acceptedInstance->type = socket->type;
+	acceptedInstance->family = socket->family;
 	acceptedInstance->isBlocking = socket->isBlocking;
 	acceptedInstance->isOnlyIPv6 = socket->isOnlyIPv6;
 	*accepted = acceptedInstance;
