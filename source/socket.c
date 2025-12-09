@@ -795,6 +795,9 @@ NetsResult connectSslSocket(Socket socket, const char* hostname)
 	}
 
 	lockMutex(sslLocker);
+	#if __linux__ || __APPLE__
+	signal(SIGPIPE, SIG_IGN); // Note: for some reason SSL resets signal.
+	#endif
 	int result = SSL_connect(socket->ssl);
 	unlockMutex(sslLocker);
 
