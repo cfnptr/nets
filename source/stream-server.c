@@ -745,7 +745,10 @@ int updateStreamSession(StreamServer streamServer, StreamSession streamSession, 
 {
 	assert(streamServer);
 	assert(streamSession);
-	if (currentTime - streamSession->lastReceiveTime > streamServer->timeoutTime)
+
+	double receiveTime = streamSession->lastReceiveTime < 0.0f ?
+		-streamSession->lastReceiveTime : streamSession->lastReceiveTime;
+	if (currentTime - receiveTime > streamServer->timeoutTime)
 		return TIMED_OUT_NETS_RESULT;
 	return SUCCESS_NETS_RESULT;
 }
@@ -806,7 +809,8 @@ void flushStreamSessions(StreamServer streamServer)
 void aliveStreamSession(StreamSession streamSession)
 {
 	assert(streamSession);
-	streamSession->lastReceiveTime = getCurrentClock();
+	double currentClock = getCurrentClock();
+	streamSession->lastReceiveTime = streamSession->lastReceiveTime < 0.0f ? -currentClock : currentClock;
 }
 
 NetsResult streamSessionSend(StreamSession streamSession, const void* data, size_t byteCount)
