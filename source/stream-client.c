@@ -825,13 +825,15 @@ NetsResult connectStreamClientByAddress(StreamClient streamClient, SocketAddress
 		size_t hostnameLenght = strlen(hostname);
 		assert(hostnameLenght > 0);
 
-		connectData->byAddress.hostname = malloc(hostnameLenght);
+		connectData->byAddress.hostname = malloc(hostnameLenght + 1);
 		if (!connectData->byAddress.hostname)
 		{
 			destroyStreamClientConnect(connectData);
 			return OUT_OF_MEMORY_NETS_RESULT;
 		}
+
 		memcpy(connectData->byAddress.hostname, hostname, hostnameLenght * sizeof(char));
+		connectData->byAddress.hostname[hostnameLenght] = '\0';
 	}
 
 	connectData->byAddress.remoteAddress = createSocketAddressCopy(remoteAddress);
@@ -882,24 +884,26 @@ NetsResult connectStreamClientByHostname(StreamClient streamClient,
 	size_t hostnameLenght = strlen(hostname);
 	assert(hostnameLenght > 0);
 
-	connectData->byHostname.hostname = malloc(hostnameLenght);
+	connectData->byHostname.hostname = malloc(hostnameLenght + 1);
 	if (!connectData->byHostname.hostname)
 	{
 		destroyStreamClientConnect(connectData);
 		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 	memcpy(connectData->byHostname.hostname, hostname, hostnameLenght * sizeof(char));
+	connectData->byHostname.hostname[hostnameLenght] = '\0';
 
 	size_t serviceLenght = strlen(hostname);
 	assert(serviceLenght > 0);
 
-	connectData->byHostname.service = malloc(serviceLenght);
+	connectData->byHostname.service = malloc(serviceLenght + 1);
 	if (!connectData->byHostname.service)
 	{
 		destroyStreamClientConnect(connectData);
 		return OUT_OF_MEMORY_NETS_RESULT;
 	}
 	memcpy(connectData->byHostname.service, service, serviceLenght * sizeof(char));
+	connectData->byHostname.service[serviceLenght] = '\0';
 
 	if (streamClient->receiveThread)
 	{
