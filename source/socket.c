@@ -255,8 +255,9 @@ inline static NetsResult sslErrorToNetsResult(int error)
 	case SSL_ERROR_WANT_ACCEPT:
 	case SSL_ERROR_WANT_X509_LOOKUP:
 		return IN_PROGRESS_NETS_RESULT;
-	case SSL_ERROR_SYSCALL:
 	case SSL_ERROR_SSL:
+		return SSL_PROTOCOL_ERROR_NETS_RESULT;
+	case SSL_ERROR_SYSCALL:
 		return lastErrorToNetsResult();
 	}
 	#else
@@ -431,7 +432,7 @@ NetsResult createSocket(SocketType type, SocketFamily family, SocketAddress loca
 		}
 		socketInstance->ssl = ssl;
 
-		#if 0
+		#if 0 // Note: undef for OpenSSL debug log.
 		SSL_set_info_callback(ssl, sslInfoCallback);
 		#endif
 

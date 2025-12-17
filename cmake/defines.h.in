@@ -109,9 +109,10 @@ typedef enum NetsResult_T
 	FAILED_TO_RESOLVE_ADDRESS_NETS_RESULT = 21,
 	FAILED_TO_CREATE_SSL_NETS_RESULT = 22,
 	FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT = 23,
-	NO_OPENSSL_SUPPORT_NETS_RESULT = 24,
-	UNKNOWN_ERROR_NETS_RESULT = 25,
-	NETS_RESULT_COUNT = 26,
+	SSL_PROTOCOL_ERROR_NETS_RESULT = 24,
+	NO_OPENSSL_SUPPORT_NETS_RESULT = 25,
+	UNKNOWN_ERROR_NETS_RESULT = 26,
+	NETS_RESULT_COUNT = 27,
 } NetsResult_T;
 typedef uint8_t NetsResult; /**< Nets result type. */
 
@@ -143,6 +144,7 @@ static const char* const netsResultStrings[NETS_RESULT_COUNT] = {
 	"Failed to resolve address",
 	"Failed to create SSL",
 	"Failed to load certificate",
+	"SSL protocol error",
 	"No OpenSSL support",
 	"Unknown error",
 };
