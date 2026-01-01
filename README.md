@@ -1,6 +1,6 @@
 # Nets
 
-A library providing generic interface for transferring data over a **network** across different platforms.
+A [library](https://github.com/cfnptr/nets) providing generic interface for transferring data over a **network** across different platforms.
 
 See the [documentation](https://cfnptr.github.io/nets).
 

@@ -29,6 +29,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/event.h>
+#elif _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment (lib, "Mswsock.lib")
+#pragma comment (lib, "AdvApi32.lib")
 #endif
 
 struct StreamSession_T
@@ -63,6 +70,9 @@ struct StreamServer_T
 	#if __linux__
 	int wakeupEvent;
 	#endif
+	#if _WIN32
+	WSAPOLLFD* fdPool;
+	#endif
 	volatile bool isRunning;
 };
 
@@ -91,7 +101,7 @@ inline static bool acceptStreamSession(StreamServer streamServer,
 	streamSessionInstance->receiveSocket = acceptedSocket;
 
 	SocketAddress remoteAddress;
-	if (createAnySocketAddress(IP_V6_SOCKET_FAMILY, &remoteAddress) != SUCCESS_NETS_RESULT)
+	if (createAnySocketAddress(getSocketFamily(acceptedSocket), &remoteAddress) != SUCCESS_NETS_RESULT)
 	{
 		destroyNewStreamSession(streamSessionInstance);
 		return false;
@@ -275,6 +285,9 @@ inline static void streamServerReceive(void* argument)
 			return;
 		}
 
+		if (eventCount == 0)
+			continue;
+
 		lockMutex(sessionLocker);
 
 		for (int i = 0; i < eventCount; i++)
@@ -340,28 +353,96 @@ inline static void streamServerReceive(void* argument)
 		unlockMutex(sessionLocker);
 	}
 	#elif _WIN32
+	WSAPOLLFD* fdPool = streamServer->fdPool;
+	size_t fdBaseCount = 1;
+
+	WSAPOLLFD* streamFD = &fdPool[0];
+	streamFD->fd = (SOCKET)(size_t)getSocketHandle(streamSocket);
+	streamFD->events = POLLRDNORM;
+	streamFD->revents = 0;
+
+	if (datagramSocket)
+	{
+		streamFD = &fdPool[1];
+		streamFD->fd = (SOCKET)(size_t)getSocketHandle(datagramSocket);
+		streamFD->events = POLLRDNORM;
+		streamFD->revents = 0;
+		fdBaseCount = 2;
+	}
+
+	WSAPOLLFD* fdEvents = fdPool + fdBaseCount;
+	for (size_t i = 0; i < streamServer->sessionCount; i++)
+	{
+		StreamSession session = streamServer->sessionBuffer[0];
+		streamFD = &fdEvents[i];
+		streamFD->fd = (SOCKET)(size_t)getSocketHandle(getStreamSessionSocket(session));
+		streamFD->events = POLLRDNORM;
+		streamFD->revents = 0;
+	}
+
 	while (streamServer->isRunning)
 	{
+		int fdCount = WSAPoll(fdPool, fdBaseCount + streamServer->sessionCount, 100);
+		if (fdCount == SOCKET_ERROR || !streamServer->isRunning)
+		{
+			streamServer->isRunning = false;
+			return;
+		}
+
+		if (fdCount == 0)
+			continue;
+
 		lockMutex(sessionLocker);
 
-		while (streamServer->isRunning)
+		SHORT revents = fdPool[0].revents;
+		if (revents & (POLLERR | POLLHUP | POLLNVAL))
 		{
-			NetsResult netsResult = acceptSocket(streamSocket, &acceptedSocket);
-			if (netsResult == IN_PROGRESS_NETS_RESULT)
-				break;
-			if (netsResult != SUCCESS_NETS_RESULT)
-				continue;
-			if (!acceptStreamSession(streamServer, acceptedSocket, &streamSession, useSSL))
-				continue;
+			streamServer->isRunning = false;
+			unlockMutex(sessionLocker);
+			return;
 		}
-		
+		if (revents & POLLRDNORM)
+		{
+			while (streamServer->isRunning)
+			{
+				NetsResult netsResult = acceptSocket(streamSocket, &acceptedSocket);
+				if (netsResult == IN_PROGRESS_NETS_RESULT)
+					break;
+				if (netsResult != SUCCESS_NETS_RESULT)
+					continue;
+				if (!acceptStreamSession(streamServer, acceptedSocket, &streamSession, useSSL))
+					continue;
+			}
+			fdPool[0].revents = 0;
+		}
+
+		if (datagramSocket)
+		{
+			revents = fdPool[1].revents;
+			if (revents & (POLLERR | POLLHUP | POLLNVAL))
+			{
+				streamServer->isRunning = false;
+				unlockMutex(sessionLocker);
+				return;
+			}
+
+			if (revents & POLLRDNORM)
+			{
+				processStreamDatagrams(streamServer);
+				fdPool[1].revents = 0;
+			}
+		}
+
 		for (size_t i = 0; i < streamServer->sessionCount; i++) // Note: do not optimize!
-			processStreamSession(streamServer, streamServer->sessionBuffer[i]);
-		if (streamServer->onDatagram)
-			processStreamDatagrams(streamServer);
+		{
+			revents = fdEvents[i].revents;
+			if (revents & (POLLERR | POLLHUP | POLLNVAL))
+				destroyStreamSession(streamServer, streamServer->sessionBuffer[i], CONNECTION_IS_CLOSED_NETS_RESULT);
+			else if (revents & POLLRDNORM)
+				processStreamSession(streamServer, streamServer->sessionBuffer[i]);
+		}
 
 		unlockMutex(sessionLocker);
-		sleepThread(0.001f); // TODO: suboptimal, use IOCP or RIO instead on Windows.
 	}
 	#endif
 }
@@ -459,9 +540,10 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service, si
 		destroySocketAddress(socketAddress);
 		streamServerInstance->datagramAddress = NULL;
 	}
-	
-	int streamHandle = (int)(size_t)getSocketHandle(streamSocket);
+
 	#if __linux__
+	int streamHandle = (int)(size_t)getSocketHandle(streamSocket);
+
 	int wakeupEvent = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 	if (wakeupEvent == -1)
 	{
@@ -538,7 +620,15 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service, si
 		return OUT_OF_DESCRIPTORS_NETS_RESULT;
 	}
 	#elif _WIN32
-	// TODO: implement.
+	WSAPOLLFD* fdPool = malloc((sessionBufferSize + 2) * sizeof(WSAPOLLFD));
+	if (!fdPool)
+	{
+		destroyStreamServer(streamServerInstance);
+		return OUT_OF_DESCRIPTORS_NETS_RESULT;
+	}
+	streamServerInstance->fdPool = fdPool;
+
+	// TODO: create wakeup socket instead of WSAPoll timeouts?
 	#endif
 
 	Mutex sessionLocker = createMutex();
@@ -614,6 +704,9 @@ void destroyStreamServer(StreamServer streamServer)
 	#if __linux__ || __APPLE__
 	if (streamServer->eventPool > 0)
 		close(streamServer->eventPool);
+	#endif
+	#if _WIN32
+	free(streamServer->fdPool);
 	#endif
 
 	if (streamServer->datagramSocket)
