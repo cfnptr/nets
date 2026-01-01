@@ -541,9 +541,8 @@ NetsResult createStreamServer(SocketFamily socketFamily, const char* service, si
 		streamServerInstance->datagramAddress = NULL;
 	}
 
-	#if __linux__
 	int streamHandle = (int)(size_t)getSocketHandle(streamSocket);
-
+	#if __linux__
 	int wakeupEvent = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 	if (wakeupEvent == -1)
 	{
