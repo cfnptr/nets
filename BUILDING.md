@@ -4,7 +4,7 @@
 
 * [Window (10/11)](BUILDING.md#windows-1011)
 * [Ubuntu (22.04/24.04)](BUILDING.md#ubuntu-22042404)
-* [macOS (14/15)](BUILDING.md#macos-1415)
+* [macOS (15/26)](BUILDING.md#macos-1526)
 * [Build Project](BUILDING.md#build-project)
 
 
@@ -21,7 +21,7 @@
 
 ## 2. Install Git
 
-* Download and install latest version from [git-cms.com](https://git-scm.com/downloads)
+* Download and install latest version from [git-cms.com](https://git-scm.com/install/windows)
 
 You may use default Git install options or chose any other default Git editor instead of **Vim**.
 
@@ -30,7 +30,7 @@ You may use default Git install options or chose any other default Git editor in
 1. Download latest release version of installer from [cmake.org](https://cmake.org/download)
 2. Select "Add CMake to the system PATH for the current user" during installation
 
-## 5. Clone Repository
+## 4. Clone Repository
 
 1. Open **Terminal** or **CMD** app to execute following commands
 2. Change current working directory using ```cd``` command where to clone repository. (Google it)
@@ -39,7 +39,7 @@ You may use default Git install options or chose any other default Git editor in
 
 Note! Use appropriate github link if Nets is used as a third-party library.
 
-## 6. Install vcpkg package manager
+## 5. Install vcpkg package manager
 
 1. Open **CMD** or **Terminal** app as Administrator. (Right click the app)
 2. Run ```scripts/update-vcpkg.bat``` command from the repository *scripts/* directory
@@ -51,7 +51,7 @@ Or
 2. Run ```vcpkg integrate install``` command using **Terminal** or **CMD** app to make packages available user-wide
 3. Add **vcpkg** to the System Environment Variables. (Google it)
 
-## 7. Install required packages
+## 6. Install required packages
 
 1. Run ```vcpkg install openssl:x64-windows-static curl:x64-windows-static``` using **Terminal** or **CMD** app
 
@@ -69,7 +69,7 @@ Or
 2. And ```sudo apt-get install git cmake gcc g++ libssl-dev libcurl4-openssl-dev```
 
 
-# macOS (14/15)
+# macOS (15/26)
 
 ## 1. Install Xcode (Or any other IDE)
 
@@ -87,17 +87,18 @@ Or
 
 To build the project run one of the [scripts](scripts/) using **Terminal**, **Git Bash** or build it using **IDE**.
 
-## Visual Studio (2022)
+## Visual Studio
 
-1. Open **Visual Studio 2022** IDE
-2. Click "Open a local folder" and open the repository folder
-3. Click **Build -> Build All** to build the project
+1. Open **Visual Studio** IDE application
+2. Click "Open a project or solution" and open the repository **CMakeLists.txt**
+3. Wait for project CMake generation to finish
+4. Click **Build -> Build All** to build the project
 
 ## Visual Studio Code (VS Code)
 
-1. Open **Visual Studio Code** IDE
+1. Open **Visual Studio Code** IDE application
 2. Install "C/C++" And "CMake Tools" extensions
 3. Click **File -> Open Folder...** and open the repository folder
-4. Click **Yes** in "Would you like to configure project..."
-5. Select one of the compiler **Kits** in the opened window
+4. Select one of the compiler **Kits** in the opened window
+5. Wait for project CMake generation to finish
 6. Click **Build** button at the bottom bar to build the project

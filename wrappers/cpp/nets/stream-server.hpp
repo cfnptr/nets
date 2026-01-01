@@ -1,4 +1,4 @@
-// Copyright 2021-2025 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2026 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -188,9 +188,7 @@ public:
 	 * @brief Stream session create function. (TCP)
 	 * @warning This function is called asynchronously from the receive thread!
 	 * @return Custom stream session handle on success, otherwise NULL.
-	 *
 	 * @param streamSession a new accepted stream session instance
-	 * @param[out] handle reference to the custom session handle
 	 */
 	virtual void* onSessionCreate(StreamSessionView streamSession) = 0;
 	/**
@@ -376,4 +374,4 @@ inline static void _onStreamServerDatagram(StreamServer_T* streamServer,
 	server->onDatagramReceive(remoteAddress, receiveBuffer, byteCount);
 }
 
-} // nets
+} // namespace nets

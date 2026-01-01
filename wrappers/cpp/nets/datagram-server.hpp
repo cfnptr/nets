@@ -1,4 +1,4 @@
-// Copyright 2021-2025 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2026 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ namespace nets
 inline static void _onDatagramServerReceive(DatagramServer_T* datagramServer, 
 	SocketAddress_T* remoteAddress, const uint8_t* receiveBuffer, size_t byteCount);
 
-/***********************************************************************************************************************
+/**
  * @brief Datagram server instance handle. (TCP)
  * @details See the @ref datagram-server.h
  */
@@ -145,4 +145,4 @@ inline static void _onDatagramServerReceive(DatagramServer_T* datagramServer,
 	return server->onDatagramReceive(remoteAddress, receiveBuffer, byteCount);
 }
 
-} // nets
+} // namespace nets

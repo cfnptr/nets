@@ -2,6 +2,8 @@
 
 A library providing generic interface for transferring data over a **network** across different platforms.
 
+See the [documentation](https://cfnptr.github.io/nets).
+
 ## Features
 
 * Blocking / non-blocking socket
@@ -9,13 +11,14 @@ A library providing generic interface for transferring data over a **network** a
 * Datagram client / server (UDP)
 * Secure socket layer (SSL, TLS)
 * Datagrams over TCP stream
+* Smart stream message handle
 * C and C++ implementations
 
 ## Supported operating systems
 
 * Windows (10/11)
 * Ubuntu (22.04/24.04)
-* macOS (14/15)
+* macOS (15/26)
 
 This list includes only those systems on which functionality testing is conducted.
 However, you can also compile it under any other Linux distribution or operating system.

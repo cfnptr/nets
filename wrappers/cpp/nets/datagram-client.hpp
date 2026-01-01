@@ -1,4 +1,4 @@
-// Copyright 2021-2025 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2026 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ public:
 	 * @details See the @ref createDatagramClient().
 	 *
 	 * @param remoteAddress remote socket IP address
-	 * @param sslContext socket SSL context instance or NULL
+	 * @param bufferSize receive data buffer size in bytes
 	 *
 	 * @throw Error with a @ref NetsResult string on failure.
 	 */
@@ -140,4 +140,4 @@ inline static void _onDatagramClientReceive(DatagramClient_T* datagramClient,
 	client->onDatagramReceive(receiveBuffer, byteCount);
 }
 
-} // nets
+} // namespace nets

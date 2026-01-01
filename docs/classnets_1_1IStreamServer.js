@@ -1,0 +1,27 @@
+var classnets_1_1IStreamServer =
+[
+    [ "IStreamServer", "classnets_1_1IStreamServer.html#a885a8b8738d23c9a1f075c1e0df313d8", null ],
+    [ "destroy", "classnets_1_1IStreamServer.html#a9aecc7a193ea6ad37d6a8c0bea85f67e", null ],
+    [ "onSessionCreate", "classnets_1_1IStreamServer.html#ac3050175e2357f7f20e039cfe44b1209", null ],
+    [ "onSessionDestroy", "classnets_1_1IStreamServer.html#a802999bb3deef0a7dc8d6232c1079823", null ],
+    [ "onStreamReceive", "classnets_1_1IStreamServer.html#a4d08525b25dd11b483caebf5fea16870", null ],
+    [ "onDatagramReceive", "classnets_1_1IStreamServer.html#a3f26df317c9ee19ff8418c13a8a50cb6", null ],
+    [ "reasonToString", "classnets_1_1IStreamServer.html#a9325b79903869a2a149952a759aeec4d", null ],
+    [ "getInstance", "classnets_1_1IStreamServer.html#ac503e4757dde29d96a8e07f9cfb60fdc", null ],
+    [ "getSessionBufferSize", "classnets_1_1IStreamServer.html#a58a809fbe54946dcd4dbc0705818a3da", null ],
+    [ "getReceiveBufferSize", "classnets_1_1IStreamServer.html#a821d8234ae1bd047141992971a74c1d6", null ],
+    [ "getTimeoutTime", "classnets_1_1IStreamServer.html#a64f2919f811165307349e8d3bf240cc1", null ],
+    [ "getReceiveBuffer", "classnets_1_1IStreamServer.html#a4465334a0985fabd3b09222a9a3c1a8c", null ],
+    [ "getSocket", "classnets_1_1IStreamServer.html#a13eebdfe1ec052b590385521078e845a", null ],
+    [ "isRunning", "classnets_1_1IStreamServer.html#ab30f9ed09c146fe86ecc5594b87938dd", null ],
+    [ "isSecure", "classnets_1_1IStreamServer.html#a23f0e251b71c7d49d4b08f5f367a2747", null ],
+    [ "lockSessions", "classnets_1_1IStreamServer.html#ac0f6f86ff1d86a40a1dcdf6fb8e5a103", null ],
+    [ "unlockSessions", "classnets_1_1IStreamServer.html#ada10af9eb1b39e16e777e0b324cb7ccf", null ],
+    [ "getSessions", "classnets_1_1IStreamServer.html#a469231bfff858fd7ece319d1ed26ab25", null ],
+    [ "getSessionCount", "classnets_1_1IStreamServer.html#a30d9e9f04712d1a660651047422c832d", null ],
+    [ "updateSession", "classnets_1_1IStreamServer.html#afe8f7657e340aeb6ec7da3bdee529760", null ],
+    [ "destroySession", "classnets_1_1IStreamServer.html#ab548f42f1f63d996a9728ff71f46ecd6", null ],
+    [ "flushSessions", "classnets_1_1IStreamServer.html#af7a47db66478e65bdd64691de98f2f21", null ],
+    [ "sendDatagram", "classnets_1_1IStreamServer.html#aab85e838dab29599b83d85b5354b6939", null ],
+    [ "sendDatagram", "classnets_1_1IStreamServer.html#a47274e3913aa95bd58d6de3a001c84a8", null ]
+];

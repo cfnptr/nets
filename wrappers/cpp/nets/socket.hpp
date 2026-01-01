@@ -1,4 +1,4 @@
-// Copyright 2021-2025 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2026 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,7 +112,6 @@ public:
 	/*******************************************************************************************************************
 	 * @brief Returns socket IP address numeric host name.
 	 * @details See the @ref getSocketAddressHost().
-	 * @return True on success, otherwise false.
 	 *
 	 * @param[out] host pointer to the host name string
 	 * @param length host name string length (including null terminator)
@@ -121,7 +120,6 @@ public:
 	/**
 	 * @brief Returns socket IP address numeric host name.
 	 * @details See the @ref getSocketAddressHost().
-	 * @return True on success, otherwise false.
 	 * @param[out] host target host name string
 	 */
 	void getHost(std::string& host) const
@@ -134,7 +132,6 @@ public:
 	/**
 	 * @brief Returns socket IP address numeric service name.
 	 * @details See the @ref getSocketAddressService().
-	 * @return True on success, otherwise false.
 	 *
 	 * @param[out] service pointer to the service name string
 	 * @param length service name string length (including null terminator)
@@ -143,7 +140,6 @@ public:
 	/**
 	 * @brief Returns socket IP address numeric service name.
 	 * @details See the @ref getSocketAddressService().
-	 * @return True on success, otherwise false.
 	 * @param[out] service target service name string
 	 */
 	void getService(std::string& service) const
@@ -156,7 +152,6 @@ public:
 	/**
 	 * @brief Returns socket IP address numeric host and service name.
 	 * @details See the @ref getSocketAddressHostService().
-	 * @return True on success, otherwise false.
 	 *
 	 * @param[out] host pointer to the host name string
 	 * @param hostLength host name string length (including null terminator)
@@ -170,7 +165,6 @@ public:
 	/**
 	 * @brief Returns socket IP address numeric host and service name.
 	 * @details See the @ref getSocketAddressHostService().
-	 * @return True on success, otherwise false.
 	 *
 	 * @param[out] host target host name string
 	 * @param[out] service target service name string
@@ -713,4 +707,4 @@ struct Socket final : public SocketView
 	~Socket() { destroySocket(instance); }
 };
 
-} // nets
+} // namespace nets

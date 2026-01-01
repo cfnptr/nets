@@ -1,4 +1,4 @@
-// Copyright 2020-2025 Nikita Fediuchin. All rights reserved.
+// Copyright 2020-2026 Nikita Fediuchin. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
  * @details
  * A network socket is a a software abstraction that represents one endpoint of a two-way communication link between 
  * programs over a network. Typically identified by an IP address, a transport protocol (TCP, UDP), and a port number.
- **********************************************************************************************************************/
+ **/
 
 #pragma once
 #include "nets/defines.h"
@@ -440,7 +440,7 @@ void setSocketAddressPort(SocketAddress socketAddress, uint16_t port);
 
 /***********************************************************************************************************************
  * @brief Returns socket IP address numeric host name.
- * @return Numeric host name on success, otherwise empty string.
+ * @details Returns numeric host name on success, otherwise empty string.
  *
  * @param socketAddress target socket address instance
  * @param[out] host pointer to the host name string
@@ -449,7 +449,7 @@ void setSocketAddressPort(SocketAddress socketAddress, uint16_t port);
 void getSocketAddressHost(SocketAddress socketAddress, char* host, size_t length);
 /**
  * @brief Returns socket IP address numeric service name.
- * @return Numeric service name on success, otherwise empty string.
+ * @details Returns numeric service name on success, otherwise empty string.
  *
  * @param socketAddress target socket address instance
  * @param[out] service pointer to the service name string
@@ -458,7 +458,7 @@ void getSocketAddressHost(SocketAddress socketAddress, char* host, size_t length
 void getSocketAddressService(SocketAddress socketAddress, char* service, size_t length);
 /**
  * @brief Returns socket IP address numeric host and service name.
- * @return Numeric host and service names on success, otherwise empty strings.
+ * @details Returns numeric host and service names on success, otherwise empty strings.
  *
  * @param socketAddress target socket address instance
  * @param[out] host pointer to the host name string
