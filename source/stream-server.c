@@ -370,19 +370,23 @@ inline static void streamServerReceive(void* argument)
 		fdBaseCount = 2;
 	}
 
+	StreamSession* sessionBuffer = streamServer->sessionBuffer;
 	WSAPOLLFD* fdEvents = fdPool + fdBaseCount;
-	for (size_t i = 0; i < streamServer->sessionCount; i++)
-	{
-		StreamSession session = streamServer->sessionBuffer[0];
-		streamFD = &fdEvents[i];
-		streamFD->fd = (SOCKET)(size_t)getSocketHandle(getStreamSessionSocket(session));
-		streamFD->events = POLLRDNORM;
-		streamFD->revents = 0;
-	}
 
 	while (streamServer->isRunning)
 	{
-		int fdCount = WSAPoll(fdPool, fdBaseCount + streamServer->sessionCount, 100);
+		// Note: do not move this getter!
+		size_t sessionCount = streamServer->sessionCount
+		for (size_t i = 0; i < sessionCount; i++)
+		{
+			StreamSession session = sessionBuffer[i];
+			streamFD = &fdEvents[i];
+			streamFD->fd = (SOCKET)(size_t)getSocketHandle(getStreamSessionSocket(session));
+			streamFD->events = POLLRDNORM;
+			streamFD->revents = 0;
+		}
+
+		int fdCount = WSAPoll(fdPool, fdBaseCount + sessionCount, 100);
 		if (fdCount == SOCKET_ERROR || !streamServer->isRunning)
 		{
 			streamServer->isRunning = false;
@@ -433,13 +437,13 @@ inline static void streamServerReceive(void* argument)
 			}
 		}
 
-		for (size_t i = 0; i < streamServer->sessionCount; i++) // Note: do not optimize!
+		for (size_t i = 0; i < sessionCount; i++)
 		{
 			revents = fdEvents[i].revents;
 			if (revents & (POLLERR | POLLHUP | POLLNVAL))
-				destroyStreamSession(streamServer, streamServer->sessionBuffer[i], CONNECTION_IS_CLOSED_NETS_RESULT);
+				destroyStreamSession(streamServer, sessionBuffer[i], CONNECTION_IS_CLOSED_NETS_RESULT);
 			else if (revents & POLLRDNORM)
-				processStreamSession(streamServer, streamServer->sessionBuffer[i]);
+				processStreamSession(streamServer, sessionBuffer[i]);
 		}
 
 		unlockMutex(sessionLocker);
