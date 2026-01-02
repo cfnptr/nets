@@ -376,7 +376,7 @@ inline static void streamServerReceive(void* argument)
 	while (streamServer->isRunning)
 	{
 		// Note: do not move this getter!
-		size_t sessionCount = streamServer->sessionCount
+		size_t sessionCount = streamServer->sessionCount;
 		for (size_t i = 0; i < sessionCount; i++)
 		{
 			StreamSession session = sessionBuffer[i];
