@@ -625,6 +625,7 @@ NetsResult listenSocket(Socket socket, size_t queueSize)
 	assert(socket->type == STREAM_SOCKET_TYPE);
 	assert(networkInitialized);
 
+	queueSize = queueSize < INT32_MAX ? queueSize : INT32_MAX;
 	if (listen(socket->handle, (int)queueSize) != 0)
 		return lastErrorToNetsResult();
 
@@ -849,6 +850,8 @@ NetsResult socketReceive(Socket socket, void* receiveBuffer, size_t bufferSize, 
 	assert(byteCount);
 	assert(networkInitialized);
 
+	bufferSize = bufferSize < INT32_MAX ? bufferSize : INT32_MAX;
+
 	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
 	{
@@ -876,6 +879,8 @@ NetsResult socketSend(Socket socket, const void* data, size_t byteCount)
 	assert(socket);
 	assert(data);
 	assert(networkInitialized);
+
+	byteCount = byteCount < INT32_MAX ? byteCount : INT32_MAX;
 
 	#if NETS_SUPPORT_OPENSSL
 	if (socket->sslContext)
@@ -926,6 +931,7 @@ NetsResult socketReceiveFrom(Socket socket, SocketAddress remoteAddress,
 	memset(&storage, 0, sizeof(struct sockaddr_in6));
 	SOCKET_LENGTH length = sizeof(struct sockaddr_in6);
 
+	bufferSize = bufferSize < INT32_MAX ? bufferSize : INT32_MAX;
 	int64_t count = recvfrom(socket->handle, (char*)receiveBuffer, 
 		(int)bufferSize, 0, (struct sockaddr*)&storage, &length);
 	if (count < 0)
@@ -961,6 +967,7 @@ NetsResult socketSendTo(Socket socket, const void* data, size_t byteCount, Socke
 	const int flags = 0;
 	#endif
 
+	byteCount = byteCount < INT32_MAX ? byteCount : INT32_MAX;
 	int64_t result = sendto(socket->handle, (const char*)data, (int)byteCount, 
 		flags, (const struct sockaddr*)&remoteAddress->handle, length);
 	if (result < 0)
@@ -1457,7 +1464,7 @@ NetsResult createPublicSslContext(const char* certificateFilePath,
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
-	SSL_CTX_set_verify(handle, SSL_VERIFY_PEER, NULL);
+	SSL_CTX_set_verify(handle, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
 
 	int result;
 	if (certificateFilePath || certificatesDirectory)
@@ -1541,7 +1548,7 @@ NetsResult createPrivateSslContext(const char* certificateFilePath,
 		return FAILED_TO_LOAD_CERTIFICATE_NETS_RESULT;
 	}
 
-	SSL_CTX_set_verify(handle, SSL_VERIFY_NONE, NULL);
+	SSL_CTX_set_verify(handle, SSL_VERIFY_PEER, NULL);
 
 	*sslContext = sslContextInstance;
 	return SUCCESS_NETS_RESULT;
