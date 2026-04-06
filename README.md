@@ -14,20 +14,11 @@ See the [documentation](https://cfnptr.github.io/nets).
 * Smart stream message handle
 * C and C++ implementations
 
-## Supported operating systems
-
-* Windows (10/11)
-* Ubuntu (22.04/24.04)
-* macOS (15/26)
-
-This list includes only those systems on which functionality testing is conducted.
-However, you can also compile it under any other Linux distribution or operating system.
-
 ## Build requirements
 
 * C99 compiler
 * C++17 compiler (optional)
-* [Git 2.30+](https://git-scm.com/)
+* [Git 2.53+](https://git-scm.com/)
 * [CMake 3.22+](https://cmake.org/)
 * [vcpkg](https://learn.microsoft.com/en-us/vcpkg/) (Windows only)
 * [brew](https://brew.sh/) (macOS only)
@@ -45,13 +36,13 @@ Use building [instructions](BUILDING.md) to install all required tools and libra
 ## Cloning
 
 ```
-git clone --recursive https://github.com/cfnptr/nets
+git clone --recursive -j8 https://github.com/cfnptr/nets
 ```
 
 ## Building ![CI](https://github.com/cfnptr/nets/actions/workflows/cmake.yml/badge.svg)
 
 * Windows: ```./scripts/build-release.bat```
-* macOS / Ubuntu: ```./scripts/build-release.sh```
+* macOS / Linux: ```./scripts/build-release.sh```
 
 ## Third-party
 

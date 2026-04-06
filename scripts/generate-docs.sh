@@ -1,16 +1,14 @@
 #!/bin/bash
 cd "$(dirname "$BASH_SOURCE")"
 
-doxygen --version > /dev/null
-status=$?
-
-if [ $status -ne 0 ]; then
+if ! doxygen --version &> /dev/null; then
     echo "Failed to get Doxygen version, please check if it's installed."
-    exit $status
+    exit 1
 fi
-
-git --version > /dev/null
-status=$?
+if ! git --version &> /dev/null; then
+    echo "Failed to get Git version, please check if it's installed."
+    exit 1
+fi
 
 if [ ! -d "../cppreference-doxygen" ]; then
     git clone https://github.com/cfnptr/cppreference-doxygen ../cppreference-doxygen
