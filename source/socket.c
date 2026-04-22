@@ -782,7 +782,7 @@ NetsResult connectSslSocket(Socket socket, const char* hostname)
 		assert(strlen(hostname) <= UINT8_MAX);
 
 		lockMutex(sslLocker);
-		int result = SSL_set_tlsext_host_name(socket->ssl, hostname);
+		int result = (int)SSL_set_tlsext_host_name(socket->ssl, hostname);
 		if (result != 1)
 		{
 			unlockMutex(sslLocker);
