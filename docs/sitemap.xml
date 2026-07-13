@@ -8,10 +8,10 @@
     <loc>https://cfnptr.github.io/nets/datagram-client_8h.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/datagram-server_8h.html</loc>
+    <loc>https://cfnptr.github.io/nets/socket_8h.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/socket_8h.html</loc>
+    <loc>https://cfnptr.github.io/nets/stream-client_8h.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/datagram-client_8hpp.html</loc>
@@ -20,28 +20,28 @@
     <loc>https://cfnptr.github.io/nets/error_8hpp.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/stream-message_8h.html</loc>
-  </url>
-  <url>
-    <loc>https://cfnptr.github.io/nets/stream-server_8h.html</loc>
+    <loc>https://cfnptr.github.io/nets/socket_8hpp.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/datagram-server_8hpp.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/stream-server_8hpp.html</loc>
+    <loc>https://cfnptr.github.io/nets/stream-message_8h.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/stream-client_8h.html</loc>
+    <loc>https://cfnptr.github.io/nets/datagram-server_8h.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/stream-client_8hpp.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/socket_8hpp.html</loc>
+    <loc>https://cfnptr.github.io/nets/stream-message_8hpp.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/stream-message_8hpp.html</loc>
+    <loc>https://cfnptr.github.io/nets/stream-server_8hpp.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/stream-server_8h.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/md_BUILDING.html</loc>
@@ -50,16 +50,22 @@
     <loc>https://cfnptr.github.io/nets/structStreamMessage.html</loc>
   </url>
   <url>
+    <loc>https://cfnptr.github.io/nets/structStreamMessage-members.html</loc>
+  </url>
+  <url>
     <loc>https://cfnptr.github.io/nets/classnets_1_1IDatagramClient.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/classnets_1_1IDatagramServer.html</loc>
-  </url>
-  <url>
-    <loc>https://cfnptr.github.io/nets/structnets_1_1SocketAddressView.html</loc>
-  </url>
-  <url>
     <loc>https://cfnptr.github.io/nets/structnets_1_1SslContext.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1StreamMessage.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1Error.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1IDatagramServer.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/classnets_1_1IStreamClient.html</loc>
@@ -68,28 +74,67 @@
     <loc>https://cfnptr.github.io/nets/structnets_1_1Socket.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/classnets_1_1Error.html</loc>
-  </url>
-  <url>
-    <loc>https://cfnptr.github.io/nets/structnets_1_1StreamSessionView.html</loc>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1SocketView.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/structnets_1_1SslContextView.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/classnets_1_1StreamMessage.html</loc>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1IStreamServer.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1StreamSessionView.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/classnets_1_1OutStreamMessage.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/classnets_1_1IStreamServer.html</loc>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1SocketAddressView.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/structnets_1_1SocketAddress.html</loc>
   </url>
   <url>
-    <loc>https://cfnptr.github.io/nets/structnets_1_1SocketView.html</loc>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1Error-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1SslContextView-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1SslContext-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1IDatagramClient-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1StreamSessionView-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1IDatagramServer-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1IStreamClient-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1SocketAddressView-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1IStreamServer-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1SocketAddress-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1StreamMessage-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1SocketView-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/structnets_1_1Socket-members.html</loc>
+  </url>
+  <url>
+    <loc>https://cfnptr.github.io/nets/classnets_1_1OutStreamMessage-members.html</loc>
   </url>
   <url>
     <loc>https://cfnptr.github.io/nets/dir_0af74dce6ed792f14cfe74ff7f287b3e.html</loc>

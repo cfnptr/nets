@@ -1,0 +1,24 @@
+var searchData=
+[
+  ['scoped_5fallocator_0',['scoped_allocator',['https://en.cppreference.com/w/cpp/header/scoped_allocator.html',1,'']]],
+  ['set_1',['set',['https://en.cppreference.com/w/cpp/header/set.html',1,'']]],
+  ['shared_5fmutex_2',['shared_mutex',['https://en.cppreference.com/w/cpp/header/shared_mutex.html',1,'']]],
+  ['socket_2eh_3',['socket.h',['../socket_8h.html',1,'']]],
+  ['socket_2ehpp_4',['socket.hpp',['../socket_8hpp.html',1,'']]],
+  ['span_5',['span',['https://en.cppreference.com/w/cpp/header/span.html',1,'']]],
+  ['sstream_6',['sstream',['https://en.cppreference.com/w/cpp/header/sstream.html',1,'']]],
+  ['stack_7',['stack',['https://en.cppreference.com/w/cpp/header/stack.html',1,'']]],
+  ['stdexcept_8',['stdexcept',['https://en.cppreference.com/w/cpp/header/stdexcept.html',1,'']]],
+  ['stream_2dclient_2eh_9',['stream-client.h',['../stream-client_8h.html',1,'']]],
+  ['stream_2dclient_2ehpp_10',['stream-client.hpp',['../stream-client_8hpp.html',1,'']]],
+  ['stream_2dmessage_2eh_11',['stream-message.h',['../stream-message_8h.html',1,'']]],
+  ['stream_2dmessage_2ehpp_12',['stream-message.hpp',['../stream-message_8hpp.html',1,'']]],
+  ['stream_2dserver_2eh_13',['stream-server.h',['../stream-server_8h.html',1,'']]],
+  ['stream_2dserver_2ehpp_14',['stream-server.hpp',['../stream-server_8hpp.html',1,'']]],
+  ['streambuf_15',['streambuf',['https://en.cppreference.com/w/cpp/header/streambuf.html',1,'']]],
+  ['string_16',['string',['https://en.cppreference.com/w/cpp/header/string.html',1,'']]],
+  ['string_5fview_17',['string_view',['https://en.cppreference.com/w/cpp/header/string_view.html',1,'']]],
+  ['strstream_18',['strstream',['https://en.cppreference.com/w/cpp/header/strstream.html',1,'']]],
+  ['syncstream_19',['syncstream',['https://en.cppreference.com/w/cpp/header/syncstream.html',1,'']]],
+  ['system_5ferror_20',['system_error',['https://en.cppreference.com/w/cpp/header/system_error.html',1,'']]]
+];

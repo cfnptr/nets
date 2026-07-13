@@ -26,7 +26,6 @@ var NAVTREE =
 [
   [ "Nets", "index.html", [
     [ "Features", "index.html#features", null ],
-    [ "Supported operating systems", "index.html#supported-operating-systems", null ],
     [ "Build requirements", "index.html#build-requirements", [
       [ "CMake options", "index.html#cmake-options", null ]
     ] ],
@@ -38,32 +37,31 @@ var NAVTREE =
     ] ],
     [ "Build instructions", "md_BUILDING.html", [
       [ "Operating Systems", "md_BUILDING.html#operating-systems", null ],
-      [ "Windows (10/11)", "md_BUILDING.html#windows-1011", [
-        [ "1. Install Visual Studio Community (Or any other IDE)", "md_BUILDING.html#autotoc_md1-install-visual-studio-community-or-any-other-ide", null ],
+      [ "Windows", "md_BUILDING.html#windows", [
+        [ "1. Install Visual Studio Community", "md_BUILDING.html#autotoc_md1-install-visual-studio-community", null ],
         [ "2. Install Git", "md_BUILDING.html#autotoc_md2-install-git", null ],
         [ "3. Install CMake", "md_BUILDING.html#autotoc_md3-install-cmake", null ],
-        [ "4. Clone Repository", "md_BUILDING.html#autotoc_md4-clone-repository", null ],
+        [ "4. Clone repository", "md_BUILDING.html#autotoc_md4-clone-repository", null ],
         [ "5. Install vcpkg package manager", "md_BUILDING.html#autotoc_md5-install-vcpkg-package-manager", null ],
         [ "6. Install required packages", "md_BUILDING.html#autotoc_md6-install-required-packages", null ]
       ] ],
-      [ "Ubuntu (22.04/24.04)", "md_BUILDING.html#ubuntu-22042404", [
-        [ "1. Install Visual Studio Code (Or any other IDE)", "md_BUILDING.html#autotoc_md1-install-visual-studio-code-or-any-other-ide", null ],
+      [ "macOS", "md_BUILDING.html#macos", [
+        [ "1. Install Xcode and tools", "md_BUILDING.html#autotoc_md1-install-xcode-and-tools", null ],
         [ "2. Install required packages", "md_BUILDING.html#autotoc_md2-install-required-packages", null ]
       ] ],
-      [ "macOS (15/26)", "md_BUILDING.html#macos-1526", [
-        [ "1. Install Xcode (Or any other IDE)", "md_BUILDING.html#autotoc_md1-install-xcode-or-any-other-ide", null ],
-        [ "2. Install required packages", "md_BUILDING.html#autotoc_md2-install-required-packages-1", null ]
+      [ "Linux", "md_BUILDING.html#linux", [
+        [ "1. Install Visual Studio Code (Or any other IDE)", "md_BUILDING.html#autotoc_md1-install-visual-studio-code-or-any-other-ide", [
+          [ "2. Install required packages", "md_BUILDING.html#autotoc_md2-install-required-packages-1", null ],
+          [ "For Ubuntu/Debian", "md_BUILDING.html#for-ubuntudebian", null ]
+        ] ]
       ] ],
-      [ "Build Project", "md_BUILDING.html#build-project", [
-        [ "Visual Studio", "md_BUILDING.html#visual-studio", null ],
-        [ "Visual Studio Code (VS Code)", "md_BUILDING.html#visual-studio-code-vs-code", null ]
-      ] ]
+      [ "Build Project", "md_BUILDING.html#build-project", null ]
     ] ],
-    [ "Data Structures", "annotated.html", [
-      [ "Data Structures", "annotated.html", "annotated_dup" ],
-      [ "Data Structure Index", "classes.html", null ],
+    [ "Classes", "annotated.html", [
+      [ "Class List", "annotated.html", "annotated_dup" ],
+      [ "Class Index", "classes.html", null ],
       [ "Class Hierarchy", "hierarchy.html", "hierarchy" ],
-      [ "Data Fields", "functions.html", [
+      [ "Class Members", "functions.html", [
         [ "All", "functions.html", null ],
         [ "Functions", "functions_func.html", null ],
         [ "Variables", "functions_vars.html", null ]
@@ -71,7 +69,7 @@ var NAVTREE =
     ] ],
     [ "Files", "files.html", [
       [ "File List", "files.html", "files_dup" ],
-      [ "Globals", "globals.html", [
+      [ "File Members", "globals.html", [
         [ "All", "globals.html", null ],
         [ "Functions", "globals_func.html", null ],
         [ "Typedefs", "globals_type.html", null ],
@@ -86,8 +84,8 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"socket_8h.html#a6ad696a6895ca9d9eb8742c279514aa3",
-"structnets_1_1StreamSessionView.html#a81cb204c64133e017b1f042bb049bd04"
+"socket_8h.html#a76a1860a455fed0c3d8e49659c236d4d",
+"structnets_1_1StreamSessionView.html#ae259d787ff5ee180fe0febb11f30b520"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';
