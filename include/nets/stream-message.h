@@ -41,7 +41,7 @@ typedef struct StreamMessage
  * @param[in,out] buffer message data buffer
  * @param[in,out] buffer message buffer in bytes
  * @param messageSize message size in bytes
- * @param lengthSize message header lenght size in bytes
+ * @param lengthSize message header length size in bytes
  */
 inline static StreamMessage createStreamMessage(uint8_t* buffer, 
 	size_t bufferSize, size_t messageSize, uint8_t lengthSize)
