@@ -226,8 +226,8 @@ public:
 	 * @param[out] data reference to the message data vector
 	 * @param lengthSize length of the data size in bytes
 	 */
-	template<class T>
-	bool read(std::vector<T>& data, uint8_t lengthSize) noexcept
+	template<class T, class A = std::allocator<T>>
+	bool read(std::vector<T, A>& data, uint8_t lengthSize) noexcept
 	{
 		const void* messageData; size_t size;
 		if (readStreamMessageData(this, &messageData, &size, lengthSize))
@@ -417,8 +417,8 @@ public:
 	 * @param[in] data message data vector to write
 	 * @param lengthSize length of the data size in bytes
 	 */
-	template<class T>
-	bool write(const std::vector<T>& data, uint8_t lengthSize) noexcept
+	template<class T, class A = std::allocator<T>>
+	bool write(const std::vector<T, A>& data, uint8_t lengthSize) noexcept
 	{
 		return writeStreamMessageData(this, data.data(), data.size() * sizeof(T), lengthSize);
 	}
