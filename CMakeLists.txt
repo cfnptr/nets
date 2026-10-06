@@ -36,12 +36,16 @@ option(NETS_BUILD_EXAMPLES "Build Nets usage examples" ON)
 option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_USE_CURL "Use cURL for HTTP requests" ON)
 
-set(NETS_FIND_LIBRARY_HINTS "/usr/lib64" "/usr/lib" "/usr/local/lib" 
-	"/usr/lib/x86_64-linux-gnu" "/usr/lib/aarch64-linux-gnu"
-	"/opt/homebrew/lib" "/usr/local/opt/openssl/lib")
+set(NETS_FIND_LIBRARY_HINTS /usr/lib64 /usr/local/lib 
+	/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE})
+
 if(NETS_USE_OPENSSL)
 	find_package(OpenSSL)
-	if(NOT OpenSSL_FOUND)
+	if(OpenSSL_FOUND)
+		set(NETS_SUPPORT_OPENSSL 1)
+	else()
+		find_library(OPENSSL_SSL_LIBRARY NAMES 
+		 	ssl libssl HINTS ${NETS_FIND_LIBRARY_HINTS})
 		find_library(OPENSSL_CRYPTO_LIBRARY NAMES 
 			crypto libcrypto HINTS ${NETS_FIND_LIBRARY_HINTS})
 		find_package(OpenSSL)
@@ -50,8 +54,6 @@ if(NETS_USE_OPENSSL)
 		else()
 			set(NETS_SUPPORT_OPENSSL 0)
 		endif()
-	else()
-		set(NETS_SUPPORT_OPENSSL 0)
 	endif()
 else()
 	set(NETS_SUPPORT_OPENSSL 0)
