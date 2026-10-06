@@ -36,22 +36,20 @@ option(NETS_BUILD_EXAMPLES "Build Nets usage examples" ON)
 option(NETS_USE_OPENSSL "Use OpenSSL for secure communication" ON)
 option(NETS_USE_CURL "Use cURL for HTTP requests" ON)
 
+set(NETS_FIND_LIBRARY_HINTS "/usr/lib64" "/usr/lib" "/usr/local/lib" 
+	"/usr/lib/x86_64-linux-gnu" "/usr/lib/aarch64-linux-gnu"
+	"/opt/homebrew/lib" "/usr/local/opt/openssl/lib")
 if(NETS_USE_OPENSSL)
 	find_package(OpenSSL)
-	if(NOT OpenSSL_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-		set(OPENSSL_SSL_LIBRARY /usr/lib64/libssl.so)
-		set(OPENSSL_CRYPTO_LIBRARY /usr/lib64/libcrypto.so)
+	if(NOT OpenSSL_FOUND)
+		find_library(OPENSSL_CRYPTO_LIBRARY NAMES 
+			crypto libcrypto HINTS ${NETS_FIND_LIBRARY_HINTS})
 		find_package(OpenSSL)
-
-		if(NOT OpenSSL_FOUND)
-			set(OPENSSL_SSL_LIBRARY /usr/lib/libssl.so)
-			set(OPENSSL_CRYPTO_LIBRARY /usr/lib/libcrypto.so)
-			find_package(OpenSSL)
+		if(OpenSSL_FOUND)
+			set(NETS_SUPPORT_OPENSSL 1)
+		else()
+			set(NETS_SUPPORT_OPENSSL 0)
 		endif()
-	endif()
-
-	if(OpenSSL_FOUND)
-		set(NETS_SUPPORT_OPENSSL 1)
 	else()
 		set(NETS_SUPPORT_OPENSSL 0)
 	endif()
@@ -94,10 +92,10 @@ add_subdirectory(libraries/mpio)
 
 configure_file(cmake/defines.h.in include/nets/defines.h)
 
-if(NETS_USE_OPENSSL AND OpenSSL_FOUND)
+if(NETS_SUPPORT_OPENSSL)
 	list(APPEND NETS_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
 endif()
-if(NETS_USE_CURL AND CURL_FOUND)
+if(NETS_SUPPORT_CURL)
 	list(APPEND NETS_LINK_LIBRARIES CURL::libcurl)
 endif()
 

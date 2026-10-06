@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "nets/socket.h"
-#include "mpmt/sync.h"
 #include <string.h>
 
 #if __linux__ || __APPLE__
@@ -46,6 +45,7 @@ static WSADATA wsaData;
 #endif
 
 #if NETS_SUPPORT_OPENSSL
+#include "mpmt/sync.h"
 #include "openssl/ssl.h"
 #else
 #define SSL_CTX void
@@ -265,6 +265,7 @@ inline static NetsResult sslErrorToNetsResult(int error)
 	#endif
 }
 
+#if NETS_SUPPORT_OPENSSL
 static void sslInfoCallback(const SSL *ssl, int type, int val)
 {
 	const char *str; int w = type & ~SSL_ST_MASK;
@@ -289,6 +290,7 @@ static void sslInfoCallback(const SSL *ssl, int type, int val)
 			printf("OpenSSL::%s: error in %s\n", str, SSL_state_string_long(ssl));
 	}
 }
+#endif
 
 //**********************************************************************************************************************
 inline static NetsResult createSocketHandle(SocketType socketType, SocketFamily socketFamily,
