@@ -2,6 +2,9 @@ name: CMake
 
 on: [push, pull_request]
 
+permissions:
+  contents: write
+
 env:
   BUILD_TYPE: Release
   VCPKG_CACHE: windows-vcpkg
@@ -24,7 +27,7 @@ jobs:
       run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
     - name: Cache vcpkg packages
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       if: matrix.os == 'windows-latest'
       id: vcpkg-cache
       with:
